@@ -22,9 +22,9 @@ export default function FixedBottomNavigation() {
                         setValue(newValue);
                     }}
                 >
-                    <BottomNavigationAction label="Chat" icon={<ChatIcon />} />
-                    <BottomNavigationAction label="Camera" icon={<CameraIcon />} />
-                    <BottomNavigationAction label="Settings" icon={<Settings />} />
+                    <BottomNavigationAction label="Chat" icon={<ChatIcon />} href="/chat"/>
+                    <BottomNavigationAction label="Camera" icon={<CameraIcon />} href="/camera" />
+                    <BottomNavigationAction label="Settings" icon={<Settings />} href="/settings"/>
                 </BottomNavigation>
             </Paper>
         </Box>
