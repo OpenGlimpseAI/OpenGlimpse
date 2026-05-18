@@ -1,0 +1,25 @@
+{
+  "name": "openglimpse",
+  "version": "1.0.0",
+  "description": "OpenGlimpse is a webapp that integrates AI to allow for quick registration and verification for event registration",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/OpenGlimpseAI/OpenGlimpse.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/OpenGlimpseAI/OpenGlimpse/issues"
+  },
+  "homepage": "https://github.com/OpenGlimpseAI/OpenGlimpse#readme",
+  "dependencies": {
+    "express": "^5.2.1",
+    "node": "^22.22.3",
+    "socket.io": "^4.8.3",
+    "websocket": "^1.0.35"
+  }
+}
