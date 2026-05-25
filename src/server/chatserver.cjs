@@ -34,6 +34,7 @@ function attachChatServer(server) {
                 broadcast({
                     text: data.text,
                     timestamp: data.timestamp || new Date().toISOString(),
+                    senderId: data.senderId,
                 });
             } catch (error) {
                 sendJson(connection, {
