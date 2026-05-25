@@ -12,7 +12,7 @@ import Paper from '@mui/material/Paper';
 
 export default function FixedBottomNavigation() {
     return(
-        <Box sx={{ pb: 7 }}>
+        <Box>
             <CssBaseline />
             <Paper sx={{ position: 'fixed', bottom: 0, left: 0, right: 0 }} elevation={3}>
                 <BottomNavigation>
