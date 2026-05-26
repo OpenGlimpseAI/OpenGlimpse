@@ -14,9 +14,10 @@ export default function FixedBottomNavigation() {
     return(
         <Box>
             <CssBaseline />
-            <Paper sx={{ position: 'fixed', bottom: 0, left: 0, right: 0 }} elevation={3}>
-                <BottomNavigation>
+            <Paper className="bottom-nav" elevation={3}>
+                <BottomNavigation className="bottom-nav-content">
                     <BottomNavigationAction
+                        className="bottom-nav-action"
                         label="Chat"
                         value="chat"
                         icon={<ChatIcon />}
@@ -24,6 +25,7 @@ export default function FixedBottomNavigation() {
                         to="/chat"
                     />
                     <BottomNavigationAction
+                        className="bottom-nav-action"
                         label="Camera"
                         value="camera"
                         icon={<CameraIcon />}
@@ -31,6 +33,7 @@ export default function FixedBottomNavigation() {
                         to="/camera"
                     />
                     <BottomNavigationAction
+                        className="bottom-nav-action"
                         label="Settings"
                         value="settings"
                         icon={<Settings />}

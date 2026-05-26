@@ -1,9 +1,9 @@
 import React, { useEffect, useRef, useState } from 'react';
 import ChatBubble from "./chatbubble.jsx";
 import ChatInput from './ChatInput.jsx';
+import WifiRounded from '@mui/icons-material/WifiRounded'
 import WifiOffRoundedIcon from '@mui/icons-material/WifiOffRounded';
-
-const CHAT_SERVER_URL = import.meta.env.VITE_CHAT_SERVER_URL || 'ws://localhost:3000';
+const CHAT_SERVER_URL = import.meta.env.VITE_CHAT_SERVER_URL || 'ws://localhost:3001';
 
 export default function Chat() {
     const socketRef = useRef(null);
@@ -54,31 +54,35 @@ export default function Chat() {
     };
 
     return (
-        <main className="flex min-h-screen flex-col bg-slate-50 pb-14">
-            <header className="sticky top-0 z-10 flex items-center justify-between border-b border-slate-200 bg-white px-4 py-4 sm:px-6">
+        <main className="chat-page">
+            <header className="chat-header">
                 <div>
-                    <h1 className="text-lg font-semibold text-slate-950">Event Chat</h1>
-                    <p className="text-sm text-slate-500">
-                        {isConnected ? 'Connected' : 'Connecting'}
-                    </p>
+                    <h1 className="chat-title">Event Chat</h1>
+
                 </div>
                 {!isConnected && (
-                    <div className="flex items-center gap-2 rounded-full bg-amber-50 px-3 py-1 text-xs font-medium text-amber-700">
+                    <div className="chat-offline-pill">
                         <WifiOffRoundedIcon sx={{ fontSize: 16 }} />
                         Offline
                     </div>
                 )}
+                {isConnected && (
+                    <div className="chat-online-pill">
+                        <WifiRounded sx={{fontSize: 16}} />
+                        Online
+                    </div>
+                )}
             </header>
 
-            <section className="flex flex-1 flex-col">
-                <div className="flex-1 overflow-y-auto px-3 py-5 sm:px-5 lg:px-6">
-                    <div className="w-full">
+            <section className="chat-layout">
+                <div className="chat-scroll">
+                    <div className="chat-content">
                         {messages.length === 0 ? (
-                            <div className="flex min-h-[calc(100vh-250px)] items-center justify-center text-center">
-                                <p className="text-base font-medium text-slate-800">No messages yet</p>
+                            <div className="chat-empty">
+                                <p className="chat-empty-text">No messages yet</p>
                             </div>
                         ) : (
-                            <div className="space-y-3">
+                            <div className="chat-message-list">
                                 {messages.map((message, i) => (
                                     <ChatBubble
                                         key={`${message.timestamp}-${i}`}
@@ -91,8 +95,8 @@ export default function Chat() {
                     </div>
                 </div>
 
-                <div className="sticky bottom-14 border-t border-slate-200 bg-white">
-                    <div className="w-full">
+                <div className="chat-composer-shell">
+                    <div className="chat-content">
                         <ChatInput
                             value={messageInput}
                             onChange={setMessageInput}
