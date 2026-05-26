@@ -39,14 +39,14 @@ function attachChatServer(server) {
             } catch (error) {
                 sendJson(connection, {
                     type: 'error',
-                    text: 'Invalid message format',
+                    text: 'invalid message format',
                 });
             }
         });
 
         connection.on('close', (rescode, description) => {
             clients.delete(connection);
-            console.log('WebSocket closed', rescode, description);
+            console.log('websocket closed', rescode, description);
         });
     });
 

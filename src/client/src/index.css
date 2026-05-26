@@ -1,5 +1,6 @@
 @import "tailwindcss";
 
+/* Base */
 html,
 body,
 #root {
@@ -13,4 +14,143 @@ body {
 
 * {
   box-sizing: border-box;
+}
+
+/* Navbar */
+.bottom-nav {
+  @apply fixed right-0 bottom-0 left-0 z-20;
+}
+
+.bottom-nav-content {
+  @apply border-t border-slate-200 bg-white;
+}
+
+.bottom-nav-action {
+  @apply transition-colors duration-150;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .bottom-nav-action:hover {
+    @apply bg-slate-100 text-sky-700;
+  }
+}
+
+/* Chat */
+.chat-page {
+  @apply flex min-h-screen flex-col bg-slate-50 pb-14;
+}
+
+.chat-header {
+  @apply sticky top-0 z-10 flex items-center justify-between border-b border-slate-200 bg-white px-4 py-4 sm:px-6;
+}
+
+.chat-title {
+  @apply text-lg font-semibold text-slate-950;
+}
+/* no longer in use(may add back)
+.chat-status {
+  @apply text-sm text-slate-500;
+}
+ */
+
+.chat-offline-pill {
+  @apply flex items-center gap-2 rounded-full bg-amber-50 px-3 py-1 text-xs font-medium text-red-700;
+}
+
+.chat-online-pill {
+  @apply flex items-center gap-2 rounded-full bg-amber-50 px-3 py-1 text-xs font-medium text-green-500;
+}
+
+.chat-layout {
+  @apply flex flex-1 flex-col;
+}
+
+.chat-scroll {
+  @apply flex-1 overflow-y-auto px-3 py-5 sm:px-5 lg:px-6;
+}
+
+.chat-message-list {
+  @apply w-full space-y-3;
+}
+
+.chat-empty {
+  @apply flex min-h-[calc(100vh-250px)] items-center justify-center text-center;
+}
+
+.chat-empty-text {
+  @apply text-base font-medium text-slate-800;
+}
+
+.chat-composer-shell {
+  @apply sticky bottom-14 border-t border-slate-200 bg-white;
+}
+
+.chat-content {
+  @apply w-full;
+}
+
+/* Chat input */
+.chat-input-form {
+  @apply border-t border-slate-200 bg-white px-3 py-3 sm:px-4;
+}
+
+.chat-input-box {
+  @apply flex items-end gap-2 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2 shadow-sm transition focus-within:border-sky-500 focus-within:bg-white focus-within:ring-4 focus-within:ring-sky-100;
+}
+
+.chat-input-field {
+  @apply max-h-32 min-h-10 flex-1 resize-none bg-transparent py-2 text-sm leading-5 text-slate-900 outline-none placeholder:text-slate-400;
+}
+
+.chat-send-button {
+  @apply !h-10 !w-10 !bg-sky-600 !text-white transition-colors duration-150;
+}
+
+.chat-send-button:hover {
+  @apply !bg-sky-700;
+}
+
+.chat-send-button.Mui-disabled {
+  @apply !bg-slate-200 !text-slate-400;
+}
+
+/* Chat bubble */
+.chat-bubble-row {
+  @apply flex w-full;
+}
+
+.chat-bubble-row-own {
+  @apply justify-end;
+}
+
+.chat-bubble-row-other {
+  @apply justify-start;
+}
+
+.chat-bubble {
+  @apply max-w-[78%] rounded-2xl px-4 py-2 text-sm leading-6 shadow-sm;
+}
+
+.chat-bubble-own {
+  @apply rounded-br-md bg-sky-600 text-white;
+}
+
+.chat-bubble-other {
+  @apply rounded-bl-md border border-slate-200 bg-white text-slate-800;
+}
+
+.chat-bubble-text {
+  @apply whitespace-pre-wrap break-words;
+}
+
+.chat-bubble-time {
+  @apply mt-1 text-[11px];
+}
+
+.chat-bubble-time-own {
+  @apply text-sky-100;
+}
+
+.chat-bubble-time-other {
+  @apply text-slate-400;
 }
