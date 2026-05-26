@@ -6,6 +6,7 @@ import CssBaseline from '@mui/material/CssBaseline';
 import BottomNavigation from '@mui/material/BottomNavigation';
 import BottomNavigationAction from '@mui/material/BottomNavigationAction';
 import ChatIcon from '@mui/icons-material/Chat';
+import DashboardIcon from '@mui/icons-material/Dashboard';
 import CameraIcon from '@mui/icons-material/Camera';
 import Settings from '@mui/icons-material/Settings';
 import Paper from '@mui/material/Paper';
@@ -23,6 +24,14 @@ export default function FixedBottomNavigation() {
                         icon={<ChatIcon />}
                         component={Link}
                         to="/chat"
+                    />
+                    <BottomNavigationAction
+                        className="bottom-nav-action"
+                        label="Dashboard"
+                        value="dashboard"
+                        icon={<DashboardIcon />}
+                        component={Link}
+                        to="/dashboard"
                     />
                     <BottomNavigationAction
                         className="bottom-nav-action"
