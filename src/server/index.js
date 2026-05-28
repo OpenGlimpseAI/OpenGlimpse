@@ -1,6 +1,9 @@
 const express = require('express');
 const http = require('http');
-require('dotenv').config();
+const path = require("path");
+require("dotenv").config({
+    path: path.resolve(__dirname, "../../.env"),
+});
 const { attachChatServer } = require('./chatserver.cjs');
 
 const app = express();

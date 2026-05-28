@@ -22,8 +22,19 @@ export default function Chat() {
         };
 
         socket.onmessage = (e) => {
-            const message = JSON.parse(e.data);
-            setMessages((currentMessages) => [...currentMessages, message]);
+            const payload = JSON.parse(e.data);
+
+            if (payload.type === 'history') {
+                setMessages(payload.messages)
+                return;
+            }
+            if (payload.type === 'message') {
+                setMessages((current) => [...current,payload.message]);
+                return;
+            }
+            if (payload.type === 'error') {
+                console.error(payload.text)
+            }
         };
 
         socket.onclose = () => {

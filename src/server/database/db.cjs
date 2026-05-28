@@ -19,10 +19,29 @@ const messages = sequelize.define("messages", {
     }
 })
 
-sequelize.sync({force: true})
+const attendee = sequelize.define("attendee", {
+    name: {
+        type: DataTypes.STRING,
+        allowNull: false,
+    }
+})
+
+const admin = sequelize.define("admin", {
+    name: {
+        type: DataTypes.STRING,
+        allowNull: false,
+    },
+    privileges: {
+        type: DataTypes.STRING,
+    }
+})
+
+sequelize.sync()
 .then(() => {
     console.log("db sync successful")
 })
 .catch((err) => {
     console.error("Encountered error: ", err)
 })
+
+module.exports = { sequelize,messages }
