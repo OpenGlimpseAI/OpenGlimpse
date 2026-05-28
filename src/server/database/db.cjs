@@ -16,6 +16,10 @@ const messages = sequelize.define("messages", {
     timestamp: {
         type: DataTypes.DATE,
         allowNull: false,
+    },
+    senderId: {
+        type: DataTypes.STRING,
+        allowNull: false,
     }
 })
 

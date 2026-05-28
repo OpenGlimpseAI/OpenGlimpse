@@ -19,6 +19,7 @@ function formatpayload(row){
     return {
         text: row.content,
         timestamp: row.timestamp,
+        senderId: row.senderId,
     }
 }
 

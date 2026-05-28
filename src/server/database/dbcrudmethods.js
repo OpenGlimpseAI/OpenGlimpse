@@ -5,6 +5,7 @@ async function addmessage(message){
     const savedMessage = await messages.create({
         content: message.content,
         timestamp: message.timestamp,
+        senderId: message.senderId,
     })
 
     console.log("message added");
