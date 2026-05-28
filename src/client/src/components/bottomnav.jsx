@@ -7,7 +7,7 @@ import BottomNavigation from '@mui/material/BottomNavigation';
 import BottomNavigationAction from '@mui/material/BottomNavigationAction';
 import ChatIcon from '@mui/icons-material/Chat';
 import DashboardIcon from '@mui/icons-material/Dashboard';
-import CameraIcon from '@mui/icons-material/Camera';
+import CameraAlt from '@mui/icons-material/CameraAlt';
 import Settings from '@mui/icons-material/Settings';
 import Paper from '@mui/material/Paper';
 
@@ -37,7 +37,7 @@ export default function FixedBottomNavigation() {
                         className="bottom-nav-action"
                         label="Camera"
                         value="camera"
-                        icon={<CameraIcon />}
+                        icon={<CameraAlt />}
                         component={Link}
                         to="/camera"
                     />

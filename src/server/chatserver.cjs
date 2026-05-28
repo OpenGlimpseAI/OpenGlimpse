@@ -1,4 +1,5 @@
 const WebSocketServer = require('websocket').server;
+const { addmessage,readchathistory } = require('./database/dbcrudmethods')
 
 const clients = new Set();
 
@@ -14,6 +15,13 @@ function broadcast(payload) {
     }
 }
 
+function formatpayload(row){
+    return {
+        text: row.content,
+        timestamp: row.timestamp,
+    }
+}
+
 function attachChatServer(server) {
     const socketserver = new WebSocketServer({
         httpServer: server,
@@ -23,18 +31,40 @@ function attachChatServer(server) {
     socketserver.on('request', (request) => {
         const connection = request.accept(null, request.origin);
         clients.add(connection);
-
-        connection.on('message', (message) => {
+        (async ()=>{
+            const history = await readchathistory();
+            sendJson(connection, {
+                type:'history',
+                messages: history.map(formatpayload),
+            })
+        })().catch((err)=>{
+            sendJson(connection, {
+                type:'error',
+                text:"Chat history could not be found",
+            })
+        })
+        connection.on('message', async (message) => {
             if (message.type !== 'utf8') {
                 return;
             }
 
             try {
                 const data = JSON.parse(message.utf8Data);
+                const text = typeof data.text === 'string' ? data.text.trim() : "";
+                if (!text || text.length > 1000) {
+                    return sendJson(connection, {
+                        type: "error",
+                        text: "invalid message",
+                    });
+                }
+
+                const savedMessage = await addmessage({
+                    content: text,
+                    timestamp: new Date(),
+                });
                 broadcast({
-                    text: data.text,
-                    timestamp: data.timestamp || new Date().toISOString(),
-                    senderId: data.senderId,
+                    type: 'message',
+                    message: formatpayload(savedMessage.get({plain: true})),
                 });
             } catch (error) {
                 sendJson(connection, {
