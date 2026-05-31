@@ -7,12 +7,13 @@ const CHAT_SERVER_URL = import.meta.env.VITE_CHAT_SERVER_URL || 'ws://localhost:
 
 export default function Chat() {
     const socketRef = useRef(null);
-    const clientIdRef = useRef(crypto.randomUUID());
+    const clientIdRef = useRef(localStorage.getItem("chatClientId") || crypto.randomUUID());
     const [messages, setMessages] = useState([]);
     const [messageInput, setMessageInput] = useState('');
     const [isConnected, setIsConnected] = useState(false);
 
     useEffect(() => {
+        localStorage.setItem("chatClientId",clientIdRef.current);
         const socket = new WebSocket(CHAT_SERVER_URL);
         socketRef.current = socket;
 

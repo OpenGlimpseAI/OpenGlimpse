@@ -1,6 +1,5 @@
 const WebSocketServer = require('websocket').server;
 const { addmessage,readchathistory } = require('./database/dbcrudmethods')
-
 const clients = new Set();
 
 function sendJson(connection, payload) {
@@ -52,16 +51,25 @@ function attachChatServer(server) {
             try {
                 const data = JSON.parse(message.utf8Data);
                 const text = typeof data.text === 'string' ? data.text.trim() : "";
+                const senderId = typeof data.senderId === 'string' ? data.senderId.trim() : "";
+
                 if (!text || text.length > 1000) {
                     return sendJson(connection, {
                         type: "error",
                         text: "invalid message",
                     });
                 }
+                if (!senderId) {
+                    return sendJson(connection, {
+                        type: "error",
+                        text: "missing sender id",
+                    });
+                }
 
                 const savedMessage = await addmessage({
                     content: text,
                     timestamp: new Date(),
+                    senderId,
                 });
                 broadcast({
                     type: 'message',
