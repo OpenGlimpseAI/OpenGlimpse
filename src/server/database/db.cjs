@@ -40,7 +40,7 @@ const admin = sequelize.define("admin", {
     }
 })
 
-sequelize.sync({force:true})
+sequelize.sync({force:false})
 .then(() => {
     console.log("db sync successful")
 })
