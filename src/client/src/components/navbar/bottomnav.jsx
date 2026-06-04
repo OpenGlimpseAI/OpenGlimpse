@@ -1,4 +1,3 @@
-import * as React from 'react';
 import { Link } from "react-router-dom";
 
 import Box from '@mui/material/Box';
@@ -8,7 +7,7 @@ import BottomNavigationAction from '@mui/material/BottomNavigationAction';
 import ChatIcon from '@mui/icons-material/Chat';
 import DashboardIcon from '@mui/icons-material/Dashboard';
 import CameraIcon from '@mui/icons-material/Camera';
-import Settings from '@mui/icons-material/Settings';
+import PeopleIcon from '@mui/icons-material/People';
 import Paper from '@mui/material/Paper';
 
 export default function FixedBottomNavigation() {
@@ -43,11 +42,11 @@ export default function FixedBottomNavigation() {
                     />
                     <BottomNavigationAction
                         className="bottom-nav-action"
-                        label="Settings"
-                        value="settings"
-                        icon={<Settings />}
+                        label="Directory"
+                        value="directory"
+                        icon={<PeopleIcon />}
                         component={Link}
-                        to="/"
+                        to="/directory"
                     />
                 </BottomNavigation>
             </Paper>
