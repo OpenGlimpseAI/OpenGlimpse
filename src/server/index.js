@@ -1,6 +1,6 @@
 const express = require('express');
 const http = require('http');
-const { attachChatServer } = require('./chatserver.cjs');
+const { attachChatServer } = require('./modules/chat/chatserver.cjs');
 
 const app = express();
 const server = http.createServer(app);
