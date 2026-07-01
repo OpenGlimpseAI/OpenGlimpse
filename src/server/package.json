@@ -1,12 +1,33 @@
 {
-  "name": "server",
+  "name": "openglimpse",
   "version": "1.0.0",
-  "description": "server",
+  "description": "OpenGlimpse is a webapp that integrates AI to allow for quick registration and verification for event registration",
   "main": "index.js",
   "scripts": {
     "dev": "node startFaceNet.js",
+    "db:test": "node database/db.cjs",
+    "start": "node index.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/OpenGlimpseAI/OpenGlimpse.git"
+  },
   "author": "",
-  "license": "ISC"
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/OpenGlimpseAI/OpenGlimpse/issues"
+  },
+  "homepage": "https://github.com/OpenGlimpseAI/OpenGlimpse#readme",
+  "dependencies": {
+    "@sequelize/postgres": "^7.0.0-alpha.48",
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "node": "^22.22.3",
+    "pg": "^8.21.0",
+    "pg-hstore": "^2.3.4",
+    "sequelize": "^6.37.8",
+    "socket.io": "^4.8.3",
+    "websocket": "^1.0.35"
+  }
 }
