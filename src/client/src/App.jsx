@@ -1,9 +1,9 @@
 import Placeholder from './components/Placeholder';
-import Chat from './components/chat.jsx';
-import BottomNav from './components/bottomnav.jsx'
+import Chat from './components/Chat.jsx';
+import BottomNav from './components/BottomNav.jsx'
 import { Routes, Route } from "react-router-dom";
 import './App.css'
-//import { AdminDashboard } from "./components/dashboard.jsx";
+//import { AdminDashboard } from "./components/Dashboard.jsx";
 
 export default function App() {
   return (

@@ -1,8 +1,9 @@
 import React, { useEffect, useRef, useState } from 'react';
-import ChatBubble from "./chatbubble.jsx";
+import ChatBubble from "./ChatBubble.jsx";
 import ChatInput from './ChatInput.jsx';
 import WifiRounded from '@mui/icons-material/WifiRounded'
 import WifiOffRoundedIcon from '@mui/icons-material/WifiOffRounded';
+import {db} from "../client-scripts/db.js";
 const CHAT_SERVER_URL = import.meta.env.VITE_CHAT_SERVER_URL || 'ws://localhost:3001';
 
 export default function Chat() {
@@ -52,7 +53,15 @@ export default function Chat() {
         const text = messageInput.trim();
 
         if (!text || socketRef.current?.readyState !== WebSocket.OPEN) {
-            return;
+            try {
+                db.messages.add({
+                    content: text,
+                    timestamp: new Date().toISOString(),
+                    senderId: clientIdRef.current
+                })
+            } catch (err) {
+                console.error(err.message);
+            }
         }
 
         const message = {
@@ -113,7 +122,6 @@ export default function Chat() {
                             value={messageInput}
                             onChange={setMessageInput}
                             onSend={sendmessage}
-                            disabled={!isConnected}
                         />
                     </div>
                 </div>
