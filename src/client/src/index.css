@@ -236,14 +236,6 @@ body {
   @apply text-emerald-600;
 }
 
-.dashboard-dot {
-  @apply inline-block h-2.5 w-2.5 rounded-full;
-}
-
-.dashboard-dot-missing {
-  @apply bg-amber-500;
-}
-
 /* Card */
 .dashboard-card {
   @apply divide-y divide-slate-100 overflow-hidden rounded-2xl bg-white shadow-sm;
@@ -266,7 +258,7 @@ body {
 }
 
 .dashboard-call-btn {
-  @apply flex h-9 w-9 items-center justify-center rounded-full border border-amber-200 bg-amber-50 text-amber-600 transition-colors;
+  @apply flex h-11 w-11 items-center justify-center rounded-full border border-amber-200 bg-amber-50 text-amber-600 transition-colors;
 }
 
 .dashboard-call-btn:hover {
@@ -338,7 +330,7 @@ body {
 }
 
 .directory-search-clear {
-  @apply flex h-6 w-6 items-center justify-center rounded-full text-slate-400 transition-colors hover:bg-slate-200 hover:text-slate-600;
+  @apply flex h-9 w-9 items-center justify-center rounded-full text-slate-400 transition-colors hover:bg-slate-200 hover:text-slate-600;
 }
 
 /* Filters */
@@ -392,7 +384,7 @@ body {
 }
 
 .directory-status-present {
-  @apply text-slate-400;
+  @apply text-emerald-600;
 }
 
 .directory-status-missing {
@@ -420,7 +412,7 @@ body {
 }
 
 .directory-action-check {
-  @apply bg-emerald-50 text-emerald-700 hover:bg-emerald-100;
+  @apply bg-sky-50 text-sky-700 hover:bg-sky-100;
 }
 
 .directory-action-undo {
@@ -428,7 +420,7 @@ body {
 }
 
 .directory-call-btn-sm {
-  @apply flex h-8 w-8 items-center justify-center rounded-full border border-amber-200 bg-amber-50 text-amber-600 transition-colors hover:bg-amber-100;
+  @apply flex h-10 w-10 items-center justify-center rounded-full border border-amber-200 bg-amber-50 text-amber-600 transition-colors hover:bg-amber-100;
 }
 
 .directory-row-clickable {
@@ -519,7 +511,7 @@ body {
 }
 
 .profile-action-present {
-  @apply bg-emerald-600 text-white hover:bg-emerald-700;
+  @apply bg-sky-600 text-white hover:bg-sky-700;
 }
 
 .profile-action-absent {
