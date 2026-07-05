@@ -23,23 +23,6 @@ const messages = sequelize.define("messages", {
     }
 })
 
-const attendee = sequelize.define("attendee", {
-    name: {
-        type: DataTypes.STRING,
-        allowNull: false,
-    }
-})
-
-const admin = sequelize.define("admin", {
-    name: {
-        type: DataTypes.STRING,
-        allowNull: false,
-    },
-    privileges: {
-        type: DataTypes.STRING,
-    }
-})
-
 sequelize.sync({force:false})
 .then(() => {
     console.log("db sync successful")
