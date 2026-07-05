@@ -1,5 +1,5 @@
 const WebSocketServer = require('websocket').server;
-const { addmessage,readchathistory } = require('./database/dbcrudmethods')
+const { addmessage,readchathistory } = require('./database/dbmethods')
 const clients = new Set();
 
 function sendJson(connection, payload) {
