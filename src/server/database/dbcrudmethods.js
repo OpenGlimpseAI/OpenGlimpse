@@ -1,23 +1,49 @@
-const { messages } = require('./db.cjs')
+const { user, messages } = require('./db.cjs')
 
-//messages table funcs
-async function addmessage(message){
-    const savedMessage = await messages.create({
-        content: message.content,
-        timestamp: message.timestamp,
-        senderId: message.senderId,
-    })
+class Model {
+    static async create() {
+        throw new Error('create static method not implemented');
+    }
 
-    console.log("message added");
-    return savedMessage;
+    static async read() {
+        throw new Error('read static method not implemented');
+    }
+
+    async update() {
+        throw new Error('update method not implemented');
+    }
+
+    async delete() {
+        throw new Error('delete method not implemented');
+    }
 }
 
-async function readchathistory(limit=100){
-    const results = await messages.findAll({
-        order: [['timestamp', 'ASC']],
-        limit,
-    })
-    return results.map((result)=>result.get({plain: true}))
+class User extends Model {
+    constructor({ id, enName, zhName } = {}) {
+        super()
+        this.id = id
+        this.enName = enName
+        this.zhName = zhName
+    }
+
+    static async create(enName, zhName = null) {
+        const record = await user.create({ enName, zhName })
+        return new User(record.toJSON())
+    }
+
+    static async read(id) {
+        const record = await user.findByPk(id)
+        if (!record) return null
+        return new User(record.toJSON())
+    }
+
+    async update(enName, zhName = null) {
+        return await user.update({ enName, zhName }, { where: { id: this.id } })
+    }
+
+    async delete() {
+        return await user.destroy({ where: { id: this.id } })
+    }
 }
 
-module.exports = { addmessage,readchathistory };
+module.exports = { Model, User };

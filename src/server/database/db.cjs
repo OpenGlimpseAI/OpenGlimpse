@@ -35,8 +35,12 @@ const messages = sequelize.define("messages", {
         allowNull: false,
     },
     senderId: {
-        type: DataTypes.STRING,
+        type: DataTypes.UUID,
         allowNull: false,
+        references: {
+            model: user,
+            key: "id",
+        },
     }
 })
 
@@ -91,6 +95,9 @@ const faceEmbeddings = sequelize.define("faceEmbeddings", {
     },
 })
 
+messages.belongsTo(user, { foreignKey: 'senderId' })
+user.hasMany(messages, { foreignKey: 'senderId' })
+
 sequelize.sync({force:false})
 .then(() => {
     console.log("db sync successful")
@@ -99,4 +106,4 @@ sequelize.sync({force:false})
     console.error("Encountered error: ", err)
 })
 
-module.exports = { sequelize, user, messages }
+module.exports = { sequelize, user, messages, attendee, admin, faceEmbeddings }
