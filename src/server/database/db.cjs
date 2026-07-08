@@ -8,6 +8,23 @@ const sequelize = new Sequelize(process.env.DB_NAME,process.env.DB_USER,process.
     dialect: 'postgres',
 })
 
+const user = sequelize.define("users", {
+    id: {
+        type: DataTypes.UUID,
+        defaultValue: DataTypes.UUIDV4,
+        primaryKey: true,
+        allowNull: false,
+    },
+    enName: {
+        type: DataTypes.STRING,
+        allowNull: false,
+    },
+    zhName: {
+        type: DataTypes.STRING,
+        allowNull: true,
+    }
+})
+
 const messages = sequelize.define("messages", {
     content: {
         type: DataTypes.STRING,
@@ -40,6 +57,40 @@ const admin = sequelize.define("admin", {
     }
 })
 
+
+const faceEmbeddings = sequelize.define("faceEmbeddings", {
+    imageHash: {
+        type: DataTypes.STRING,
+        primaryKey: true,
+        allowNull: false,
+    },
+    userId: {
+        type: DataTypes.UUID,
+        allowNull: false,
+        references: {
+            model: user,
+            key: "id",
+        },
+    },
+    // imageType must be 'primary' or 'cache'
+    imageType: {
+        type: DataTypes.STRING,
+        allowNull: false,
+    },
+    imageData: {
+        type: DataTypes.BLOB("long"),
+        allowNull: false,
+    },
+    embeddings: {
+        type: DataTypes.STRING,
+        allowNull: false,
+    },
+    model: {
+        type: DataTypes.STRING,
+        allowNull: false,
+    },
+})
+
 sequelize.sync({force:false})
 .then(() => {
     console.log("db sync successful")
@@ -48,4 +99,4 @@ sequelize.sync({force:false})
     console.error("Encountered error: ", err)
 })
 
-module.exports = { sequelize,messages }
+module.exports = { sequelize, user, messages }
