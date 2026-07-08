@@ -20,7 +20,6 @@
   },
   "homepage": "https://github.com/OpenGlimpseAI/OpenGlimpse#readme",
   "dependencies": {
-    "@sequelize/postgres": "^7.0.0-alpha.48",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
     "node": "^22.22.3",
