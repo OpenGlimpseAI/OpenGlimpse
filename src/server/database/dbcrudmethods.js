@@ -1,4 +1,4 @@
-const { user, messages } = require('./db.cjs')
+const { user, messages, faceEmbeddings } = require('./db.cjs')
 
 class Model {
     static async create() {
@@ -9,7 +9,7 @@ class Model {
         throw new Error('read static method not implemented');
     }
 
-    async update() {
+    async update(fields = {}) {
         throw new Error('update method not implemented');
     }
 
@@ -37,8 +37,12 @@ class User extends Model {
         return new User(record.toJSON())
     }
 
-    async update(enName, zhName = null) {
-        return await user.update({ enName, zhName }, { where: { id: this.id } })
+    async update({ enName, zhName } = {}) {
+        const fields = {}
+        if (enName !== undefined) fields.enName = enName
+        if (zhName !== undefined) fields.zhName = zhName
+        if (Object.keys(fields).length === 0) return
+        return await user.update(fields, { where: { id: this.id } })
     }
 
     async delete() {
@@ -46,4 +50,41 @@ class User extends Model {
     }
 }
 
-module.exports = { Model, User };
+class FaceEmbeddings extends Model {
+    constructor({ imageHash, userId, imageType, imageData, embeddings, model } = {}) {
+        super()
+        this.imageHash = imageHash
+        this.userId = userId
+        this.imageType = imageType
+        this.imageData = imageData
+        this.embeddings = embeddings
+        this.model = model
+    }
+
+    static async create(imageHash, userId, imageType, imageData, embeddings, model) {
+        const record = await faceEmbeddings.create({ imageHash, userId, imageType, imageData, embeddings, model })
+        return new FaceEmbeddings(record.toJSON())
+    }
+
+    static async read(imageHash) {
+        const record = await faceEmbeddings.findByPk(imageHash)
+        if (!record) return null
+        return new FaceEmbeddings(record.toJSON())
+    }
+
+    async update({ imageType, imageData, embeddings, model } = {}) {
+        const fields = {}
+        if (imageType !== undefined) fields.imageType = imageType
+        if (imageData !== undefined) fields.imageData = imageData
+        if (embeddings !== undefined) fields.embeddings = embeddings
+        if (model !== undefined) fields.model = model
+        if (Object.keys(fields).length === 0) return
+        return await faceEmbeddings.update(fields, { where: { imageHash: this.imageHash } })
+    }
+
+    async delete() {
+        return await faceEmbeddings.destroy({ where: { imageHash: this.imageHash } })
+    }
+}
+
+module.exports = { Model, User, FaceEmbeddings };
