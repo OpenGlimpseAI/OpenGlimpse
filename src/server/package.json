@@ -4,7 +4,7 @@
   "description": "OpenGlimpse is a webapp that integrates AI to allow for quick registration and verification for event registration",
   "main": "index.js",
   "scripts": {
-    "dev": "node startFaceNet.js",
+    "dev": "node modules/facial_recog/startFaceNet.js",
     "db:test": "node database/db.cjs",
     "start": "node index.js",
     "test": "echo \"Error: no test specified\" && exit 1"
