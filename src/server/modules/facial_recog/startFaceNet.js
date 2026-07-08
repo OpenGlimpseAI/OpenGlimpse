@@ -1,4 +1,4 @@
-import { startPythonServer } from './modules/facial_recog/facenetClient.js';
+import { startPythonServer } from './facenetClient.js';
 
 startPythonServer()
   .then(() => {
