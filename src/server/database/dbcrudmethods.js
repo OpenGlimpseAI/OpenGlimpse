@@ -87,6 +87,15 @@ class FaceEmbeddings extends Model {
         return await faceEmbeddings.destroy({ where: { imageHash: this.imageHash } })
     }
 
+    static async findPrimaryByUserId(userId) {
+        const records = await faceEmbeddings.findAll({ where: { userId, imageType: 'primary' } })
+        return records.map(r => new FaceEmbeddings(r.toJSON()))
+    }
+
+    static async deleteByUserIdAndType(userId, imageType) {
+        return await faceEmbeddings.destroy({ where: { userId, imageType } })
+    }
+
     static async createFromImage(userId, imageData, imageType){
         const { getFaceEmbeddings } = await import('../modules/facial_recog/facenetClient.js');
 

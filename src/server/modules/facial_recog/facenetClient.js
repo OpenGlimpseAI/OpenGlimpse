@@ -6,7 +6,8 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-const PYTHON_SERVER_DIR = join(__dirname, '..', '..', '..', 'python_server');
+const PYTHON_SERVER_DIR = join(__dirname, '..', '..', 'python_server');
+const PYTHON_PATH = join(__dirname, '..', '..', '..', '..', '.venv', 'Scripts', 'python.exe');
 const SERVER_URL = 'http://127.0.0.1:8000';
 
 let serverProcess = null;
@@ -26,23 +27,32 @@ export function startPythonServer() {
         readyResolve = resolve;
 
         const requirementsPath = join(PYTHON_SERVER_DIR, 'requirements.txt');
-        if (existsSync(requirementsPath)) {
-            console.log('[Python Server] Installing dependencies...');
-            const pip = spawn('pip', ['install', '-r', requirementsPath], {
-                cwd: PYTHON_SERVER_DIR,
-                stdio: 'inherit',
-            });
+        const checkDeps = spawn(PYTHON_PATH, ['-c', 'import deepface, fastapi, uvicorn'], {
+            cwd: PYTHON_SERVER_DIR,
+        });
 
-            pip.on('close', (code) => {
-                if (code !== 0) {
-                    reject(new Error(`pip install failed with code ${code}`));
-                    return;
-                }
+        checkDeps.on('close', (code) => {
+            if (code === 0) {
+                console.log('[Python Server] Dependencies already installed');
                 launchServer();
-            });
-        } else {
-            launchServer();
-        }
+            } else if (existsSync(requirementsPath)) {
+                console.log('[Python Server] Installing dependencies...');
+                const pip = spawn(PYTHON_PATH, ['-m', 'pip', 'install', '-r', requirementsPath], {
+                    cwd: PYTHON_SERVER_DIR,
+                    stdio: 'inherit',
+                });
+
+                pip.on('close', (code) => {
+                    if (code !== 0) {
+                        reject(new Error(`pip install failed with code ${code}`));
+                        return;
+                    }
+                    launchServer();
+                });
+            } else {
+                launchServer();
+            }
+        });
     });
 
     return readyPromise;
@@ -52,7 +62,7 @@ function launchServer() {
     console.log('[Python Server] Starting uvicorn...');
     const serverPath = join(PYTHON_SERVER_DIR, 'server.py');
 
-    serverProcess = spawn('python', [serverPath], {
+    serverProcess = spawn(PYTHON_PATH, [serverPath], {
         cwd: PYTHON_SERVER_DIR,
         stdio: ['ignore', 'pipe', 'pipe'],
     });
