@@ -18,7 +18,26 @@ app.get('/', (req, res) => {
     res.send('server is running');
 });
 
-server.listen(port, () => {
-    console.log(`Listening on port ${port}`);
-});
+async function start() {
+    try {
+        const { startPythonServer, stopPythonServer } = await import('./modules/facial_recog/facenetClient.js');
+        await startPythonServer();
+        console.log('[FaceNet] Server is ready at http://127.0.0.1:8000');
+
+        const cleanup = () => {
+            stopPythonServer();
+            process.exit();
+        };
+        process.on('SIGINT', cleanup);
+        process.on('SIGTERM', cleanup);
+    } catch (err) {
+        console.error('[FaceNet] Failed to start Python server:', err.message);
+    }
+
+    server.listen(port, () => {
+        console.log(`Listening on port ${port}`);
+    });
+}
+
+start();
 

@@ -5,6 +5,7 @@
   "main": "index.js",
   "scripts": {
     "dev": "node modules/facial_recog/startFaceNet.js",
+    "dev:all": "concurrently -n node,react \"node index.js\" \"cd ../client && npm run dev\"",
     "db:test": "node database/db.cjs",
     "start": "node index.js",
     "seed": "node ../../tests/seed.js",
@@ -22,6 +23,7 @@
   },
   "homepage": "https://github.com/OpenGlimpseAI/OpenGlimpse#readme",
   "dependencies": {
+    "concurrently": "^9.2.3",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
     "node": "^22.22.3",
