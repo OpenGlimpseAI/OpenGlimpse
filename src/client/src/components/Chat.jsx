@@ -3,7 +3,6 @@ import ChatBubble from "./ChatBubble.jsx";
 import ChatInput from './ChatInput.jsx';
 import WifiRounded from '@mui/icons-material/WifiRounded'
 import WifiOffRoundedIcon from '@mui/icons-material/WifiOffRounded';
-import {db} from "../client-scripts/db.js";
 const CHAT_SERVER_URL = import.meta.env.VITE_CHAT_SERVER_URL || 'ws://localhost:3001';
 
 export default function Chat() {
@@ -49,29 +48,43 @@ export default function Chat() {
         };
     }, []);
 
-    const sendmessage = () => {
+    const sendmessage = async () => {
         const text = messageInput.trim();
-
-        if (!text || socketRef.current?.readyState !== WebSocket.OPEN) {
-            try {
-                db.messages.add({
-                    content: text,
-                    timestamp: new Date().toISOString(),
-                    senderId: clientIdRef.current
-                })
-            } catch (err) {
-                console.error(err.message);
-            }
-        }
-
         const message = {
             text,
             timestamp: new Date().toISOString(),
             senderId: clientIdRef.current,
         };
 
-        socketRef.current.send(JSON.stringify(message));
-        setMessageInput('');
+        if (!text) {
+            return;
+        }
+
+        if (socketRef.current?.readyState !== WebSocket.OPEN) {
+            try {
+                await db.messages.add(message);
+                setMessages((current) => [...current, message]);
+            } catch (err) {
+                console.error(err.message);
+            } finally {
+                setMessageInput('');
+            }
+
+            return;
+        }
+
+        try {
+            socketRef.current.send(JSON.stringify(message));
+        } catch (error) {
+            try {
+                await db.messages.add(message);
+                setMessages((current) => [...current, message]);
+            } catch (dbError) {
+                console.error(dbError.message);
+            }
+        } finally {
+            setMessageInput('');
+        }
     };
 
     return (
