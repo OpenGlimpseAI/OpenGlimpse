@@ -3,10 +3,23 @@ const path = require("path");
 require("dotenv").config({
     path: path.resolve(__dirname, "../../../.env"),
 });
-const sequelize = new Sequelize(process.env.DB_NAME,process.env.DB_USER,process.env.DB_PASSWORD,{
-    host: 'localhost',
-    dialect: 'postgres',
-})
+
+// Fall back to SQLite for local development if no DB host is configured
+const isDevelopment = !process.env.DB_HOST;
+let sequelize;
+
+if (isDevelopment) {
+    sequelize = new Sequelize({
+        dialect: "sqlite",
+        storage: path.join(__dirname, "dev.sqlite"),
+        logging: false,
+    });
+} else {
+    sequelize = new Sequelize(process.env.DB_NAME,process.env.DB_USER,process.env.DB_PASSWORD,{
+        host: process.env.DB_HOST,
+        dialect: 'postgres',
+    });
+}
 
 const user = sequelize.define("users", {
     id: {
@@ -17,12 +30,38 @@ const user = sequelize.define("users", {
     },
     enName: {
         type: DataTypes.STRING,
-        allowNull: false,
+        allowNull: true,
     },
     zhName: {
         type: DataTypes.STRING,
         allowNull: true,
-    }
+    },
+    name: {
+        type: DataTypes.STRING,
+        allowNull: false,
+    },
+    email: {
+        type: DataTypes.STRING,
+        allowNull: false,
+        unique: true,
+    },
+    passwordHash: {
+        type: DataTypes.STRING,
+        allowNull: false,
+    },
+    role: {
+        type: DataTypes.STRING,
+        allowNull: false,
+        defaultValue: 'user',
+    },
+    birthDate: {
+        type: DataTypes.DATEONLY,
+        allowNull: true,
+    },
+    imageUrl: {
+        type: DataTypes.STRING,
+        allowNull: true,
+    },
 })
 
 const messages = sequelize.define("messages", {

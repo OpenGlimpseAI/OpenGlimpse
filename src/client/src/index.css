@@ -154,3 +154,97 @@ body {
 .chat-bubble-time-other {
   @apply text-slate-400;
 }
+
+/* Auth / Dashboard pages */
+.page-shell {
+  @apply mx-auto max-w-3xl px-4 py-8 sm:px-6 lg:px-8;
+}
+
+.auth-card,
+.profile-card {
+  @apply rounded-3xl border border-slate-200 bg-white p-6 shadow-sm;
+}
+
+.auth-form,
+.profile-form {
+  @apply grid gap-4;
+}
+
+.auth-form label,
+.profile-form label {
+  @apply flex flex-col gap-2 text-sm font-medium text-slate-700;
+}
+
+.auth-form input,
+.profile-form input,
+.profile-form select {
+  @apply rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-sky-500 focus:bg-white focus:ring-4 focus:ring-sky-100;
+}
+
+.button,
+.button.small,
+.button.secondary,
+.button.danger {
+  @apply inline-flex items-center justify-center rounded-full px-4 py-2 text-sm font-semibold transition;
+}
+
+.button {
+  @apply bg-sky-600 text-white hover:bg-sky-700;
+}
+
+.button.small {
+  @apply px-3 py-1 text-xs;
+}
+
+.button.secondary {
+  @apply bg-slate-100 text-slate-900 hover:bg-slate-200;
+}
+
+.button.danger {
+  @apply bg-rose-600 text-white hover:bg-rose-700;
+}
+
+.auth-actions {
+  @apply mt-6 flex flex-col gap-3 sm:flex-row sm:items-center;
+}
+
+.small-note {
+  @apply mt-4 text-sm text-slate-500;
+}
+
+.error-text {
+  @apply text-sm font-medium text-rose-700;
+}
+
+.success-text {
+  @apply text-sm font-medium text-emerald-700;
+}
+
+.profile-actions {
+  @apply mt-6 flex flex-wrap gap-3;
+}
+
+.dashboard-grid {
+  @apply grid gap-6 lg:grid-cols-[1.5fr_1fr];
+}
+
+.panel {
+  @apply rounded-3xl border border-slate-200 bg-slate-50 p-5;
+}
+
+.user-list table {
+  @apply min-w-full divide-y divide-slate-200;
+}
+
+.user-list th,
+.user-list td {
+  @apply px-3 py-2 text-left text-sm text-slate-700;
+}
+
+.user-list tr:nth-child(even) {
+  @apply bg-white;
+}
+
+.user-list tr:nth-child(odd) {
+  @apply bg-slate-50;
+}
