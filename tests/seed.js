@@ -3,7 +3,7 @@ const path = require('path');
 const { sequelize } = require('../src/server/database/db.cjs');
 const { User, FaceEmbeddings } = require('../src/server/database/dbcrudmethods');
 
-const TEST_IMAGES_DIR = path.join(__dirname, 'modules', 'facial_recog', 'test-images');
+const TEST_IMAGES_DIR = path.join(__dirname, '..', 'src', 'server', 'modules', 'facial_recog', 'test-images');
 const IMAGE_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.bmp', '.webp'];
 
 function getDefaultImage(subfolderPath) {
