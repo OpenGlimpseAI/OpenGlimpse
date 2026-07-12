@@ -1,6 +1,7 @@
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
+const sequelize = require('./database/sequelize');
 const { attachChatServer } = require('./modules/chat/chatserver.cjs');
 const registerProgrammeRoutes = require('./modules/programmes/index');
 
@@ -42,7 +43,16 @@ app.get('/', (req, res) => {
     res.send('server is running');
 });
 
-server.listen(port, () => {
-    console.log(`Listening on port ${port}`);
-});
+// Sync all Sequelize models to the database, then start listening
+sequelize.sync()
+    .then(() => {
+        console.log('Database synced');
+        server.listen(port, () => {
+            console.log(`Listening on port ${port}`);
+        });
+    })
+    .catch((err) => {
+        console.error('Database sync failed:', err);
+        process.exit(1);
+    });
 

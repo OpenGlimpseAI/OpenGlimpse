@@ -61,47 +61,50 @@ ProgrammeDelegate.listForProgramme = async function (programmeId) {
 };
 
 ProgrammeDelegate.addDelegates = async function (programmeId, body) {
-    const { delegates, delegateId, name, badge, routeId } = body;
+    const { delegates, delegateIds, delegateId, name, badge, routeId } = body;
+    const Delegate = require('./Delegate');
 
     if (delegates && Array.isArray(delegates)) {
         const added = [];
         for (const d of delegates) {
-            const [delRow] = await sequelize.query(
-                'INSERT INTO delegates (name, badge) VALUES ($1, $2) ON CONFLICT DO NOTHING RETURNING id',
-                { bind: [d.name, d.badge || null], type: sequelize.QueryTypes.SELECT }
-            );
-            if (delRow) {
-                await sequelize.query(
-                    'INSERT INTO programme_delegates (programme_id, delegate_id, route_id) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING',
-                    { bind: [programmeId, delRow.id, d.routeId || routeId || null] }
-                );
-                added.push({ delegateId: delRow.id, name: d.name });
-            }
+            const [del] = await Delegate.findOrCreate({
+                where: { name: d.name },
+                defaults: { name: d.name, badge: d.badge || null },
+            });
+            await ProgrammeDelegate.findOrCreate({
+                where: { programme_id: programmeId, delegate_id: del.id },
+                defaults: { programmeId, delegateId: del.id, routeId: d.routeId || routeId || null },
+            });
+            added.push({ delegateId: del.id, name: del.name });
         }
         return added;
     }
 
+    if (delegateIds && Array.isArray(delegateIds)) {
+        for (const id of delegateIds) {
+            await ProgrammeDelegate.findOrCreate({
+                where: { programme_id: programmeId, delegate_id: id },
+                defaults: { programmeId, delegateId: id, routeId: routeId || null },
+            });
+        }
+        return delegateIds.map(id => ({ delegateId: id }));
+    }
+
     if (delegateId) {
-        await sequelize.query(
-            'INSERT INTO programme_delegates (programme_id, delegate_id, route_id) VALUES ($1, $2, $3) ON CONFLICT (programme_id, delegate_id) DO NOTHING',
-            { bind: [programmeId, delegateId, routeId || null] }
-        );
+        await ProgrammeDelegate.findOrCreate({
+            where: { programme_id: programmeId, delegate_id: delegateId },
+            defaults: { programmeId, delegateId, routeId: routeId || null },
+        });
         return [{ delegateId }];
     }
 
     if (name) {
-        const [delRow] = await sequelize.query(
-            'INSERT INTO delegates (name, badge) VALUES ($1, $2) RETURNING id',
-            { bind: [name, badge || null], type: sequelize.QueryTypes.SELECT }
-        );
-        await sequelize.query(
-            'INSERT INTO programme_delegates (programme_id, delegate_id, route_id) VALUES ($1, $2, $3)',
-            { bind: [programmeId, delRow.id, routeId || null] }
-        );
-        return [{ delegateId: delRow.id, name }];
+        const del = await Delegate.create({ name, badge: badge || null });
+        await ProgrammeDelegate.create({ programmeId, delegateId: del.id, routeId: routeId || null });
+        return [{ delegateId: del.id, name }];
     }
 
-    throw new Error('Provide delegates array, delegateId, or name');
+    throw new Error('Provide delegates array, delegateIds, delegateId, or name');
 };
 
 ProgrammeDelegate.removeFromProgramme = async function (programmeId, delegateId) {

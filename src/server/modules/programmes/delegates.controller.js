@@ -1,4 +1,5 @@
-const { ProgrammeDelegate, Programme } = require('./models');
+const { ProgrammeDelegate, Programme, Delegate } = require('./models');
+const sequelize = require('../../database/sequelize');
 
 async function listDelegates(req, res) {
     const { id } = req.params;
