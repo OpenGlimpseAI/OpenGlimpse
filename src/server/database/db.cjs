@@ -99,11 +99,11 @@ messages.belongsTo(user, { foreignKey: 'senderId' })
 user.hasMany(messages, { foreignKey: 'senderId' })
 
 sequelize.sync({force:false})
-.then(() => {
-    console.log("db sync successful")
-})
-.catch((err) => {
-    console.error("Encountered error: ", err)
-})
+    .then(() => {
+        console.log("db sync successful")
+    })
+    .catch((err) => {
+        console.error("Encountered error: ", err)
+    })
 
 module.exports = { sequelize, user, messages, attendee, admin, faceEmbeddings }
