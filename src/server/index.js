@@ -1,7 +1,7 @@
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
-const sequelize = require('./database/sequelize');
+const { sequelize } = require('./database/db.cjs');
 const { attachChatServer } = require('./modules/chat/chatserver.cjs');
 const registerProgrammeRoutes = require('./modules/programmes/index');
 
