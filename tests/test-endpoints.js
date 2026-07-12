@@ -2,7 +2,7 @@ const fs = require('fs');
 const path = require('path');
 
 const PYTHON_URL = 'http://127.0.0.1:8000';
-const TEST_IMAGES_DIR = path.join(__dirname, 'modules', 'facial_recog', 'test-images');
+const TEST_IMAGES_DIR = path.join(__dirname, '..', 'src', 'server', 'modules', 'facial_recog', 'test-images');
 
 async function testEmbed() {
     const testImage = path.join(TEST_IMAGES_DIR, 'dwayne', 'default.png');

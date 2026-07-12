@@ -98,12 +98,7 @@ export function stopPythonServer() {
     }
 }
 
-/**
- * Calls the Python FastAPI server to get the Facenet embedding for an image.
- * @param {string|Buffer} imageInput - A file path or a Buffer containing the image.
- * @returns {Promise<number[]>} - The 128-d Facenet embedding.
- */
-export async function getFaceEmbedding(imageInput) {
+async function callPythonServer(endpoint, imageInput) {
     if (!serverReady) {
         await startPythonServer();
     }
@@ -122,7 +117,7 @@ export async function getFaceEmbedding(imageInput) {
     const blob = new Blob([imageBuffer], { type: 'image/jpeg' });
     formData.append('file', blob, fileName);
 
-    const response = await fetch(`${SERVER_URL}/embed`, {
+    const response = await fetch(`${SERVER_URL}${endpoint}`, {
         method: 'POST',
         body: formData,
     });
@@ -130,85 +125,24 @@ export async function getFaceEmbedding(imageInput) {
     const data = await response.json();
 
     if (!data.success) {
-        throw new Error(data.error || 'Failed to get embedding from Python server.');
+        throw new Error(data.error || `Python server request to ${endpoint} failed.`);
     }
 
+    return data;
+}
+
+export async function getFaceEmbedding(imageInput) {
+    const data = await callPythonServer('/embed', imageInput);
     return data.embedding;
 }
 
-/**
- * Calls the Python FastAPI server to detect faces in an image.
- * @param {string|Buffer} imageInput - A file path or a Buffer containing the image.
- * @returns {Promise<Array<{x: number, y: number, w: number, h: number}>>} - Array of face bounding boxes.
- */
 export async function detectFaces(imageInput) {
-    if (!serverReady) {
-        await startPythonServer();
-    }
-
-    let imageBuffer;
-    let fileName = 'image.jpg';
-
-    if (typeof imageInput === 'string') {
-        imageBuffer = readFileSync(imageInput);
-        fileName = imageInput.split(/[/\\]/).pop();
-    } else {
-        imageBuffer = imageInput;
-    }
-
-    const formData = new FormData();
-    const blob = new Blob([imageBuffer], { type: 'image/jpeg' });
-    formData.append('file', blob, fileName);
-
-    const response = await fetch(`${SERVER_URL}/detect`, {
-        method: 'POST',
-        body: formData,
-    });
-
-    const data = await response.json();
-
-    if (!data.success) {
-        throw new Error(data.error || 'Failed to detect faces from Python server.');
-    }
-
+    const data = await callPythonServer('/detect', imageInput);
     return data.faces;
 }
 
-/**
- * Calls the Python FastAPI server to detect all faces and get embeddings for each.
- * @param {string|Buffer} imageInput - A file path or a Buffer containing the image.
- * @returns {Promise<Array<{faceImage: Buffer, embedding: number[], bbox: {x: number, y: number, w: number, h: number}}>>}
- */
 export async function getFaceEmbeddings(imageInput) {
-    if (!serverReady) {
-        await startPythonServer();
-    }
-
-    let imageBuffer;
-    let fileName = 'image.jpg';
-
-    if (typeof imageInput === 'string') {
-        imageBuffer = readFileSync(imageInput);
-        fileName = imageInput.split(/[/\\]/).pop();
-    } else {
-        imageBuffer = imageInput;
-    }
-
-    const formData = new FormData();
-    const blob = new Blob([imageBuffer], { type: 'image/jpeg' });
-    formData.append('file', blob, fileName);
-
-    const response = await fetch(`${SERVER_URL}/embed-all`, {
-        method: 'POST',
-        body: formData,
-    });
-
-    const data = await response.json();
-
-    if (!data.success) {
-        throw new Error(data.error || 'Failed to get embeddings from Python server.');
-    }
-
+    const data = await callPythonServer('/embed-all', imageInput);
     return data.faces.map(face => ({
         faceImage: Buffer.from(face.faceImage, 'base64'),
         embedding: face.embedding,
