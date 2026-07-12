@@ -39,23 +39,71 @@ const ProgrammeDelegate = sequelize.define('ProgrammeDelegate', {
 // ── Class methods ──────────────────────────────────────────
 
 ProgrammeDelegate.listForProgramme = async function (programmeId) {
-    const rows = await sequelize.query(`
-        SELECT d.id, d.name, d.badge, pd.route_id, r.name AS route_name,
-               pd.notes,
-               ar.status AS attendance_status, ar.method, ar.checked_in_at
-        FROM programme_delegates pd
-        JOIN delegates d ON d.id = pd.delegate_id
-        LEFT JOIN routes r ON r.id = pd.route_id
-        LEFT JOIN attendance_records ar ON ar.delegate_id = pd.delegate_id AND ar.programme_id = pd.programme_id
-        WHERE pd.programme_id = $1
-        ORDER BY ar.checked_in_at NULLS LAST, d.name
-    `, { bind: [programmeId], type: sequelize.QueryTypes.SELECT });
+    const Delegate = require('./Delegate');
+    const Route = require('./Route');
+
+    const rows = await ProgrammeDelegate.findAll({
+        where: { programmeId },
+        attributes: {
+            include: [
+                [
+                    sequelize.literal(`(
+                        SELECT status FROM attendance_records
+                        WHERE programme_id = "ProgrammeDelegate"."programme_id"
+                          AND delegate_id = "ProgrammeDelegate"."delegate_id"
+                        LIMIT 1
+                    )`),
+                    'attendance_status',
+                ],
+                [
+                    sequelize.literal(`(
+                        SELECT method FROM attendance_records
+                        WHERE programme_id = "ProgrammeDelegate"."programme_id"
+                          AND delegate_id = "ProgrammeDelegate"."delegate_id"
+                        LIMIT 1
+                    )`),
+                    'attendance_method',
+                ],
+                [
+                    sequelize.literal(`(
+                        SELECT checked_in_at FROM attendance_records
+                        WHERE programme_id = "ProgrammeDelegate"."programme_id"
+                          AND delegate_id = "ProgrammeDelegate"."delegate_id"
+                        LIMIT 1
+                    )`),
+                    'checked_in_at',
+                ],
+            ],
+        },
+        include: [
+            {
+                model: Delegate,
+                as: 'delegate',
+                attributes: ['id', 'name', 'badge'],
+                required: true,
+            },
+            {
+                model: Route,
+                as: 'route',
+                attributes: ['id', 'name'],
+                required: false,
+            },
+        ],
+        order: [
+            sequelize.literal(`"checked_in_at" DESC NULLS LAST`),
+            sequelize.literal(`"delegate.name" ASC`),
+        ],
+    });
 
     return rows.map(r => ({
-        id: r.id, name: r.name, badge: r.badge,
-        routeId: r.route_id, routeName: r.route_name,
-        status: r.attendance_status || 'absent',
-        method: r.method, checkedInAt: r.checked_in_at,
+        id: r.delegate.id,
+        name: r.delegate.name,
+        badge: r.delegate.badge,
+        routeId: r.route?.id || null,
+        routeName: r.route?.name || null,
+        status: r.get('attendance_status') || 'absent',
+        method: r.get('attendance_method') || null,
+        checkedInAt: r.get('checked_in_at') || null,
         notes: r.notes || '',
     }));
 };
@@ -72,7 +120,7 @@ ProgrammeDelegate.addDelegates = async function (programmeId, body) {
                 defaults: { name: d.name, badge: d.badge || null },
             });
             await ProgrammeDelegate.findOrCreate({
-                where: { programme_id: programmeId, delegate_id: del.id },
+                where: { programmeId, delegateId: del.id },
                 defaults: { programmeId, delegateId: del.id, routeId: d.routeId || routeId || null },
             });
             added.push({ delegateId: del.id, name: del.name });
@@ -83,7 +131,7 @@ ProgrammeDelegate.addDelegates = async function (programmeId, body) {
     if (delegateIds && Array.isArray(delegateIds)) {
         for (const id of delegateIds) {
             await ProgrammeDelegate.findOrCreate({
-                where: { programme_id: programmeId, delegate_id: id },
+                where: { programmeId, delegateId: id },
                 defaults: { programmeId, delegateId: id, routeId: routeId || null },
             });
         }
@@ -92,7 +140,7 @@ ProgrammeDelegate.addDelegates = async function (programmeId, body) {
 
     if (delegateId) {
         await ProgrammeDelegate.findOrCreate({
-            where: { programme_id: programmeId, delegate_id: delegateId },
+            where: { programmeId, delegateId },
             defaults: { programmeId, delegateId, routeId: routeId || null },
         });
         return [{ delegateId }];
@@ -108,15 +156,14 @@ ProgrammeDelegate.addDelegates = async function (programmeId, body) {
 };
 
 ProgrammeDelegate.removeFromProgramme = async function (programmeId, delegateId) {
-    await sequelize.query(
-        'DELETE FROM attendance_records WHERE programme_id = $1 AND delegate_id = $2',
-        { bind: [programmeId, delegateId] }
-    );
-    const result = await sequelize.query(
-        'DELETE FROM programme_delegates WHERE programme_id = $1 AND delegate_id = $2',
-        { bind: [programmeId, delegateId] }
-    );
-    return result[1]?.rowCount > 0;
+    const AttendanceRecord = require('./AttendanceRecord');
+    await AttendanceRecord.destroy({
+        where: { programmeId, delegateId },
+    });
+    const count = await ProgrammeDelegate.destroy({
+        where: { programmeId, delegateId },
+    });
+    return count > 0;
 };
 
 module.exports = ProgrammeDelegate;

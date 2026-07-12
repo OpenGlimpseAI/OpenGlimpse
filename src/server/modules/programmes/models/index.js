@@ -27,6 +27,9 @@ ProgrammeDelegate.belongsTo(Programme, { foreignKey: 'programme_id', as: 'progra
 ProgrammeDelegate.belongsTo(Route, { foreignKey: 'route_id', as: 'route' });
 ProgrammeDelegate.belongsTo(Delegate, { foreignKey: 'delegate_id', as: 'delegate' });
 
+AttendanceRecord.belongsTo(Delegate, { foreignKey: 'delegate_id', as: 'delegate' });
+Delegate.hasMany(AttendanceRecord, { foreignKey: 'delegate_id', as: 'attendanceRecords' });
+
 Programme.hasMany(ScanEvent, { foreignKey: 'programme_id', as: 'scanEvents', onDelete: 'CASCADE' });
 ScanEvent.belongsTo(Programme, { foreignKey: 'programme_id', as: 'programme' });
 

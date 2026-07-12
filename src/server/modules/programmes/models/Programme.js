@@ -36,97 +36,114 @@ const Programme = sequelize.define('Programme', {
 // ── Class methods ──────────────────────────────────────────
 
 Programme.listAll = async function () {
-    const rows = await sequelize.query(`
-        SELECT p.*,
-            (SELECT COUNT(*) FROM programme_delegates WHERE programme_id = p.id)::int AS total_delegates,
-            (SELECT COUNT(*) FROM attendance_records WHERE programme_id = p.id AND status = 'present')::int AS checked_in
-        FROM programmes p
-        ORDER BY p.created_at DESC
-    `, { type: sequelize.QueryTypes.SELECT });
+    const programmes = await Programme.findAll({
+        attributes: {
+            include: [
+                [
+                    sequelize.literal(`(
+                        SELECT COUNT(*)::int FROM programme_delegates
+                        WHERE programme_id = "Programme".id
+                    )`),
+                    'total_delegates',
+                ],
+                [
+                    sequelize.literal(`(
+                        SELECT COUNT(*)::int FROM attendance_records
+                        WHERE programme_id = "Programme".id AND status = 'present'
+                    )`),
+                    'checked_in',
+                ],
+            ],
+        },
+        order: [['created_at', 'DESC']],
+    });
 
-    return rows.map(r => ({
-        id: r.id,
-        name: r.name,
-        startDate: r.start_date instanceof Date ? r.start_date.toISOString().split('T')[0] : r.start_date,
-        endDate: r.end_date instanceof Date ? r.end_date.toISOString().split('T')[0] : r.end_date,
-        status: r.status,
-        totalDelegates: Number(r.total_delegates),
-        checkedIn: Number(r.checked_in),
+    return programmes.map(p => ({
+        id: p.id,
+        name: p.name,
+        startDate: p.startDate,
+        endDate: p.endDate,
+        status: p.status,
+        totalDelegates: Number(p.get('total_delegates')),
+        checkedIn: Number(p.get('checked_in')),
     }));
 };
 
 Programme.createWithDetails = async function ({ name, startDate, endDate }) {
-    const [row] = await sequelize.query(
-        `INSERT INTO programmes (name, start_date, end_date)
-         VALUES ($1, $2, $3)
-         RETURNING id, name, start_date, end_date, status`,
-        { bind: [name, startDate, endDate], type: sequelize.QueryTypes.SELECT }
-    );
+    const programme = await Programme.create({ name, startDate, endDate });
     return {
-        id: row.id, name: row.name,
-        startDate: row.start_date, endDate: row.end_date,
-        status: row.status,
+        id: programme.id,
+        name: programme.name,
+        startDate: programme.startDate,
+        endDate: programme.endDate,
+        status: programme.status,
     };
 };
 
 Programme.updateWithDetails = async function (id, body) {
     const { name, startDate, endDate, addDelegateIds, removeDelegateIds } = body;
-    const fields = [];
-    const values = [];
-    let idx = 1;
 
-    if (name !== undefined) { fields.push(`name = $${idx++}`); values.push(name); }
-    if (startDate !== undefined) { fields.push(`start_date = $${idx++}`); values.push(startDate); }
-    if (endDate !== undefined) { fields.push(`end_date = $${idx++}`); values.push(endDate); }
+    const updateData = {};
+    if (name !== undefined) updateData.name = name;
+    if (startDate !== undefined) updateData.startDate = startDate;
+    if (endDate !== undefined) updateData.endDate = endDate;
 
-    if (fields.length > 0) {
-        values.push(id);
-        await sequelize.query(
-            `UPDATE programmes SET ${fields.join(', ')}, updated_at = now() WHERE id = $${idx}`,
-            { bind: values }
-        );
+    if (Object.keys(updateData).length > 0) {
+        await Programme.update(updateData, { where: { id } });
     }
 
     if (addDelegateIds?.length > 0) {
-        for (const delegateId of addDelegateIds) {
-            await sequelize.query(
-                `INSERT INTO programme_delegates (programme_id, delegate_id)
-                 VALUES ($1, $2) ON CONFLICT (programme_id, delegate_id) DO NOTHING`,
-                { bind: [id, delegateId] }
-            );
-        }
+        const ProgrammeDelegate = require('./ProgrammeDelegate');
+        const records = addDelegateIds.map(delegateId => ({
+            programmeId: id,
+            delegateId,
+        }));
+        await ProgrammeDelegate.bulkCreate(records, { ignoreDuplicates: true });
     }
 
     if (removeDelegateIds?.length > 0) {
-        await sequelize.query(
-            `DELETE FROM programme_delegates WHERE programme_id = $1 AND delegate_id = ANY($2)`,
-            { bind: [id, removeDelegateIds] }
-        );
+        const ProgrammeDelegate = require('./ProgrammeDelegate');
+        await ProgrammeDelegate.destroy({
+            where: { programmeId: id, delegateId: removeDelegateIds },
+        });
     }
 
-    const [row] = await sequelize.query(`
-        SELECT p.*,
-            (SELECT COUNT(*) FROM programme_delegates WHERE programme_id = p.id)::int AS total_delegates,
-            (SELECT COUNT(*) FROM attendance_records WHERE programme_id = p.id AND status = 'present')::int AS checked_in
-        FROM programmes p WHERE p.id = $1
-    `, { bind: [id], type: sequelize.QueryTypes.SELECT });
+    const programme = await Programme.findByPk(id, {
+        attributes: {
+            include: [
+                [
+                    sequelize.literal(`(
+                        SELECT COUNT(*)::int FROM programme_delegates
+                        WHERE programme_id = "Programme".id
+                    )`),
+                    'total_delegates',
+                ],
+                [
+                    sequelize.literal(`(
+                        SELECT COUNT(*)::int FROM attendance_records
+                        WHERE programme_id = "Programme".id AND status = 'present'
+                    )`),
+                    'checked_in',
+                ],
+            ],
+        },
+    });
 
-    if (!row) return null;
+    if (!programme) return null;
     return {
-        id: row.id, name: row.name,
-        startDate: row.start_date, endDate: row.end_date,
-        status: row.status,
-        totalDelegates: Number(row.total_delegates),
-        checkedIn: Number(row.checked_in),
+        id: programme.id,
+        name: programme.name,
+        startDate: programme.startDate,
+        endDate: programme.endDate,
+        status: programme.status,
+        totalDelegates: Number(programme.get('total_delegates')),
+        checkedIn: Number(programme.get('checked_in')),
     };
 };
 
 Programme.removeById = async function (id) {
-    const result = await sequelize.query(
-        'DELETE FROM programmes WHERE id = $1',
-        { bind: [id] }
-    );
-    return result[1]?.rowCount > 0;
+    const count = await Programme.destroy({ where: { id } });
+    return count > 0;
 };
 
 module.exports = Programme;

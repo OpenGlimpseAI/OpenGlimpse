@@ -52,47 +52,68 @@ const AttendanceRecord = sequelize.define('AttendanceRecord', {
 // ── Class methods ──────────────────────────────────────────
 
 AttendanceRecord.getAttendance = async function (programmeId) {
-    const present = await sequelize.query(`
-        SELECT d.id, d.name, pd.route_id, r.name AS route_name,
-               ar.method, ar.checked_in_at, ar.notes
-        FROM attendance_records ar
-        JOIN delegates d ON d.id = ar.delegate_id
-        LEFT JOIN programme_delegates pd ON pd.delegate_id = d.id AND pd.programme_id = ar.programme_id
-        LEFT JOIN routes r ON r.id = pd.route_id
-        WHERE ar.programme_id = $1 AND ar.status = 'present'
-        ORDER BY ar.checked_in_at DESC
-    `, { bind: [programmeId], type: sequelize.QueryTypes.SELECT });
+    const ProgrammeDelegate = require('./ProgrammeDelegate');
+    const Delegate = require('./Delegate');
+    const Route = require('./Route');
+    const ScanEvent = require('./ScanEvent');
 
-    const missing = await sequelize.query(`
-        SELECT d.id, d.name, pd.route_id, r.name AS route_name, pd.notes
-        FROM programme_delegates pd
-        JOIN delegates d ON d.id = pd.delegate_id
-        LEFT JOIN routes r ON r.id = pd.route_id
-        WHERE pd.programme_id = $1
-          AND NOT EXISTS (
-              SELECT 1 FROM attendance_records ar
-              WHERE ar.programme_id = pd.programme_id AND ar.delegate_id = pd.delegate_id AND ar.status = 'present'
-          )
-        ORDER BY d.name
-    `, { bind: [programmeId], type: sequelize.QueryTypes.SELECT });
+    const presentRecords = await AttendanceRecord.findAll({
+        where: { programmeId, status: 'present' },
+        order: [['checked_in_at', 'DESC']],
+    });
+    const presentDelegateIds = presentRecords.map(r => r.delegateId);
 
-    const unidentified = await sequelize.query(`
-        SELECT id AS scan_id, scanned_at
-        FROM scan_events
-        WHERE programme_id = $1 AND status = 'unverified'
-        ORDER BY scanned_at DESC
-    `, { bind: [programmeId], type: sequelize.QueryTypes.SELECT });
+    const allPds = await ProgrammeDelegate.findAll({
+        where: { programmeId },
+        include: [
+            { model: Delegate, as: 'delegate', attributes: ['id', 'name'], required: true },
+            { model: Route, as: 'route', attributes: ['id', 'name'], required: false },
+        ],
+    });
+
+    const pdByDelegateId = {};
+    for (const pd of allPds) {
+        pdByDelegateId[pd.delegateId] = pd;
+    }
+
+    const present = presentRecords
+        .filter(rec => pdByDelegateId[rec.delegateId])
+        .map(rec => {
+            const pd = pdByDelegateId[rec.delegateId];
+            return {
+                delegateId: rec.delegateId,
+                name: pd.delegate.name,
+                routeId: pd.routeId || null,
+                routeName: pd.route?.name || null,
+                method: rec.method,
+                checkedInAt: rec.checkedInAt,
+                notes: rec.notes,
+            };
+        });
+
+    const presentSet = new Set(presentDelegateIds);
+    const missing = allPds
+        .filter(pd => !presentSet.has(pd.delegateId))
+        .map(pd => ({
+            delegateId: pd.delegate.id,
+            name: pd.delegate.name,
+            routeId: pd.routeId || null,
+            routeName: pd.route?.name || null,
+            notes: pd.notes || '',
+        }));
+
+    const unidentifiedEvents = await ScanEvent.findAll({
+        where: { programmeId, status: 'unverified' },
+        attributes: ['id', 'scannedAt'],
+        order: [['scanned_at', 'DESC']],
+    });
 
     return {
-        present: present.map(r => ({
-            delegateId: r.id, name: r.name, routeName: r.route_name,
-            method: r.method, checkedInAt: r.checked_in_at, notes: r.notes,
-        })),
-        missing: missing.map(r => ({
-            delegateId: r.id, name: r.name, routeName: r.route_name, notes: r.notes || '',
-        })),
-        unidentified: unidentified.map(r => ({
-            scanId: r.scan_id, scannedAt: r.scanned_at,
+        present,
+        missing,
+        unidentified: unidentifiedEvents.map(s => ({
+            scanId: s.id,
+            scannedAt: s.scannedAt,
         })),
     };
 };
@@ -109,36 +130,49 @@ AttendanceRecord.markAttendance = async function (programmeId, delegateId, { sta
         throw new Error('method is required when marking present');
     }
 
-    const [membership] = await sequelize.query(
-        'SELECT 1 FROM programme_delegates WHERE programme_id = $1 AND delegate_id = $2',
-        { bind: [programmeId, delegateId], type: sequelize.QueryTypes.SELECT }
-    );
+    const ProgrammeDelegate = require('./ProgrammeDelegate');
+    const membership = await ProgrammeDelegate.findOne({
+        where: { programmeId, delegateId },
+    });
     if (!membership) {
         throw new Error('Delegate is not in this programme');
     }
 
-    const [row] = await sequelize.query(`
-        INSERT INTO attendance_records (programme_id, delegate_id, status, method, notes)
-        VALUES ($1, $2, $3, $4, $5)
-        ON CONFLICT (programme_id, delegate_id)
-        DO UPDATE SET status = $3, method = COALESCE($4, attendance_records.method),
-                      checked_in_at = now(), notes = COALESCE($5, attendance_records.notes)
-        RETURNING id, programme_id, delegate_id, status, method, checked_in_at
-    `, { bind: [programmeId, delegateId, status, method || 'manual', notes || ''], type: sequelize.QueryTypes.SELECT });
+    const existing = await AttendanceRecord.findOne({
+        where: { programmeId, delegateId },
+    });
 
-    const [nameRow] = await sequelize.query(
-        'SELECT name FROM delegates WHERE id = $1',
-        { bind: [delegateId], type: sequelize.QueryTypes.SELECT }
-    );
-    const delegateName = nameRow?.name || '';
+    let row;
+    if (existing) {
+        await existing.update({
+            status,
+            method: method || 'manual',
+            notes: notes || '',
+            checkedInAt: new Date(),
+        });
+        row = existing;
+    } else {
+        row = await AttendanceRecord.create({
+            programmeId,
+            delegateId,
+            status,
+            method: method || 'manual',
+            notes: notes || '',
+            checkedInAt: new Date(),
+        });
+    }
+
+    const Delegate = require('./Delegate');
+    const delegate = await Delegate.findByPk(delegateId, { attributes: ['name'] });
+    const delegateName = delegate?.name || '';
 
     const payload = {
-        programmeId: row.programme_id,
-        delegateId: row.delegate_id,
+        programmeId: row.programmeId,
+        delegateId: row.delegateId,
         name: delegateName,
         status: row.status,
         method: row.method,
-        checkedInAt: row.checked_in_at,
+        checkedInAt: row.checkedInAt,
     };
 
     if (io) {
@@ -149,45 +183,54 @@ AttendanceRecord.markAttendance = async function (programmeId, delegateId, { sta
 };
 
 AttendanceRecord.getSummary = async function (programmeId) {
-    const [totalRow] = await sequelize.query(
-        'SELECT COUNT(*)::int AS count FROM programme_delegates WHERE programme_id = $1',
-        { bind: [programmeId], type: sequelize.QueryTypes.SELECT }
-    );
-    const [checkedRow] = await sequelize.query(
-        `SELECT COUNT(*)::int AS count FROM attendance_records
-         WHERE programme_id = $1 AND status = 'present'`,
-        { bind: [programmeId], type: sequelize.QueryTypes.SELECT }
-    );
-    const [unidRow] = await sequelize.query(
-        `SELECT COUNT(*)::int AS count FROM scan_events
-         WHERE programme_id = $1 AND status = 'unverified'`,
-        { bind: [programmeId], type: sequelize.QueryTypes.SELECT }
-    );
+    const ProgrammeDelegate = require('./ProgrammeDelegate');
+    const Route = require('./Route');
+    const ScanEvent = require('./ScanEvent');
 
-    const byRoute = await sequelize.query(`
-        SELECT r.id AS route_id, r.name AS route_name,
-            COUNT(pd.id)::int AS total,
-            COUNT(ar.id) FILTER (WHERE ar.status = 'present')::int AS checked_in
-        FROM routes r
-        LEFT JOIN programme_delegates pd ON pd.route_id = r.id
-        LEFT JOIN attendance_records ar ON ar.delegate_id = pd.delegate_id AND ar.programme_id = pd.programme_id
-        WHERE r.programme_id = $1
-        GROUP BY r.id, r.name
-        ORDER BY r.name
-    `, { bind: [programmeId], type: sequelize.QueryTypes.SELECT });
+    const total = await ProgrammeDelegate.count({ where: { programmeId } });
+    const checkedIn = await AttendanceRecord.count({
+        where: { programmeId, status: 'present' },
+    });
+    const unidentified = await ScanEvent.count({
+        where: { programmeId, status: 'unverified' },
+    });
 
-    const total = Number(totalRow.count);
-    const checkedIn = Number(checkedRow.count);
+    const routes = await Route.findAll({
+        where: { programmeId },
+        attributes: {
+            include: [
+                [
+                    sequelize.literal(`(
+                        SELECT COUNT(*)::int FROM programme_delegates
+                        WHERE route_id = "Route".id
+                    )`),
+                    'total',
+                ],
+                [
+                    sequelize.literal(`(
+                        SELECT COUNT(*)::int FROM attendance_records ar
+                        JOIN programme_delegates pd ON pd.delegate_id = ar.delegate_id
+                                                   AND pd.programme_id = ar.programme_id
+                        WHERE pd.route_id = "Route".id AND ar.status = 'present'
+                    )`),
+                    'checked_in',
+                ],
+            ],
+        },
+        order: [['name', 'ASC']],
+    });
 
     return {
         total,
         checkedIn,
         missing: total - checkedIn,
-        unidentified: Number(unidRow.count),
-        byRoute: byRoute.map(r => ({
-            routeId: r.route_id, routeName: r.route_name,
-            total: Number(r.total), checkedIn: Number(r.checked_in),
-            missing: Number(r.total) - Number(r.checked_in),
+        unidentified,
+        byRoute: routes.map(r => ({
+            routeId: r.id,
+            routeName: r.name,
+            total: Number(r.get('total')),
+            checkedIn: Number(r.get('checked_in')),
+            missing: Number(r.get('total')) - Number(r.get('checked_in')),
         })),
     };
 };
