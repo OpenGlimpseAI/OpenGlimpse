@@ -3,23 +3,10 @@ const path = require("path");
 require("dotenv").config({
     path: path.resolve(__dirname, "../../../.env"),
 });
-
-// Fall back to SQLite for local development if no DB host is configured
-const isDevelopment = !process.env.DB_HOST;
-let sequelize;
-
-if (isDevelopment) {
-    sequelize = new Sequelize({
-        dialect: "sqlite",
-        storage: path.join(__dirname, "dev.sqlite"),
-        logging: false,
-    });
-} else {
-    sequelize = new Sequelize(process.env.DB_NAME,process.env.DB_USER,process.env.DB_PASSWORD,{
-        host: process.env.DB_HOST,
-        dialect: 'postgres',
-    });
-}
+const sequelize = new Sequelize(process.env.DB_NAME,process.env.DB_USER,process.env.DB_PASSWORD,{
+    host: 'localhost',
+    dialect: 'postgres',
+})
 
 const user = sequelize.define("users", {
     id: {
@@ -52,14 +39,10 @@ const user = sequelize.define("users", {
     role: {
         type: DataTypes.STRING,
         allowNull: false,
-        defaultValue: 'user',
+        defaultValue: 'participant',
     },
     birthDate: {
         type: DataTypes.DATEONLY,
-        allowNull: true,
-    },
-    imageUrl: {
-        type: DataTypes.STRING,
         allowNull: true,
     },
 })

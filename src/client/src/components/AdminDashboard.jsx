@@ -2,12 +2,6 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 const API_BASE = 'http://localhost:3001/api/user';
-const SERVER_ORIGIN = 'http://localhost:3001';
-
-function resolveImageUrl(imageUrl) {
-  if (!imageUrl) return '';
-  return imageUrl.startsWith('http') ? imageUrl : `${SERVER_ORIGIN}${imageUrl}`;
-}
 
 function getAuthToken() {
   const raw = localStorage.getItem('authUser');
@@ -19,7 +13,7 @@ function getAuthToken() {
   }
 }
 
-const emptyForm = { name: '', email: '', password: '', role: 'participant', birthDate: '', profileImage: null, imagePreview: '' };
+const emptyForm = { name: '', email: '', password: '', role: 'participant', birthDate: '' };
 
 export default function AdminDashboard({ currentUser }) {
   const [users, setUsers] = useState([]);
@@ -50,36 +44,19 @@ export default function AdminDashboard({ currentUser }) {
     }
   };
 
-  const handleImageChange = (event) => {
-    const file = event.target.files?.[0];
-    if (file) {
-      setForm({ ...form, profileImage: file });
-      const reader = new FileReader();
-      reader.onload = (e) => setForm((prev) => ({ ...prev, imagePreview: e.target?.result || '' }));
-      reader.readAsDataURL(file);
-    }
-  };
-
   const handleCreate = async (event) => {
     event.preventDefault();
     setError('');
     setStatus('');
 
     try {
-      const formData = new FormData();
-      formData.append('name', form.name);
-      formData.append('email', form.email);
-      formData.append('password', form.password);
-      formData.append('role', form.role);
-      formData.append('birthDate', form.birthDate);
-      if (form.profileImage) {
-        formData.append('profileImage', form.profileImage);
-      }
-
       const response = await fetch(API_BASE, {
         method: 'POST',
-        headers: { Authorization: `Bearer ${authToken}` },
-        body: formData,
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${authToken}`,
+        },
+        body: JSON.stringify(form),
       });
       const data = await response.json();
       if (!response.ok) {
@@ -102,8 +79,6 @@ export default function AdminDashboard({ currentUser }) {
       password: '',
       role: user.role || 'participant',
       birthDate: user.birthDate || '',
-      profileImage: null,
-      imagePreview: resolveImageUrl(user.imageUrl),
     });
     setStatus('Editing ' + user.name);
     setError('');
@@ -116,23 +91,18 @@ export default function AdminDashboard({ currentUser }) {
     setStatus('');
 
     try {
-      const formData = new FormData();
-      formData.append('targetId', selected.id);
-      formData.append('name', form.name);
-      formData.append('email', form.email);
-      formData.append('birthDate', form.birthDate);
-      formData.append('role', form.role);
+      const payload = { targetId: selected.id, name: form.name, email: form.email, birthDate: form.birthDate, role: form.role };
       if (form.password) {
-        formData.append('password', form.password);
-      }
-      if (form.profileImage) {
-        formData.append('profileImage', form.profileImage);
+        payload.password = form.password;
       }
 
       const response = await fetch(API_BASE, {
         method: 'PATCH',
-        headers: { Authorization: `Bearer ${authToken}` },
-        body: formData,
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${authToken}`,
+        },
+        body: JSON.stringify(payload),
       });
       const data = await response.json();
       if (!response.ok) {
@@ -264,13 +234,6 @@ export default function AdminDashboard({ currentUser }) {
                 Birth Date
                 <input type="date" value={form.birthDate} onChange={(event) => setForm({ ...form, birthDate: event.target.value })} />
               </label>
-              <label>
-                Profile Image
-                <input type="file" accept="image/*" onChange={handleImageChange} />
-              </label>
-              {form.imagePreview && (
-                <img src={form.imagePreview} alt="Profile preview" style={{ maxWidth: '100px', maxHeight: '100px', borderRadius: '4px' }} />
-              )}
               <button className="button" type="submit">
                 {selected ? 'Update Participant' : 'Create Participant'}
               </button>

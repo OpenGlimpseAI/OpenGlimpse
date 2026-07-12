@@ -2,12 +2,6 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 const API_BASE = 'http://localhost:3001/api/user';
-const SERVER_ORIGIN = 'http://localhost:3001';
-
-function resolveImageUrl(imageUrl) {
-  if (!imageUrl) return '';
-  return imageUrl.startsWith('http') ? imageUrl : `${SERVER_ORIGIN}${imageUrl}`;
-}
 
 function getAuthToken() {
   const raw = localStorage.getItem('authUser');
@@ -24,23 +18,11 @@ export default function UserDashboard({ currentUser }) {
   const [email, setEmail] = useState(currentUser.email || '');
   const [birthDate, setBirthDate] = useState(currentUser.birthDate || '');
   const [password, setPassword] = useState('');
-  const [profileImage, setProfileImage] = useState(null);
-  const [imagePreview, setImagePreview] = useState(resolveImageUrl(currentUser.imageUrl));
   const [status, setStatus] = useState('');
   const [error, setError] = useState('');
   const navigate = useNavigate();
 
   const authToken = getAuthToken();
-
-  const handleImageChange = (event) => {
-    const file = event.target.files?.[0];
-    if (file) {
-      setProfileImage(file);
-      const reader = new FileReader();
-      reader.onload = (e) => setImagePreview(e.target?.result || '');
-      reader.readAsDataURL(file);
-    }
-  };
 
   const handleLogout = () => {
     localStorage.removeItem('authUser');
@@ -53,17 +35,16 @@ export default function UserDashboard({ currentUser }) {
     setStatus('');
 
     try {
-      const formData = new FormData();
-      formData.append('name', name);
-      formData.append('email', email);
-      formData.append('birthDate', birthDate);
-      if (password) formData.append('password', password);
-      if (profileImage) formData.append('profileImage', profileImage);
+      const payload = { name, email, birthDate };
+      if (password) payload.password = password;
 
       const response = await fetch(API_BASE, {
         method: 'PATCH',
-        headers: { Authorization: `Bearer ${authToken}` },
-        body: formData,
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${authToken}`,
+        },
+        body: JSON.stringify(payload),
       });
 
       const data = await response.json();
@@ -75,7 +56,6 @@ export default function UserDashboard({ currentUser }) {
       localStorage.setItem('authUser', JSON.stringify({ ...currentUser, ...data, token: authToken }));
       setStatus('Profile updated successfully');
       setPassword('');
-      setProfileImage(null);
     } catch (err) {
       setError('Profile update failed');
     }
@@ -129,13 +109,6 @@ export default function UserDashboard({ currentUser }) {
             Birth Date
             <input type="date" value={birthDate} onChange={(event) => setBirthDate(event.target.value)} />
           </label>
-          <label>
-            Profile Picture
-            <input type="file" accept="image/*" onChange={handleImageChange} />
-          </label>
-          {imagePreview && (
-            <img src={imagePreview} alt="Profile preview" style={{ maxWidth: '100px', maxHeight: '100px', borderRadius: '4px' }} />
-          )}
           <label>
             New Password
             <input type="password" value={password} onChange={(event) => setPassword(event.target.value)} />

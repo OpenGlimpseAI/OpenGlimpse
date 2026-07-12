@@ -8,21 +8,9 @@ export default function Signup() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [birthDate, setBirthDate] = useState('');
-  const [profileImage, setProfileImage] = useState(null);
-  const [imagePreview, setImagePreview] = useState('');
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
   const navigate = useNavigate();
-
-  const handleImageChange = (event) => {
-    const file = event.target.files?.[0];
-    if (file) {
-      setProfileImage(file);
-      const reader = new FileReader();
-      reader.onload = (e) => setImagePreview(e.target?.result || '');
-      reader.readAsDataURL(file);
-    }
-  };
 
   const handleSubmit = async (event) => {
     event.preventDefault();
@@ -30,18 +18,10 @@ export default function Signup() {
     setMessage('');
 
     try {
-      const formData = new FormData();
-      formData.append('name', name);
-      formData.append('email', email);
-      formData.append('password', password);
-      formData.append('birthDate', birthDate);
-      if (profileImage) {
-        formData.append('profileImage', profileImage);
-      }
-
       const response = await fetch(`${API_BASE}/signup`, {
         method: 'POST',
-        body: formData,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, email, password, birthDate }),
       });
 
       const data = await response.json();
@@ -97,17 +77,6 @@ export default function Signup() {
               onChange={(event) => setBirthDate(event.target.value)}
             />
           </label>
-          <label>
-            Profile Image
-            <input
-              type="file"
-              accept="image/*"
-              onChange={handleImageChange}
-            />
-          </label>
-          {imagePreview && (
-            <img src={imagePreview} alt="Profile preview" style={{ maxWidth: '100px', maxHeight: '100px', borderRadius: '4px' }} />
-          )}
           {error && <p className="error-text">{error}</p>}
           {message && <p className="success-text">{message}</p>}
           <button className="button" type="submit">Create Account</button>
