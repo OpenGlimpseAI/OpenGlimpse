@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-
-const API_BASE = 'http://localhost:3001/api/user';
+import { API_BASE } from '../lib/api.js';
 
 export default function Login() {
   const [email, setEmail] = useState('');

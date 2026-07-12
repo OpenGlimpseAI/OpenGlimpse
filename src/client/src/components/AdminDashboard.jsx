@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-
-const API_BASE = 'http://localhost:3001/api/user';
+import { API_BASE } from '../lib/api.js';
 
 function getAuthToken() {
   const raw = localStorage.getItem('authUser');
