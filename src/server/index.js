@@ -7,7 +7,6 @@ const path = require("path");
 require("dotenv").config({
     path: path.resolve(__dirname, "../../.env"),
 });
-const { attachChatServer } = require('./chatserver.cjs');
 const { attachFaceServer } = require('./modules/facial_recog/facialrecogserver.js');
 
 const app = express();

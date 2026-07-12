@@ -1,9 +1,9 @@
-import React, { useRef, useEffect, useState, useCallback } from 'react';
+import { useRef, useEffect, useState, useCallback } from 'react';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import Alert from '@mui/material/Alert';
 import Button from '@mui/material/Button';
-import TextField from '@mui/material/TextField';
+import CircularProgress from '@mui/material/CircularProgress';
 
 const MODEL_URL = 'https://cdn.jsdelivr.net/gh/justadudewhohacks/face-api.js@0.22.2/weights/';
 const DETECTION_FRAME_SKIP = 8;
@@ -17,11 +17,7 @@ export default function Camera() {
     const frameCountRef = useRef(0);
     const [error, setError] = useState(null);
     const [status, setStatus] = useState('Loading face detection models...');
-    const [videoSize, setVideoSize] = useState(null);
     const [facingMode, setFacingMode] = useState('user');
-    const [capturedImage, setCapturedImage] = useState(null);
-    const [uploadStatus, setUploadStatus] = useState(null);
-    const [targetUserId, setTargetUserId] = useState('');
 
     const stopStream = useCallback(() => {
         if (rafRef.current) cancelAnimationFrame(rafRef.current);
@@ -71,9 +67,6 @@ export default function Camera() {
             displaySizeRef.current = displaySize;
 
             faceapi.matchDimensions(canvas, displaySize);
-            canvas.style.width = renderedWidth + 'px';
-            canvas.style.height = renderedHeight + 'px';
-            setVideoSize(displaySize);
 
             setStatus('Detecting faces...');
             detectLoop();
@@ -117,18 +110,22 @@ export default function Camera() {
                 const displaySize = displaySizeRef.current;
                 const resized = faceapi.resizeResults(detections, displaySize);
 
-                ctx.save();
-                ctx.translate(canvas.width, 0);
-                ctx.scale(-1, 1);
+                if (facingMode === 'user') {
+                    ctx.save();
+                    ctx.translate(canvas.width, 0);
+                    ctx.scale(-1, 1);
+                }
 
                 resized.forEach((d) => {
                     const box = d.box;
                     ctx.strokeStyle = '#00ff00';
-                    ctx.lineWidth = 3;
+                    ctx.lineWidth = 4;
                     ctx.strokeRect(box.x, box.y, box.width, box.height);
                 });
 
-                ctx.restore();
+                if (facingMode === 'user') {
+                    ctx.restore();
+                }
 
                 rafRef.current = requestAnimationFrame(detectLoop);
             })
@@ -137,49 +134,21 @@ export default function Camera() {
             });
     }
 
-    function capturePhoto() {
-        const video = videoRef.current;
-        if (!video || !video.videoWidth) return;
-        const tempCanvas = document.createElement('canvas');
-        tempCanvas.width = video.videoWidth;
-        tempCanvas.height = video.videoHeight;
-        tempCanvas.getContext('2d').drawImage(video, 0, 0);
-        setCapturedImage(tempCanvas.toDataURL('image/jpeg', 0.8));
-        setUploadStatus(null);
-    }
-
-    async function uploadPhoto() {
-        if (!capturedImage || !targetUserId.trim()) return;
-        setUploadStatus('Uploading...');
-        try {
-            const base64 = capturedImage.split(',')[1];
-            const res = await fetch(`/api/user/${encodeURIComponent(targetUserId.trim())}/face`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ image: base64 }),
-            });
-            if (!res.ok) {
-                const errText = await res.text();
-                throw new Error(errText || `Server returned ${res.status}`);
-            }
-            const data = await res.json();
-            setUploadStatus(`Uploaded! ${data.length} face(s) registered.`);
-            setCapturedImage(null);
-        } catch (err) {
-            setUploadStatus(`Upload failed: ${err.message}`);
-        }
-    }
-
     function toggleCamera() {
         setFacingMode((prev) => (prev === 'user' ? 'environment' : 'user'));
     }
 
     return (
-        <Box sx={{ p: 3, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
+        <Box sx={{ p: { xs: 1.5, sm: 3 }, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
             <Typography variant="h5">Facial Recognition</Typography>
-            {error && <Alert severity="error">{error}</Alert>}
-            {!error && <Typography>{status}</Typography>}
-            <Box sx={{ position: 'relative', display: 'inline-block' }}>
+            {error && <Alert severity="error" sx={{ width: '100%', maxWidth: 480 }}>{error}</Alert>}
+            {!error && (
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    {status === 'Loading face detection models...' && <CircularProgress size={18} />}
+                    <Typography variant="body2" color="text.secondary">{status}</Typography>
+                </Box>
+            )}
+            <Box sx={{ position: 'relative', width: '100%', maxWidth: 480, mx: 'auto', bgcolor: 'black', borderRadius: 1, overflow: 'hidden' }}>
                 <Box
                     component="video"
                     ref={videoRef}
@@ -188,9 +157,9 @@ export default function Camera() {
                     playsInline
                     sx={{
                         display: 'block',
-                        width: videoSize ? videoSize.width : undefined,
-                        height: videoSize ? videoSize.height : undefined,
-                        transform: 'scaleX(-1)',
+                        width: '100%',
+                        height: 'auto',
+                        transform: facingMode === 'user' ? 'scaleX(-1)' : 'none',
                     }}
                 />
                 <Box
@@ -200,41 +169,16 @@ export default function Camera() {
                         position: 'absolute',
                         top: 0,
                         left: 0,
-                        width: videoSize ? videoSize.width : undefined,
-                        height: videoSize ? videoSize.height : undefined,
+                        width: '100%',
+                        height: '100%',
                     }}
                 />
             </Box>
-            <Box sx={{ display: 'flex', gap: 2 }}>
-                <Button variant="contained" onClick={toggleCamera}>
+            <Box sx={{ display: 'flex', gap: 1.5, flexWrap: 'wrap', justifyContent: 'center' }}>
+                <Button variant="contained" size="large" onClick={toggleCamera}>
                     Switch to {facingMode === 'user' ? 'Back' : 'Front'} Camera
                 </Button>
-                <Button variant="contained" color="secondary" onClick={capturePhoto}>
-                    Take Picture
-                </Button>
             </Box>
-            <TextField
-                label="User ID"
-                size="small"
-                value={targetUserId}
-                onChange={(e) => setTargetUserId(e.target.value)}
-                sx={{ width: 250 }}
-            />
-            {capturedImage && (
-                <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1 }}>
-                    <Box component="img" src={capturedImage} alt="Captured"
-                        sx={{ width: 160, height: 'auto', borderRadius: 1, border: '1px solid #ccc' }} />
-                    <Button variant="contained" color="success" onClick={uploadPhoto}
-                        disabled={!targetUserId.trim()}>
-                        Send to Server
-                    </Button>
-                </Box>
-            )}
-            {uploadStatus && (
-                <Alert severity={uploadStatus.startsWith('Uploaded') ? 'success' : 'error'}>
-                    {uploadStatus}
-                </Alert>
-            )}
         </Box>
     );
 }
