@@ -1,46 +1,9 @@
-const { DataTypes } = require('sequelize');
-const sequelize = require('../../../database/sequelize');
-
-const ProgrammeDelegate = sequelize.define('ProgrammeDelegate', {
-    id: {
-        type: DataTypes.UUID,
-        defaultValue: DataTypes.UUIDV4,
-        primaryKey: true,
-    },
-    programmeId: {
-        type: DataTypes.UUID,
-        allowNull: false,
-        field: 'programme_id',
-    },
-    delegateId: {
-        type: DataTypes.UUID,
-        allowNull: false,
-        field: 'delegate_id',
-    },
-    routeId: {
-        type: DataTypes.UUID,
-        allowNull: true,
-        field: 'route_id',
-    },
-    notes: {
-        type: DataTypes.TEXT,
-        defaultValue: '',
-    },
-}, {
-    tableName: 'programme_delegates',
-    timestamps: false,
-    indexes: [
-        { unique: true, fields: ['programme_id', 'delegate_id'] },
-        { fields: ['programme_id'] },
-        { fields: ['delegate_id'] },
-    ],
-});
+const { ProgrammeDelegate, sequelize } = require('../../../database/db.cjs');
 
 // ── Class methods ──────────────────────────────────────────
 
 ProgrammeDelegate.listForProgramme = async function (programmeId) {
-    const Delegate = require('./Delegate');
-    const Route = require('./Route');
+    const { Delegate, Route } = require('../../../database/db.cjs');
 
     const rows = await ProgrammeDelegate.findAll({
         where: { programmeId },
@@ -110,7 +73,7 @@ ProgrammeDelegate.listForProgramme = async function (programmeId) {
 
 ProgrammeDelegate.addDelegates = async function (programmeId, body) {
     const { delegates, delegateIds, delegateId, name, badge, routeId } = body;
-    const Delegate = require('./Delegate');
+    const { Delegate } = require('../../../database/db.cjs');
 
     if (delegates && Array.isArray(delegates)) {
         const added = [];
@@ -156,7 +119,7 @@ ProgrammeDelegate.addDelegates = async function (programmeId, body) {
 };
 
 ProgrammeDelegate.removeFromProgramme = async function (programmeId, delegateId) {
-    const AttendanceRecord = require('./AttendanceRecord');
+    const { AttendanceRecord } = require('../../../database/db.cjs');
     await AttendanceRecord.destroy({
         where: { programmeId, delegateId },
     });

@@ -1,27 +1,4 @@
-const { DataTypes } = require('sequelize');
-const sequelize = require('../../../database/sequelize');
-
-const Route = sequelize.define('Route', {
-    id: {
-        type: DataTypes.UUID,
-        defaultValue: DataTypes.UUIDV4,
-        primaryKey: true,
-    },
-    programmeId: {
-        type: DataTypes.UUID,
-        allowNull: false,
-        field: 'programme_id',
-    },
-    name: {
-        type: DataTypes.TEXT,
-        allowNull: false,
-    },
-}, {
-    tableName: 'routes',
-    timestamps: true,
-    createdAt: 'created_at',
-    updatedAt: false,
-});
+const { Route, ProgrammeDelegate, sequelize } = require('../../../database/db.cjs');
 
 // ── Class methods ──────────────────────────────────────────
 
@@ -82,7 +59,6 @@ Route.updateForProgramme = async function (routeId, programmeId, body) {
     }
 
     if (addDelegateIds?.length > 0) {
-        const ProgrammeDelegate = require('./ProgrammeDelegate');
         await ProgrammeDelegate.update(
             { routeId },
             { where: { programmeId, delegateId: addDelegateIds } }
@@ -90,7 +66,6 @@ Route.updateForProgramme = async function (routeId, programmeId, body) {
     }
 
     if (removeDelegateIds?.length > 0) {
-        const ProgrammeDelegate = require('./ProgrammeDelegate');
         await ProgrammeDelegate.update(
             { routeId: null },
             { where: { programmeId, delegateId: removeDelegateIds, routeId } }

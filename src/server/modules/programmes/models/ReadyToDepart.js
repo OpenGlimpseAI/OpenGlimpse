@@ -1,34 +1,4 @@
-const { DataTypes } = require('sequelize');
-const sequelize = require('../../../database/sequelize');
-
-const ReadyToDepart = sequelize.define('ReadyToDepart', {
-    id: {
-        type: DataTypes.UUID,
-        defaultValue: DataTypes.UUIDV4,
-        primaryKey: true,
-    },
-    programmeId: {
-        type: DataTypes.UUID,
-        allowNull: false,
-        unique: true,
-        field: 'programme_id',
-    },
-    ready: {
-        type: DataTypes.BOOLEAN,
-        defaultValue: false,
-    },
-    toggledBy: {
-        type: DataTypes.UUID,
-        field: 'toggled_by',
-    },
-    toggledAt: {
-        type: DataTypes.DATE,
-        field: 'toggled_at',
-    },
-}, {
-    tableName: 'ready_to_depart',
-    timestamps: false,
-});
+const { ReadyToDepart } = require('../../../database/db.cjs');
 
 // ── Class methods ──────────────────────────────────────────
 

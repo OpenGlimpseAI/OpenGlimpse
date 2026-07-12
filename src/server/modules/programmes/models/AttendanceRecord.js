@@ -1,61 +1,9 @@
-const { DataTypes } = require('sequelize');
-const sequelize = require('../../../database/sequelize');
-
-const AttendanceRecord = sequelize.define('AttendanceRecord', {
-    id: {
-        type: DataTypes.UUID,
-        defaultValue: DataTypes.UUIDV4,
-        primaryKey: true,
-    },
-    programmeId: {
-        type: DataTypes.UUID,
-        allowNull: false,
-        field: 'programme_id',
-    },
-    delegateId: {
-        type: DataTypes.UUID,
-        allowNull: false,
-        field: 'delegate_id',
-    },
-    status: {
-        type: DataTypes.TEXT,
-        allowNull: false,
-        validate: { isIn: [['present', 'absent']] },
-    },
-    method: {
-        type: DataTypes.TEXT,
-        allowNull: false,
-        validate: { isIn: [['auto', 'manual']] },
-    },
-    checkedInAt: {
-        type: DataTypes.DATE,
-        defaultValue: DataTypes.NOW,
-        field: 'checked_in_at',
-    },
-    checkedInBy: {
-        type: DataTypes.UUID,
-        field: 'checked_in_by',
-    },
-    notes: {
-        type: DataTypes.TEXT,
-        defaultValue: '',
-    },
-}, {
-    tableName: 'attendance_records',
-    timestamps: false,
-    indexes: [
-        { fields: ['programme_id'] },
-        { fields: ['delegate_id'] },
-    ],
-});
+const { AttendanceRecord, ProgrammeDelegate, sequelize } = require('../../../database/db.cjs');
 
 // ── Class methods ──────────────────────────────────────────
 
 AttendanceRecord.getAttendance = async function (programmeId) {
-    const ProgrammeDelegate = require('./ProgrammeDelegate');
-    const Delegate = require('./Delegate');
-    const Route = require('./Route');
-    const ScanEvent = require('./ScanEvent');
+    const { Delegate, Route, ScanEvent } = require('../../../database/db.cjs');
 
     const presentRecords = await AttendanceRecord.findAll({
         where: { programmeId, status: 'present' },
@@ -130,7 +78,6 @@ AttendanceRecord.markAttendance = async function (programmeId, delegateId, { sta
         throw new Error('method is required when marking present');
     }
 
-    const ProgrammeDelegate = require('./ProgrammeDelegate');
     const membership = await ProgrammeDelegate.findOne({
         where: { programmeId, delegateId },
     });
@@ -162,7 +109,7 @@ AttendanceRecord.markAttendance = async function (programmeId, delegateId, { sta
         });
     }
 
-    const Delegate = require('./Delegate');
+    const { Delegate } = require('../../../database/db.cjs');
     const delegate = await Delegate.findByPk(delegateId, { attributes: ['name'] });
     const delegateName = delegate?.name || '';
 
@@ -183,9 +130,7 @@ AttendanceRecord.markAttendance = async function (programmeId, delegateId, { sta
 };
 
 AttendanceRecord.getSummary = async function (programmeId) {
-    const ProgrammeDelegate = require('./ProgrammeDelegate');
-    const Route = require('./Route');
-    const ScanEvent = require('./ScanEvent');
+    const { Route, ScanEvent } = require('../../../database/db.cjs');
 
     const total = await ProgrammeDelegate.count({ where: { programmeId } });
     const checkedIn = await AttendanceRecord.count({
