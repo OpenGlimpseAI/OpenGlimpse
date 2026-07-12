@@ -1,37 +1,4 @@
-const { DataTypes } = require('sequelize');
-const sequelize = require('../../../database/sequelize');
-
-const Programme = sequelize.define('Programme', {
-    id: {
-        type: DataTypes.UUID,
-        defaultValue: DataTypes.UUIDV4,
-        primaryKey: true,
-    },
-    name: {
-        type: DataTypes.TEXT,
-        allowNull: false,
-    },
-    startDate: {
-        type: DataTypes.DATEONLY,
-        allowNull: false,
-        field: 'start_date',
-    },
-    endDate: {
-        type: DataTypes.DATEONLY,
-        allowNull: false,
-        field: 'end_date',
-    },
-    status: {
-        type: DataTypes.TEXT,
-        defaultValue: 'draft',
-        validate: { isIn: [['draft', 'active', 'completed']] },
-    },
-}, {
-    tableName: 'programmes',
-    timestamps: true,
-    createdAt: 'created_at',
-    updatedAt: 'updated_at',
-});
+const { Programme, sequelize } = require('../../../database/db.cjs');
 
 // ── Class methods ──────────────────────────────────────────
 
@@ -93,7 +60,7 @@ Programme.updateWithDetails = async function (id, body) {
     }
 
     if (addDelegateIds?.length > 0) {
-        const ProgrammeDelegate = require('./ProgrammeDelegate');
+        const { ProgrammeDelegate } = require('../../../database/db.cjs');
         const records = addDelegateIds.map(delegateId => ({
             programmeId: id,
             delegateId,
@@ -102,7 +69,7 @@ Programme.updateWithDetails = async function (id, body) {
     }
 
     if (removeDelegateIds?.length > 0) {
-        const ProgrammeDelegate = require('./ProgrammeDelegate');
+        const { ProgrammeDelegate } = require('../../../database/db.cjs');
         await ProgrammeDelegate.destroy({
             where: { programmeId: id, delegateId: removeDelegateIds },
         });
