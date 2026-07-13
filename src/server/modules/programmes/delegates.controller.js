@@ -1,4 +1,4 @@
-const { ProgrammeDelegate, Programme } = require('./models');
+const { ProgrammeDelegate, Programme, Delegate } = require('./models');
 
 async function listDelegates(req, res) {
     const { id } = req.params;

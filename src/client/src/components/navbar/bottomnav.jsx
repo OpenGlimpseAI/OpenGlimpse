@@ -7,7 +7,7 @@ import BottomNavigationAction from '@mui/material/BottomNavigationAction';
 import ChatIcon from '@mui/icons-material/Chat';
 import DashboardIcon from '@mui/icons-material/Dashboard';
 import CameraAlt from '@mui/icons-material/CameraAlt';
-import PeopleIcon from '@mui/icons-material/People';
+import Settings from '@mui/icons-material/Settings';
 import Paper from '@mui/material/Paper';
 
 export default function FixedBottomNavigation() {
@@ -42,11 +42,11 @@ export default function FixedBottomNavigation() {
                     />
                     <BottomNavigationAction
                         className="bottom-nav-action"
-                        label="Directory"
-                        value="directory"
-                        icon={<PeopleIcon />}
+                        label="Settings"
+                        value="settings"
+                        icon={<Settings />}
                         component={Link}
-                        to="/directory"
+                        to="/"
                     />
                 </BottomNavigation>
             </Paper>
