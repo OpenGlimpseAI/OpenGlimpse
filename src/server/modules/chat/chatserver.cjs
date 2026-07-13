@@ -1,5 +1,5 @@
 const WebSocketServer = require('websocket').server;
-const { addmessage,readchathistory } = require('./database/dbcrudmethods')
+const { addmessage,readchathistory } = require('../../database/dbcrudmethods')
 const clients = new Set();
 
 function sendJson(connection, payload) {
@@ -29,6 +29,10 @@ function attachChatServer(server) {
     });
 
     socketserver.on('request', (request) => {
+        if (request.resourceURL.pathname !== '/chat') {
+            request.reject(404);
+            return;
+        }
         const connection = request.accept(null, request.origin);
         clients.add(connection);
         (async ()=>{
