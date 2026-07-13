@@ -35,6 +35,23 @@ function makeAttendanceController(io) {
         }
     }
 
+    async function markAttendanceBatch(req, res) {
+        const { id } = req.params;
+        const { records } = req.body;
+
+        if (!Array.isArray(records) || records.length === 0) {
+            return res.status(400).json({ error: 'records must be a non-empty array' });
+        }
+
+        try {
+            const result = await AttendanceRecord.markAttendanceBatch(id, records, io);
+            const statusCode = result.errors.length === 0 ? 201 : result.success.length > 0 ? 200 : 400;
+            res.status(statusCode).json(result);
+        } catch (err) {
+            res.status(500).json({ error: err.message });
+        }
+    }
+
     async function getSummary(req, res) {
         const { id } = req.params;
         try {
@@ -45,7 +62,7 @@ function makeAttendanceController(io) {
         }
     }
 
-    return { getAttendance, markAttendance, getSummary };
+    return { getAttendance, markAttendance, markAttendanceBatch, getSummary };
 }
 
 module.exports = makeAttendanceController;

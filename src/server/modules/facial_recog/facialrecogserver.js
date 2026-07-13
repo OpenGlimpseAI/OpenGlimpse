@@ -73,7 +73,6 @@ router.get('/api/user/:id/face/default', async (req, res) => {
 });
 
 function attachFaceServer(app) {
-    app.use(express.json());
     app.use(router);
 }
 
