@@ -1,6 +1,7 @@
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
+const { sequelize } = require('./database/db.cjs');
 const { attachChatServer } = require('./modules/chat/chatserver.cjs');
 const registerProgrammeRoutes = require('./modules/programmes/index');
 const path = require("path");
@@ -48,6 +49,18 @@ app.get('/', (req, res) => {
     res.send('server is running');
 });
 
+// Sync all Sequelize models to the database, then start listening
+sequelize.sync()
+    .then(() => {
+        console.log('Database synced');
+        server.listen(port, () => {
+            console.log(`Listening on port ${port}`);
+        });
+    })
+    .catch((err) => {
+        console.error('Database sync failed:', err);
+        process.exit(1);
+    });
 async function start() {
     try {
         const { startPythonServer, stopPythonServer } = await import('./modules/facial_recog/facenetClient.js');

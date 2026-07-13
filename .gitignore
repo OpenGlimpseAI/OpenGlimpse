@@ -144,13 +144,5 @@ vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 .vite/
 
-.idea
-
-.claude
-
-# Project docs
-CLAUDE.md
-PROJECT_DOCUMENTATION.md
-
 # Preview images
 *.preview.png
