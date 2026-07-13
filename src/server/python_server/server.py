@@ -6,9 +6,9 @@ import base64
 
 app = FastAPI()
 
-print("Loading Facenet model...")
+print("Loading Facenet model...", flush=True)
 DeepFace.build_model("Facenet")
-print("Facenet model loaded successfully!")
+print("Facenet model loaded successfully!", flush=True)
 
 
 @app.post("/embed")

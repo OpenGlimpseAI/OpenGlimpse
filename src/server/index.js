@@ -12,23 +12,25 @@ const { attachFaceServer } = require('./modules/facial_recog/facialrecogserver.j
 
 const app = express();
 const server = http.createServer(app);
+const allowedOrigin = process.env.CLIENT_URL || 'http://localhost:5173';
 const io = new Server(server, {
-    cors: { origin: process.env.CLIENT_URL || 'http://localhost:5173', methods: ['GET', 'POST', 'PUT', 'DELETE'] },
+    cors: { origin: [allowedOrigin, 'https://localhost:5173'], methods: ['GET', 'POST', 'PUT', 'DELETE'] },
 });
 const port = process.env.PORT || 3001;
 
+app.use(express.json({ limit: '10mb' }));
+
 app.use((req, res, next) => {
-    res.header('Access-Control-Allow-Origin', process.env.CLIENT_URL || 'http://localhost:5173');
+    const origin = req.headers.origin;
+    if (origin && (origin.includes('localhost:5173') || origin.includes('127.0.0.1:5173'))) {
+        res.header('Access-Control-Allow-Origin', origin);
+    } else if (origin === allowedOrigin) {
+        res.header('Access-Control-Allow-Origin', allowedOrigin);
+    }
     res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
     res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
     if (req.method === 'OPTIONS') return res.sendStatus(204);
     next();
-});
-app.use(express.json({ limit: '10mb' }));
-
-app.use((err, req, res, next) => {
-    console.error('Unhandled error:', err);
-    res.status(500).json({ error: 'Internal server error' });
 });
 
 attachChatServer(server);
@@ -49,6 +51,11 @@ app.get('/', (req, res) => {
     res.send('server is running');
 });
 
+app.use((err, req, res, next) => {
+    console.error('Unhandled error:', err);
+    res.status(500).json({ error: 'Internal server error', detail: err.message });
+});
+
 // Sync all Sequelize models to the database, then start listening
 sequelize.sync()
     .then(() => {
@@ -62,10 +69,10 @@ sequelize.sync()
         process.exit(1);
     });
 async function start() {
-    try {
-        const { startPythonServer, stopPythonServer } = await import('./modules/facial_recog/facenetClient.js');
-        await startPythonServer();
-        console.log('[FaceNet] Server is ready at http://127.0.0.1:8000');
+    import('./modules/facial_recog/facenetClient.js').then(({ startPythonServer, stopPythonServer }) => {
+        startPythonServer()
+            .then(() => console.log('[FaceNet] Server is ready at http://127.0.0.1:8000'))
+            .catch((err) => console.error('[FaceNet] Failed to start Python server:', err.message));
 
         const cleanup = () => {
             stopPythonServer();
@@ -73,9 +80,7 @@ async function start() {
         };
         process.on('SIGINT', cleanup);
         process.on('SIGTERM', cleanup);
-    } catch (err) {
-        console.error('[FaceNet] Failed to start Python server:', err.message);
-    }
+    });
 
     server.listen(port, () => {
         console.log(`Listening on port ${port}`);
