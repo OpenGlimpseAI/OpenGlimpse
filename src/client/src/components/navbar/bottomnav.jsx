@@ -6,13 +6,8 @@ import BottomNavigation from '@mui/material/BottomNavigation';
 import BottomNavigationAction from '@mui/material/BottomNavigationAction';
 import ChatIcon from '@mui/icons-material/Chat';
 import DashboardIcon from '@mui/icons-material/Dashboard';
-<<<<<<<< HEAD:src/client/src/components/BottomNav.jsx
 import CameraAlt from '@mui/icons-material/CameraAlt';
 import Settings from '@mui/icons-material/Settings';
-========
-import CameraIcon from '@mui/icons-material/Camera';
-import PeopleIcon from '@mui/icons-material/People';
->>>>>>>> XY:src/client/src/components/navbar/bottomnav.jsx
 import Paper from '@mui/material/Paper';
 
 export default function FixedBottomNavigation() {
@@ -47,11 +42,11 @@ export default function FixedBottomNavigation() {
                     />
                     <BottomNavigationAction
                         className="bottom-nav-action"
-                        label="Directory"
-                        value="directory"
-                        icon={<PeopleIcon />}
+                        label="Settings"
+                        value="settings"
+                        icon={<Settings />}
                         component={Link}
-                        to="/directory"
+                        to="/"
                     />
                 </BottomNavigation>
             </Paper>

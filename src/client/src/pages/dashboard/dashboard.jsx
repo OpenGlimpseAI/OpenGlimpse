@@ -6,6 +6,7 @@ import GroupsIcon from "@mui/icons-material/Groups";
 import HowToRegIcon from "@mui/icons-material/HowToReg";
 import SettingsIcon from "@mui/icons-material/Settings";
 import BarChartIcon from "@mui/icons-material/BarChart";
+import PeopleAltIcon from "@mui/icons-material/PeopleAlt";
 import { getProgrammes, getAttendance, getAttendanceSummary, getReadyStatus, toggleReady } from "../../services/api";
 import { joinProgramme, leaveProgramme, onAttendanceUpdated } from "../../services/socket";
 
@@ -176,6 +177,13 @@ export function AdminDashboard() {
                             <KeyboardArrowDown
                                 className={`dashboard-chevron ${showPicker ? "dashboard-chevron-open" : ""}`}
                             />
+                        </button>
+                        <button
+                            className="text-slate-400 hover:text-sky-600 transition-colors w-10 h-10 flex items-center justify-center"
+                            onClick={() => navigate("/directory")}
+                            aria-label="Delegate directory"
+                        >
+                            <PeopleAltIcon sx={{ fontSize: 18 }} />
                         </button>
                         <button
                             className="text-slate-400 hover:text-sky-600 transition-colors w-10 h-10 flex items-center justify-center"
