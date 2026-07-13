@@ -17,6 +17,7 @@ export default defineConfig({
     https: true,
     proxy: {
       '/api': 'http://localhost:3001',
+      '/programmes': 'http://localhost:3001',
     },
   },
 })
