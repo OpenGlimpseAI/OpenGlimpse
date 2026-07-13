@@ -4,7 +4,6 @@
   "description": "OpenGlimpse is a webapp that integrates AI to allow for quick registration and verification for event registration",
   "main": "index.js",
   "scripts": {
-    "db:test": "node database/db.cjs",
     "start": "node index.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
@@ -19,10 +18,9 @@
   },
   "homepage": "https://github.com/OpenGlimpseAI/OpenGlimpse#readme",
   "dependencies": {
-    "dotenv": "^17.4.2",
     "express": "^5.2.1",
     "node": "^22.22.3",
-    "pg": "^8.21.0",
+    "pg": "^8.22.0",
     "pg-hstore": "^2.3.4",
     "sequelize": "^6.37.8",
     "socket.io": "^4.8.3",
