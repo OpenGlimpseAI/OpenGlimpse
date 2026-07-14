@@ -7,6 +7,7 @@ import CameraPage from './pages/facial_recognition/CameraPage.jsx';
 import { Routes, Route } from "react-router-dom";
 import { AdminDashboard } from "./pages/dashboard/dashboard.jsx";
 import { getStaffRole } from "./services/api";
+import AdminPage from "./pages/admin/AdminPage.jsx";
 
 import ProgrammePage from "./pages/programmes/ProgrammePage.jsx";
 import SummaryPage from "./pages/programmes/SummaryPage.jsx";
@@ -31,6 +32,7 @@ export default function App() {
         <Route path="/camera" element={<CameraPage />} />
         <Route path="/dashboard" element={<AdminDashboard />} />
         <Route path="/directory" element={<Directory />} />
+        <Route path="/admin" element={<AdminPage />} />
         <Route path="/programmes" element={<ProgrammePage />} />
         <Route path="/summary/:id" element={<SummaryPage />} />
       </Routes>
