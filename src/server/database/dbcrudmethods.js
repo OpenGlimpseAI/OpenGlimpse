@@ -1,3 +1,4 @@
+const crypto = require('crypto');
 const { user, messages, faceEmbeddings } = require('./db.cjs')
 
 class Model {
@@ -84,6 +85,37 @@ class FaceEmbeddings extends Model {
 
     async delete() {
         return await faceEmbeddings.destroy({ where: { imageHash: this.imageHash } })
+    }
+
+    static async findPrimaryByUserId(userId) {
+        const records = await faceEmbeddings.findAll({ where: { userId, imageType: 'primary' } })
+        return records.map(r => new FaceEmbeddings(r.toJSON()))
+    }
+
+    static async deleteByUserIdAndType(userId, imageType) {
+        return await faceEmbeddings.destroy({ where: { userId, imageType } })
+    }
+
+    static async createFromImage(userId, imageData, imageType){
+        const { getFaceEmbeddings } = await import('../modules/facial_recog/facenetClient.js');
+
+        const faces = await getFaceEmbeddings(imageData);
+        const results = [];
+
+        for (const face of faces) {
+            const imageHash = crypto.createHash('sha256').update(face.faceImage).digest('hex');
+            const record = await FaceEmbeddings.create(
+                imageHash,
+                userId,
+                imageType,
+                face.faceImage,
+                JSON.stringify(face.embedding),
+                'facenet'
+            );
+            results.push(record);
+        }
+
+        return results;
     }
 }
 

@@ -9,14 +9,7 @@ import BarChartIcon from "@mui/icons-material/BarChart";
 import PeopleAltIcon from "@mui/icons-material/PeopleAlt";
 import { getProgrammes, getAttendance, getAttendanceSummary, getReadyStatus, toggleReady } from "../../services/api";
 import { joinProgramme, leaveProgramme, onAttendanceUpdated } from "../../services/socket";
-
-function timeAgo(iso) {
-    if (!iso) return "";
-    const sec = Math.floor((Date.now() - new Date(iso).getTime()) / 1000);
-    if (sec < 60) return "just now";
-    if (sec < 3600) return `${Math.floor(sec / 60)} min ago`;
-    return `${Math.floor(sec / 3600)}h ago`;
-}
+import { timeAgo } from "../../services/utils";
 
 export function AdminDashboard() {
     const navigate = useNavigate();
