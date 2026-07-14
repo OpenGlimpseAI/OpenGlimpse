@@ -1,7 +1,7 @@
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
-const { sequelize } = require('./database/db.cjs');
+const { sequelize,Staff } = require('./database/db.cjs');
 const { attachChatServer } = require('./modules/chat/chatserver.cjs');
 const registerProgrammeRoutes = require('./modules/programmes/index');
 const path = require("path");
@@ -46,7 +46,16 @@ io.on('connection', (socket) => {
 });
 
 registerProgrammeRoutes(app, io);
-
+//temporary endpoint to verify staff role
+app.get('/staff/:id/role',async(req, res) => {
+    try{
+        const staff = await Staff.findByPk(req.params.id, { attributes: ['role'] });
+        if (!staff) return res.status(404).json({error: 'Staff not found'})
+        res.json({role:staff.role})
+    } catch (e){
+        res.status(500).json({error: "Failed to fetch role"});
+    }
+})
 app.get('/', (req, res) => {
     res.send('server is running');
 });
