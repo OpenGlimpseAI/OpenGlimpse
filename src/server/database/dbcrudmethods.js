@@ -102,7 +102,7 @@ class Messages extends Model {
         })
 
         console.log("message added");
-        return savedMessage;
+        return new Messages(savedMessage);
     }
     static async read(limit=100){
         const results = await messages.findAll({
