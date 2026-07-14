@@ -56,19 +56,15 @@ app.use((err, req, res, next) => {
     res.status(500).json({ error: 'Internal server error', detail: err.message });
 });
 
-// Sync all Sequelize models to the database, then start listening
-sequelize.sync()
-    .then(() => {
+async function start() {
+    try {
+        await sequelize.sync();
         console.log('Database synced');
-        server.listen(port, () => {
-            console.log(`Listening on port ${port}`);
-        });
-    })
-    .catch((err) => {
+    } catch (err) {
         console.error('Database sync failed:', err);
         process.exit(1);
-    });
-async function start() {
+    }
+
     import('./modules/facial_recog/facenetClient.js').then(({ startPythonServer, stopPythonServer }) => {
         startPythonServer()
             .then(() => console.log('[FaceNet] Server is ready at http://127.0.0.1:8000'))
