@@ -420,4 +420,3 @@ ReadyToDepart.setStatus = async function (programmeId, ready) {
 
 module.exports = { sequelize, user, messages, attendee, admin, faceEmbeddings, Programme, Route, Delegate, AttendanceRecord, ReadyToDepart, ProgrammeDelegate, Staff, ScanEvent, ChatMessage, OfflineQueue };
 
-module.exports = { sequelize, user, messages, attendee, admin, faceEmbeddings }
