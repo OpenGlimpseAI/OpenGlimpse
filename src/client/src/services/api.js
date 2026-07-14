@@ -50,3 +50,6 @@ export const toggleReady = (id, data) => request('PUT', `/programmes/${id}/ready
 
 // Temporary auth(replace when we have sign in system)
 export const getStaffRole = (id) => request('GET', `/staff/${id}/role`);
+
+// Users
+export const getUsers = () => request('GET', '/users');

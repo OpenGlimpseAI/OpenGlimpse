@@ -1,7 +1,7 @@
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
-const { sequelize,Staff } = require('./database/db.cjs');
+const { sequelize, Staff, user } = require('./database/db.cjs');
 const { attachChatServer } = require('./modules/chat/chatserver.cjs');
 const registerProgrammeRoutes = require('./modules/programmes/index');
 const path = require("path");
@@ -56,6 +56,19 @@ app.get('/staff/:id/role',async(req, res) => {
         res.status(500).json({error: "Failed to fetch role"});
     }
 })
+
+app.get('/users', async (req, res) => {
+    try {
+        const staffRows = await Staff.findAll({ attributes: ['id', 'name', 'email', 'role'] });
+        const userRows = await user.findAll({ attributes: ['id', 'enName'] });
+        const staffUsers = staffRows.map((s) => ({ id: s.id, name: s.name, email: s.email, role: s.role }));
+        const regularUsers = userRows.map((u) => ({ id: u.id, name: u.enName, email: null, role: 'user' }));
+        res.json([...staffUsers, ...regularUsers]);
+    } catch (e) {
+        res.status(500).json({ error: 'Failed to fetch users' });
+    }
+})
+
 app.get('/', (req, res) => {
     res.send('server is running');
 });

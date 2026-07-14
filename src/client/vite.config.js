@@ -18,8 +18,8 @@ export default defineConfig({
     proxy: {
       '/api': 'http://localhost:3001',
       '/programmes': 'http://localhost:3001',
-      //temporary proxy for intercepting staff perms
       '/staff': 'http://localhost:3001',
+      '/users': 'http://localhost:3001',
     },
   },
 })

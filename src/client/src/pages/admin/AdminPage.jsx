@@ -1,23 +1,19 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import AddIcon from '@mui/icons-material/Add';
 import StaffList from '../../components/admin/StaffList';
 import StaffForm from '../../components/admin/StaffForm';
+import { getUsers } from '../../services/api';
 
 const ROLE_ORDER = { admin: 0, staff: 1, user: 2 };
 
-const MOCK_USERS = [
-    { id: '1', name: 'Admin User', email: 'admin@example.com', role: 'admin' },
-    { id: '2', name: 'John Staff', email: 'john@example.com', role: 'staff' },
-    { id: '3', name: 'Jane Staff', email: 'jane@example.com', role: 'staff' },
-    { id: '4', name: 'Dwayne Johnson', email: null, role: 'user' },
-    { id: '5', name: 'Ryan Reynolds', email: null, role: 'user' },
-    { id: '6', name: 'Zendaya', email: null, role: 'user' },
-];
-
 export default function AdminPage() {
-    const [users, setUsers] = useState(MOCK_USERS);
+    const [users, setUsers] = useState([]);
     const [formOpen, setFormOpen] = useState(false);
     const [editing, setEditing] = useState(null);
+
+    const fetchUsers = () => getUsers().then(setUsers).catch(() => setUsers([]));
+
+    useEffect(() => { fetchUsers(); }, []);
 
     const sortedUsers = useMemo(() =>
         [...users].sort((a, b) => (ROLE_ORDER[a.role] ?? 2) - (ROLE_ORDER[b.role] ?? 2)),
