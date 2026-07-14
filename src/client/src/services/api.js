@@ -47,3 +47,30 @@ export const recognizeFaces = (id, image) => request('POST', `/programmes/${id}/
 // Ready to depart
 export const getReadyStatus = (id) => request('GET', `/programmes/${id}/ready-to-depart`);
 export const toggleReady = (id, data) => request('PUT', `/programmes/${id}/ready-to-depart`, data);
+
+// Staff auth
+export const staffSignup = (data) => request('POST', '/api/staff/signup', data);
+export const staffLogin = (data) => request('POST', '/api/staff/login', data);
+export const updateStaffProfile = (data, token) => requestWithAuth('PATCH', '/api/staff', data, token);
+export const deleteStaffAccount = (data, token) => requestWithAuth('DELETE', '/api/staff', data, token);
+export const getAllStaff = (token) => requestWithAuth('GET', '/api/staff/all', undefined, token);
+export const createStaffAccount = (data, token) => requestWithAuth('POST', '/api/staff', data, token);
+
+async function requestWithAuth(method, path, body, token) {
+    const opts = {
+        method,
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+    };
+    if (body !== undefined) opts.body = JSON.stringify(body);
+    const res = await fetch(`${API_BASE}${path}`, opts);
+    if (res.status === 204) return null;
+    const text = await res.text();
+    if (!text) {
+        if (!res.ok) throw new Error(`Request failed (${res.status})`);
+        return null;
+    }
+    let data;
+    try { data = JSON.parse(text); } catch { data = null; }
+    if (!res.ok) throw new Error(data?.error || `Request failed (${res.status})`);
+    return data;
+}

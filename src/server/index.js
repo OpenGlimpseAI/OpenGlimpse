@@ -4,6 +4,7 @@ const { Server } = require('socket.io');
 const { sequelize } = require('./database/db.cjs');
 const { attachChatServer } = require('./modules/chat/chatserver.cjs');
 const registerProgrammeRoutes = require('./modules/programmes/index');
+const authRoutes = require('./modules/auth/authRoutes.js');
 const path = require("path");
 require("dotenv").config({
     path: path.resolve(__dirname, "../../.env"),
@@ -46,6 +47,7 @@ io.on('connection', (socket) => {
 });
 
 registerProgrammeRoutes(app, io);
+app.use('/api/staff', authRoutes);
 
 app.get('/', (req, res) => {
     res.send('server is running');
