@@ -1,0 +1,461 @@
+import { useRef, useEffect, useState, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
+import KeyboardArrowDown from '@mui/icons-material/KeyboardArrowDown';
+import CheckIcon from '@mui/icons-material/Check';
+import UndoIcon from '@mui/icons-material/Undo';
+import { getProgrammes, recognizeFaces, markAttendanceBatch } from '../../services/api';
+
+const MODEL_URL = 'https://cdn.jsdelivr.net/gh/justadudewhohacks/face-api.js@0.22.2/weights/';
+const DETECTION_FRAME_SKIP = 8;
+
+export default function CameraPage() {
+    const navigate = useNavigate();
+
+    const videoRef = useRef(null);
+    const canvasRef = useRef(null);
+    const displaySizeRef = useRef(null);
+    const rafRef = useRef(null);
+    const cancelledRef = useRef(false);
+    const frameCountRef = useRef(0);
+
+    const [programmes, setProgrammes] = useState([]);
+    const [programmeId, setProgrammeId] = useState(null);
+    const [showPicker, setShowPicker] = useState(false);
+
+    const [error, setError] = useState(null);
+    const [status, setStatus] = useState('Loading face detection models...');
+    const [facingMode, setFacingMode] = useState('user');
+    const [captured, setCaptured] = useState(false);
+    const [capturedImage, setCapturedImage] = useState(null);
+    const [recognizing, setRecognizing] = useState(false);
+    const [matches, setMatches] = useState([]);
+    const [selected, setSelected] = useState(new Set());
+    const [confirming, setConfirming] = useState(false);
+    const [done, setDone] = useState(false);
+
+    useEffect(() => {
+        getProgrammes()
+            .then((list) => {
+                setProgrammes(list);
+                if (list.length > 0) setProgrammeId(list[0].id);
+            })
+            .catch((e) => setError(e.message));
+    }, []);
+
+    const stopStream = useCallback(() => {
+        if (rafRef.current) cancelAnimationFrame(rafRef.current);
+        if (videoRef.current?.srcObject) {
+            videoRef.current.srcObject.getTracks().forEach((t) => t.stop());
+            videoRef.current.srcObject = null;
+        }
+    }, []);
+
+    const startCamera = useCallback(async (mode) => {
+        try {
+            await Promise.all([
+                faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_URL),
+            ]);
+            if (cancelledRef.current) return;
+            setStatus('Starting camera...');
+
+            if (!navigator.mediaDevices?.getUserMedia) {
+                throw new Error('Camera access requires HTTPS. Access this page via HTTPS or localhost.');
+            }
+            const stream = await navigator.mediaDevices.getUserMedia({
+                video: { facingMode: mode },
+            });
+            if (cancelledRef.current) return;
+            const video = videoRef.current;
+            if (!video) return;
+            video.srcObject = stream;
+
+            await new Promise((resolve) => {
+                video.addEventListener('loadedmetadata', resolve, { once: true });
+            });
+
+            if (cancelledRef.current) return;
+            try {
+                await video.play();
+            } catch (playErr) {
+                if (!cancelledRef.current) setError(playErr.message);
+                return;
+            }
+
+            const { videoWidth, videoHeight } = video;
+            const canvas = canvasRef.current;
+            const renderedWidth = video.offsetWidth || videoWidth;
+            const renderedHeight = video.offsetHeight || videoHeight;
+            const displaySize = { width: renderedWidth, height: renderedHeight };
+            displaySizeRef.current = displaySize;
+
+            faceapi.matchDimensions(canvas, displaySize);
+
+            setStatus('Detecting faces...');
+            detectLoop();
+        } catch (err) {
+            if (!cancelledRef.current) setError(err.message);
+        }
+    }, []);
+
+    useEffect(() => {
+        cancelledRef.current = false;
+        setCaptured(false);
+        setCapturedImage(null);
+        setMatches([]);
+        setSelected(new Set());
+        setConfirming(false);
+        setDone(false);
+        stopStream();
+        startCamera(facingMode);
+
+        return () => {
+            cancelledRef.current = true;
+            stopStream();
+        };
+    }, [facingMode, startCamera, stopStream, programmeId]);
+
+    function detectLoop() {
+        if (cancelledRef.current) return;
+        const video = videoRef.current;
+        const canvas = canvasRef.current;
+        if (!video || !canvas || video.readyState < 2) {
+            rafRef.current = requestAnimationFrame(detectLoop);
+            return;
+        }
+
+        frameCountRef.current += 1;
+        if (frameCountRef.current % DETECTION_FRAME_SKIP !== 0) {
+            rafRef.current = requestAnimationFrame(detectLoop);
+            return;
+        }
+
+        faceapi
+            .detectAllFaces(video, new faceapi.SsdMobilenetv1Options({ minConfidence: 0.5 }))
+            .then((detections) => {
+                const ctx = canvas.getContext('2d');
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+                const displaySize = displaySizeRef.current;
+                const resized = faceapi.resizeResults(detections, displaySize);
+
+                if (facingMode === 'user') {
+                    ctx.save();
+                    ctx.translate(canvas.width, 0);
+                    ctx.scale(-1, 1);
+                }
+
+                resized.forEach((d) => {
+                    const box = d.box;
+                    ctx.strokeStyle = '#00ff00';
+                    ctx.lineWidth = 4;
+                    ctx.strokeRect(box.x, box.y, box.width, box.height);
+                });
+
+                if (facingMode === 'user') {
+                    ctx.restore();
+                }
+
+                rafRef.current = requestAnimationFrame(detectLoop);
+            })
+            .catch((err) => {
+                if (!cancelledRef.current) setError(err.message);
+            });
+    }
+
+    function toggleCamera() {
+        setFacingMode((prev) => (prev === 'user' ? 'environment' : 'user'));
+    }
+
+    async function handleCapture() {
+        if (!programmeId) {
+            setError('Please select a programme first');
+            return;
+        }
+
+        const video = videoRef.current;
+        const canvas = document.createElement('canvas');
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+
+        if (facingMode === 'user') {
+            const ctx = canvas.getContext('2d');
+            ctx.save();
+            ctx.translate(canvas.width, 0);
+            ctx.scale(-1, 1);
+            ctx.drawImage(video, 0, 0);
+            ctx.restore();
+        } else {
+            canvas.getContext('2d').drawImage(video, 0, 0);
+        }
+
+        cancelledRef.current = true;
+        stopStream();
+
+        const imageBase64 = canvas.toDataURL('image/jpeg', 0.8).split(',')[1];
+        setCapturedImage(imageBase64);
+        setCaptured(true);
+        setRecognizing(true);
+
+        try {
+            const result = await recognizeFaces(programmeId, imageBase64);
+            setMatches(result.matches);
+            setSelected(new Set(result.matches.map((m) => m.delegateId)));
+        } catch (e) {
+            setError(e.message);
+        } finally {
+            setRecognizing(false);
+        }
+    }
+
+    function toggleMatch(delegateId) {
+        setSelected((prev) => {
+            const next = new Set(prev);
+            if (next.has(delegateId)) next.delete(delegateId);
+            else next.add(delegateId);
+            return next;
+        });
+    }
+
+    async function handleConfirm() {
+        if (selected.size === 0 || !programmeId) return;
+        setConfirming(true);
+        try {
+            const records = Array.from(selected).map((delegateId) => ({
+                delegateId,
+                status: 'present',
+                method: 'auto',
+            }));
+            await markAttendanceBatch(programmeId, records);
+            setDone(true);
+        } catch (e) {
+            setError(e.message);
+        } finally {
+            setConfirming(false);
+        }
+    }
+
+    function handleRetake() {
+        cancelledRef.current = false;
+        setCaptured(false);
+        setCapturedImage(null);
+        setMatches([]);
+        setSelected(new Set());
+        setConfirming(false);
+        setDone(false);
+        setError(null);
+        startCamera(facingMode);
+    }
+
+    const currentProgramme = programmes.find((p) => p.id === programmeId);
+
+    return (
+        <main className="directory-page" style={{ minHeight: '100dvh' }}>
+            <header className="directory-header">
+                <div className="flex items-center gap-2">
+                    <h1 className="directory-title">Facial Recognition</h1>
+                    <div className="relative">
+                        <button
+                            className="flex items-center gap-1 text-xs text-slate-500 bg-slate-100 rounded-full px-3 py-1"
+                            onClick={() => setShowPicker((p) => !p)}
+                        >
+                            {currentProgramme?.name || 'Select'}
+                            <KeyboardArrowDown sx={{ fontSize: 14 }} />
+                        </button>
+                        {showPicker && (
+                            <div className="absolute top-full left-0 mt-1 z-20 bg-white rounded-xl shadow-lg border border-slate-100 p-1 min-w-[180px]">
+                                {programmes.map((p) => (
+                                    <button
+                                        key={p.id}
+                                        className={`block w-full text-left rounded-lg px-3 py-2 text-xs font-medium transition-colors ${
+                                            p.id === programmeId ? 'bg-sky-50 text-sky-700' : 'text-slate-700 hover:bg-slate-50'
+                                        }`}
+                                        onClick={() => { setProgrammeId(p.id); setShowPicker(false); }}
+                                    >
+                                        {p.name}
+                                    </button>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                </div>
+            </header>
+
+            {error && (
+                <div className="mx-4 mb-3 px-4 py-2 rounded-xl bg-red-50 text-red-600 text-sm flex justify-between items-center">
+                    <span>{error}</span>
+                    <button className="underline" onClick={() => setError(null)}>Dismiss</button>
+                </div>
+            )}
+
+            {!captured ? (
+                <>
+                    <div className="flex items-center justify-center gap-1 px-4 pb-1">
+                        {status !== 'Detecting faces...' && (
+                            <span className="text-xs text-slate-400">{status}</span>
+                        )}
+                    </div>
+
+                    <div className="px-4">
+                        <div style={{
+                            position: 'relative',
+                            width: '100%',
+                            maxWidth: 480,
+                            margin: '0 auto',
+                            background: '#000',
+                            borderRadius: 12,
+                            overflow: 'hidden',
+                        }}>
+                            <video
+                                ref={videoRef}
+                                autoPlay
+                                muted
+                                playsInline
+                                style={{
+                                    display: 'block',
+                                    width: '100%',
+                                    height: 'auto',
+                                    transform: facingMode === 'user' ? 'scaleX(-1)' : 'none',
+                                }}
+                            />
+                            <canvas
+                                ref={canvasRef}
+                                style={{
+                                    position: 'absolute',
+                                    top: 0,
+                                    left: 0,
+                                    width: '100%',
+                                    height: '100%',
+                                }}
+                            />
+                        </div>
+                    </div>
+
+                    <div className="flex gap-2 px-4 pt-3 pb-6 justify-center">
+                        <button
+                            className={`rounded-xl px-6 py-2.5 text-sm font-semibold transition-colors ${
+                                programmeId
+                                    ? 'bg-sky-600 text-white hover:bg-sky-700'
+                                    : 'bg-slate-200 text-slate-400 cursor-not-allowed'
+                            }`}
+                            disabled={!programmeId}
+                            onClick={handleCapture}
+                        >
+                            Capture & Recognize
+                        </button>
+                        <button
+                            className="bg-slate-100 text-slate-600 rounded-xl px-4 py-2.5 text-sm font-semibold hover:bg-slate-200 transition-colors"
+                            onClick={toggleCamera}
+                        >
+                            Switch to {facingMode === 'user' ? 'Back' : 'Front'}
+                        </button>
+                    </div>
+                </>
+            ) : (
+                <div className="px-4 pb-6">
+                    {recognizing ? (
+                        <div className="flex flex-col items-center gap-3 pt-8">
+                            <div className="w-8 h-8 border-2 border-sky-600 border-t-transparent rounded-full animate-spin" />
+                            <p className="text-sm text-slate-500">Recognizing faces...</p>
+                        </div>
+                    ) : done ? (
+                        <div className="flex flex-col items-center gap-4 pt-8">
+                            <div className="w-14 h-14 rounded-full bg-emerald-100 flex items-center justify-center">
+                                <CheckIcon sx={{ fontSize: 28, color: '#059669' }} />
+                            </div>
+                            <p className="text-base font-semibold text-slate-800">Attendance marked</p>
+                            <p className="text-sm text-slate-500">{selected.size} delegate(s) checked in</p>
+                            <button
+                                className="bg-sky-600 text-white rounded-xl px-6 py-2.5 text-sm font-semibold hover:bg-sky-700 transition-colors"
+                                onClick={handleRetake}
+                            >
+                                Scan Again
+                            </button>
+                        </div>
+                    ) : (
+                        <>
+                            <p className="text-sm font-semibold text-slate-700 mb-2">
+                                Matches ({matches.length})
+                            </p>
+
+                            {matches.length === 0 ? (
+                                <div className="flex flex-col items-center gap-3 pt-6">
+                                    <p className="text-sm text-slate-500">No matching delegates found</p>
+                                    <button
+                                        className="bg-sky-600 text-white rounded-xl px-6 py-2.5 text-sm font-semibold hover:bg-sky-700 transition-colors"
+                                        onClick={handleRetake}
+                                    >
+                                        Try Again
+                                    </button>
+                                </div>
+                            ) : (
+                                <div className="space-y-2 mb-4">
+                                    {matches.map((m) => {
+                                        const isSelected = selected.has(m.delegateId);
+                                        return (
+                                            <div
+                                                key={m.delegateId}
+                                                className={`flex items-center justify-between bg-white rounded-xl px-4 py-3 border cursor-pointer transition-colors ${
+                                                    isSelected ? 'border-sky-400 bg-sky-50' : 'border-slate-100'
+                                                }`}
+                                                onClick={() => toggleMatch(m.delegateId)}
+                                            >
+                                                <div className="flex items-center gap-3">
+                                                    {m.imageData ? (
+                                                        <img
+                                                            src={`data:image/jpeg;base64,${m.imageData}`}
+                                                            alt={m.name}
+                                                            className="h-8 w-8 rounded-full object-cover"
+                                                        />
+                                                    ) : (
+                                                        <div className={`flex h-8 w-8 items-center justify-center rounded-full text-sm font-semibold ${
+                                                            isSelected ? 'bg-sky-600 text-white' : 'bg-slate-100 text-slate-500'
+                                                        }`}>
+                                                            {m.name.charAt(0)}
+                                                        </div>
+                                                    )}
+                                                    <div>
+                                                        <p className="text-sm font-medium text-slate-800">{m.name}</p>
+                                                        <p className="text-xs text-slate-400">
+                                                            Confidence: {Math.round(m.confidence * 100)}%
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                                <div className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${
+                                                    isSelected ? 'bg-sky-600 border-sky-600' : 'border-slate-300'
+                                                }`}>
+                                                    {isSelected && <CheckIcon sx={{ fontSize: 14, color: '#fff' }} />}
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            )}
+
+                            {matches.length > 0 && (
+                                <div className="flex gap-2">
+                                    <button
+                                        className={`flex-1 rounded-xl py-2.5 text-sm font-semibold transition-colors ${
+                                            selected.size === 0
+                                                ? 'bg-slate-200 text-slate-400 cursor-not-allowed'
+                                                : 'bg-sky-600 text-white hover:bg-sky-700'
+                                        }`}
+                                        disabled={selected.size === 0 || confirming}
+                                        onClick={handleConfirm}
+                                    >
+                                        {confirming ? 'Marking...' : `Confirm (${selected.size})`}
+                                    </button>
+                                    <button
+                                        className="bg-slate-100 text-slate-600 rounded-xl px-4 py-2.5 text-sm font-semibold hover:bg-slate-200 transition-colors"
+                                        onClick={handleRetake}
+                                    >
+                                        <UndoIcon sx={{ fontSize: 16 }} />
+                                    </button>
+                                </div>
+                            )}
+                        </>
+                    )}
+                </div>
+            )}
+        </main>
+    );
+}
