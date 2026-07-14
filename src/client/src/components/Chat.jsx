@@ -62,7 +62,6 @@ export default function Chat() {
 
         if (socketRef.current?.readyState !== WebSocket.OPEN) {
             try {
-                await db.messages.add(message);
                 setMessages((current) => [...current, message]);
             } catch (err) {
                 console.error(err.message);
@@ -76,12 +75,8 @@ export default function Chat() {
         try {
             socketRef.current.send(JSON.stringify(message));
         } catch (error) {
-            try {
-                await db.messages.add(message);
-                setMessages((current) => [...current, message]);
-            } catch (dbError) {
-                console.error(dbError.message);
-            }
+            setMessages((current) => [...current, message]);
+            console.error(error.message);
         } finally {
             setMessageInput('');
         }
