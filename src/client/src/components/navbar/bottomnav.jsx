@@ -10,7 +10,7 @@ import CameraAlt from '@mui/icons-material/CameraAlt';
 import Settings from '@mui/icons-material/Settings';
 import Paper from '@mui/material/Paper';
 
-export default function FixedBottomNavigation() {
+export default function BottomNav({ isAdmin }) {
     return(
         <Box>
             <CssBaseline />
@@ -40,14 +40,16 @@ export default function FixedBottomNavigation() {
                         component={Link}
                         to="/camera"
                     />
-                    <BottomNavigationAction
-                        className="bottom-nav-action"
-                        label="Settings"
-                        value="settings"
-                        icon={<Settings />}
-                        component={Link}
-                        to="/"
-                    />
+                    {isAdmin && (
+                        <BottomNavigationAction
+                            className="bottom-nav-action"
+                            label="Settings"
+                            value="settings"
+                            icon={<Settings />}
+                            component={Link}
+                            to="/admin"
+                        />
+                    )}
                 </BottomNavigation>
             </Paper>
         </Box>

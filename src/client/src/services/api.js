@@ -47,3 +47,6 @@ export const recognizeFaces = (id, image) => request('POST', `/programmes/${id}/
 // Ready to depart
 export const getReadyStatus = (id) => request('GET', `/programmes/${id}/ready-to-depart`);
 export const toggleReady = (id, data) => request('PUT', `/programmes/${id}/ready-to-depart`, data);
+
+// Temporary auth(replace when we have sign in system)
+export const getStaffRole = (id) => request('GET', `/staff/${id}/role`);
