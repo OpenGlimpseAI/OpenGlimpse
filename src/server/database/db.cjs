@@ -109,7 +109,7 @@ const Staff = sequelize.define("Staff", {
   email: { type: DataTypes.TEXT, allowNull: false, unique: true },
   passwordHash: { type: DataTypes.TEXT, allowNull: false, field: "password_hash" },
   photoUrl: { type: DataTypes.TEXT, field: "photo_url" },
-  role: { type: DataTypes.TEXT, defaultValue: "staff", validate: { isIn: [["admin", "staff"]] } },
+  role: { type: DataTypes.TEXT, defaultValue: "staff", validate: { isIn: [["staff", "participant"]] } },
 }, { tableName: "staff", timestamps: true, createdAt: "created_at", updatedAt: false });
 
 const ScanEvent = sequelize.define("ScanEvent", {
