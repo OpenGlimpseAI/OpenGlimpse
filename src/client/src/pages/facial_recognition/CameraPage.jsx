@@ -167,6 +167,11 @@ export default function CameraPage() {
     }
 
     async function handleCapture() {
+        if (!programmeId) {
+            setError('Please select a programme first');
+            return;
+        }
+
         const video = videoRef.current;
         const canvas = document.createElement('canvas');
         canvas.width = video.videoWidth;
@@ -327,7 +332,12 @@ export default function CameraPage() {
 
                     <div className="flex gap-2 px-4 pt-3 pb-6 justify-center">
                         <button
-                            className="bg-sky-600 text-white rounded-xl px-6 py-2.5 text-sm font-semibold hover:bg-sky-700 transition-colors"
+                            className={`rounded-xl px-6 py-2.5 text-sm font-semibold transition-colors ${
+                                programmeId
+                                    ? 'bg-sky-600 text-white hover:bg-sky-700'
+                                    : 'bg-slate-200 text-slate-400 cursor-not-allowed'
+                            }`}
+                            disabled={!programmeId}
                             onClick={handleCapture}
                         >
                             Capture & Recognize
@@ -390,11 +400,19 @@ export default function CameraPage() {
                                                 onClick={() => toggleMatch(m.delegateId)}
                                             >
                                                 <div className="flex items-center gap-3">
-                                                    <div className={`flex h-8 w-8 items-center justify-center rounded-full text-sm font-semibold ${
-                                                        isSelected ? 'bg-sky-600 text-white' : 'bg-slate-100 text-slate-500'
-                                                    }`}>
-                                                        {m.name.charAt(0)}
-                                                    </div>
+                                                    {m.imageData ? (
+                                                        <img
+                                                            src={`data:image/jpeg;base64,${m.imageData}`}
+                                                            alt={m.name}
+                                                            className="h-8 w-8 rounded-full object-cover"
+                                                        />
+                                                    ) : (
+                                                        <div className={`flex h-8 w-8 items-center justify-center rounded-full text-sm font-semibold ${
+                                                            isSelected ? 'bg-sky-600 text-white' : 'bg-slate-100 text-slate-500'
+                                                        }`}>
+                                                            {m.name.charAt(0)}
+                                                        </div>
+                                                    )}
                                                     <div>
                                                         <p className="text-sm font-medium text-slate-800">{m.name}</p>
                                                         <p className="text-xs text-slate-400">

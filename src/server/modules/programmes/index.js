@@ -22,6 +22,7 @@ function registerProgrammeRoutes(app, io) {
     // Delegates (within programme)
     app.get('/programmes/:id/delegates', delegates.listDelegates);
     app.post('/programmes/:id/delegates', delegates.addDelegates);
+    app.patch('/delegates/:delegateId', delegates.updateDelegate);
     app.delete('/programmes/:id/delegates/:delegateId', delegates.removeDelegate);
 
     // Attendance
