@@ -146,3 +146,4 @@ vite.config.ts.timestamp-*
 
 # Preview images
 *.preview.png
+/src/server/.venv/
