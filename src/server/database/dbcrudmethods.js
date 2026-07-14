@@ -119,4 +119,54 @@ class FaceEmbeddings extends Model {
     }
 }
 
-module.exports = { Model, User, FaceEmbeddings };
+class Messages extends Model {
+    constructor({ id, content, timestamp, senderId } = {}) {
+        super()
+        this.id = id
+        this.content = content
+        this.timestamp = timestamp
+        this.senderId = senderId
+    }
+
+    toJSON() {
+        return {
+            id: this.id,
+            content: this.content,
+            timestamp: this.timestamp,
+            senderId: this.senderId,
+        }
+    }
+
+    static async create({ content, timestamp = new Date(), senderId } = {}) {
+        const savedMessage = await messages.create({
+            content,
+            timestamp,
+            senderId,
+        })
+
+        return new Messages(savedMessage.toJSON())
+    }
+
+    static async read(limit = 100) {
+        const results = await messages.findAll({
+            order: [['timestamp', 'ASC']],
+            limit,
+        })
+        return results.map((result) => new Messages(result.toJSON()))
+    }
+
+    async update({ content, timestamp, senderId } = {}) {
+        const fields = {}
+        if (content !== undefined) fields.content = content
+        if (timestamp !== undefined) fields.timestamp = timestamp
+        if (senderId !== undefined) fields.senderId = senderId
+        if (Object.keys(fields).length === 0) return
+        return await messages.update(fields, { where: { id: this.id } })
+    }
+
+    async delete() {
+        return await messages.destroy({ where: { id: this.id } })
+    }
+}
+
+module.exports = { Model, User, FaceEmbeddings, Messages };

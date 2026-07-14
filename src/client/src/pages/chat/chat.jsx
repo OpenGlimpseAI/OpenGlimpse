@@ -3,6 +3,7 @@ import ChatBubble from "./ChatBubble.jsx";
 import ChatInput from './ChatInput.jsx';
 import WifiRounded from '@mui/icons-material/WifiRounded'
 import WifiOffRoundedIcon from '@mui/icons-material/WifiOffRounded';
+import {db} from "../client-scripts/db.js";
 const CHAT_SERVER_URL = import.meta.env.VITE_CHAT_SERVER_URL || 'ws://localhost:3001';
 
 export default function Chat() {
@@ -62,7 +63,6 @@ export default function Chat() {
 
         if (socketRef.current?.readyState !== WebSocket.OPEN) {
             try {
-                await db.messages.add(message);
                 setMessages((current) => [...current, message]);
             } catch (err) {
                 console.error(err.message);
@@ -76,12 +76,8 @@ export default function Chat() {
         try {
             socketRef.current.send(JSON.stringify(message));
         } catch (error) {
-            try {
-                await db.messages.add(message);
-                setMessages((current) => [...current, message]);
-            } catch (dbError) {
-                console.error(dbError.message);
-            }
+            setMessages((current) => [...current, message]);
+            console.error(error.message);
         } finally {
             setMessageInput('');
         }
