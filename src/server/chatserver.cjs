@@ -16,7 +16,7 @@ function broadcast(payload) {
 
 function formatpayload(row){
     return {
-        text: row.content,
+        text: row.content ?? row.text,
         timestamp: row.timestamp,
         senderId: row.senderId,
     }
@@ -32,12 +32,13 @@ function attachChatServer(server) {
         const connection = request.accept(null, request.origin);
         clients.add(connection);
         (async ()=>{
-            const history = await readchathistory();
+            const history = await Messages.read();
             sendJson(connection, {
                 type:'history',
                 messages: history.map(formatpayload),
             })
         })().catch((err)=>{
+            console.error('Chat history could not be loaded', err);
             sendJson(connection, {
                 type:'error',
                 text:"Chat history could not be found",
@@ -66,16 +67,17 @@ function attachChatServer(server) {
                     });
                 }
 
-                const savedMessage = await addmessage({
+                const savedMessage = await Messages.create({
                     content: text,
                     timestamp: new Date(),
                     senderId,
                 });
                 broadcast({
                     type: 'message',
-                    message: formatpayload(savedMessage.get({plain: true})),
+                    message: formatpayload(savedMessage.toJSON()),
                 });
             } catch (error) {
+                console.error('Failed to save chat message', error);
                 sendJson(connection, {
                     type: 'error',
                     text: 'invalid message format',

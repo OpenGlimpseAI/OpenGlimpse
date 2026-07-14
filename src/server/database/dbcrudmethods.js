@@ -88,28 +88,52 @@ class FaceEmbeddings extends Model {
 }
 
 class Messages extends Model {
-    constructor({content,timestamp,senderId}={}){
+    constructor({ id, content, timestamp, senderId } = {}) {
         super()
+        this.id = id
         this.content = content
         this.timestamp = timestamp
         this.senderId = senderId
     }
-    static async create(message){
+
+    toJSON() {
+        return {
+            id: this.id,
+            content: this.content,
+            timestamp: this.timestamp,
+            senderId: this.senderId,
+        }
+    }
+
+    static async create({ content, timestamp = new Date(), senderId } = {}) {
         const savedMessage = await messages.create({
-            content: message.content,
-            timestamp: message.timestamp,
-            senderId: message.senderId,
+            content,
+            timestamp,
+            senderId,
         })
 
-        console.log("message added");
-        return new Messages(savedMessage);
+        return new Messages(savedMessage.toJSON())
     }
-    static async read(limit=100){
+
+    static async read(limit = 100) {
         const results = await messages.findAll({
             order: [['timestamp', 'ASC']],
             limit,
         })
-        return results.map((result)=>result.get({plain: true}))
+        return results.map((result) => new Messages(result.toJSON()))
+    }
+
+    async update({ content, timestamp, senderId } = {}) {
+        const fields = {}
+        if (content !== undefined) fields.content = content
+        if (timestamp !== undefined) fields.timestamp = timestamp
+        if (senderId !== undefined) fields.senderId = senderId
+        if (Object.keys(fields).length === 0) return
+        return await messages.update(fields, { where: { id: this.id } })
+    }
+
+    async delete() {
+        return await messages.destroy({ where: { id: this.id } })
     }
 }
 
