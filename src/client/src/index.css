@@ -609,18 +609,22 @@ body {
   @apply bg-slate-100 text-slate-600;
 }
 
+.admin-badge-user {
+  @apply bg-emerald-50 text-emerald-700;
+}
+
 .admin-empty {
   @apply py-16 text-center text-sm text-slate-400;
 }
 
 /* Admin Form Sheet */
 .admin-form-backdrop {
-  @apply fixed inset-0 z-30 flex items-end justify-center bg-black/30 backdrop-blur-sm;
+  @apply fixed inset-0 z-30 flex items-center justify-center bg-black/30 backdrop-blur-sm;
   animation: profile-fade-in 0.2s ease-out;
 }
 
 .admin-form-sheet {
-  @apply flex w-full max-w-lg flex-col gap-4 rounded-t-3xl bg-white px-5 pb-8 pt-3 shadow-2xl;
+  @apply flex w-full max-w-lg flex-col gap-4 rounded-2xl bg-white px-5 pb-8 pt-3 shadow-2xl;
   animation: profile-slide-up 0.25s ease-out;
 }
 

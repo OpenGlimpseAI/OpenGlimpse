@@ -7,11 +7,12 @@ export default function StaffForm({ open, onClose, onSave, initial }) {
     const [role, setRole] = useState('staff');
 
     const isEditing = !!initial;
+    const needsCreds = role === 'admin' || role === 'staff';
 
     useEffect(() => {
         if (initial) {
             setName(initial.name);
-            setEmail(initial.email);
+            setEmail(initial.email || '');
             setRole(initial.role);
             setPassword('');
         } else {
@@ -33,7 +34,7 @@ export default function StaffForm({ open, onClose, onSave, initial }) {
         <div className="admin-form-backdrop" onClick={onClose}>
             <div className="admin-form-sheet" onClick={(e) => e.stopPropagation()}>
                 <div className="admin-form-handle" />
-                <h2 className="admin-form-title">{isEditing ? 'Edit Staff' : 'Add Staff'}</h2>
+                <h2 className="admin-form-title">{isEditing ? 'Edit User' : 'Add User'}</h2>
                 <form className="admin-form-fields" onSubmit={handleSubmit}>
                     <div className="admin-form-field">
                         <label className="admin-form-label">Name</label>
@@ -46,16 +47,30 @@ export default function StaffForm({ open, onClose, onSave, initial }) {
                         />
                     </div>
                     <div className="admin-form-field">
-                        <label className="admin-form-label">Email</label>
-                        <input
-                            className="admin-form-input"
-                            type="email"
-                            value={email}
-                            onChange={(e) => setEmail(e.target.value)}
-                            required
-                        />
+                        <label className="admin-form-label">Role</label>
+                        <select
+                            className="admin-form-select"
+                            value={role}
+                            onChange={(e) => setRole(e.target.value)}
+                        >
+                            <option value="user">User</option>
+                            <option value="staff">Staff</option>
+                            <option value="admin">Admin</option>
+                        </select>
                     </div>
-                    {!isEditing && (
+                    {needsCreds && (
+                        <div className="admin-form-field">
+                            <label className="admin-form-label">Email</label>
+                            <input
+                                className="admin-form-input"
+                                type="email"
+                                value={email}
+                                onChange={(e) => setEmail(e.target.value)}
+                                required
+                            />
+                        </div>
+                    )}
+                    {needsCreds && !isEditing && (
                         <div className="admin-form-field">
                             <label className="admin-form-label">Password</label>
                             <input
@@ -67,17 +82,6 @@ export default function StaffForm({ open, onClose, onSave, initial }) {
                             />
                         </div>
                     )}
-                    <div className="admin-form-field">
-                        <label className="admin-form-label">Role</label>
-                        <select
-                            className="admin-form-select"
-                            value={role}
-                            onChange={(e) => setRole(e.target.value)}
-                        >
-                            <option value="staff">Staff</option>
-                            <option value="admin">Admin</option>
-                        </select>
-                    </div>
                     <div className="admin-form-actions">
                         <button type="button" className="admin-form-cancel" onClick={onClose}>Cancel</button>
                         <button type="submit" className="admin-form-save">{isEditing ? 'Save' : 'Add'}</button>

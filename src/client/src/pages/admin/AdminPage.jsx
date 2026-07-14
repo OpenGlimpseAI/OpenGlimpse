@@ -1,17 +1,27 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import AddIcon from '@mui/icons-material/Add';
 import StaffList from '../../components/admin/StaffList';
 import StaffForm from '../../components/admin/StaffForm';
-//temp list for frontend tests
-const MOCK_STAFF = [
-    { id: '1', name: 'Admin', email: 'admin@example.com', role: 'admin' },
+
+const ROLE_ORDER = { admin: 0, staff: 1, user: 2 };
+
+const MOCK_USERS = [
+    { id: '1', name: 'Admin User', email: 'admin@example.com', role: 'admin' },
     { id: '2', name: 'John Staff', email: 'john@example.com', role: 'staff' },
+    { id: '3', name: 'Jane Staff', email: 'jane@example.com', role: 'staff' },
+    { id: '4', name: 'Dwayne Johnson', email: null, role: 'user' },
+    { id: '5', name: 'Ryan Reynolds', email: null, role: 'user' },
+    { id: '6', name: 'Zendaya', email: null, role: 'user' },
 ];
 
 export default function AdminPage() {
-    const [staff, setStaff] = useState(MOCK_STAFF);
+    const [users, setUsers] = useState(MOCK_USERS);
     const [formOpen, setFormOpen] = useState(false);
     const [editing, setEditing] = useState(null);
+
+    const sortedUsers = useMemo(() =>
+        [...users].sort((a, b) => (ROLE_ORDER[a.role] ?? 2) - (ROLE_ORDER[b.role] ?? 2)),
+    [users]);
 
     const handleAdd = () => {
         setEditing(null);
@@ -25,13 +35,13 @@ export default function AdminPage() {
 
     const handleDelete = (member) => {
         if (!window.confirm(`Remove ${member.name}?`)) return;
-        setStaff((prev) => prev.filter((s) => s.id !== member.id));
+        setUsers((prev) => prev.filter((u) => u.id !== member.id));
     };
 
     const handleSave = (data) => {
         if (editing) {
-            setStaff((prev) =>
-                prev.map((s) => (s.id === editing.id ? { ...s, name: data.name, email: data.email, role: data.role } : s))
+            setUsers((prev) =>
+                prev.map((u) => (u.id === editing.id ? { ...u, name: data.name, email: data.email, role: data.role } : u))
             );
         } else {
             const newMember = {
@@ -40,7 +50,7 @@ export default function AdminPage() {
                 email: data.email,
                 role: data.role,
             };
-            setStaff((prev) => [...prev, newMember]);
+            setUsers((prev) => [...prev, newMember]);
         }
         setFormOpen(false);
     };
@@ -48,14 +58,14 @@ export default function AdminPage() {
     return (
         <main className="admin-page">
             <header className="admin-header">
-                <h1 className="admin-title">Staff Management</h1>
+                <h1 className="admin-title">User Management</h1>
                 <button className="admin-add-btn" onClick={handleAdd}>
                     <AddIcon sx={{ fontSize: 18 }} />
-                    Add Staff
+                    Add User
                 </button>
             </header>
             <div className="admin-list-shell">
-                <StaffList staff={staff} onEdit={handleEdit} onDelete={handleDelete} />
+                <StaffList users={sortedUsers} onEdit={handleEdit} onDelete={handleDelete} />
             </div>
             <StaffForm
                 open={formOpen}
