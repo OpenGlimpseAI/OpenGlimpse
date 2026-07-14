@@ -1,6 +1,7 @@
 const fs = require('fs');
 const path = require('path');
-const { sequelize, Programme, Delegate, ProgrammeDelegate } = require('../src/server/database/db.cjs');
+const crypto = require('crypto');
+const { sequelize, Programme, Delegate, ProgrammeDelegate, Staff } = require('../src/server/database/db.cjs');
 const { User, FaceEmbeddings } = require('../src/server/database/dbcrudmethods');
 
 const TEST_IMAGES_DIR = path.join(__dirname, '..', 'src', 'server', 'modules', 'facial_recog', 'test-images');
@@ -133,6 +134,17 @@ async function seed() {
     }
     console.log(`\nProgramme: ${programme.id} ("${programme.name}")`);
     console.log(`Delegates: ${results.length}`);
+//temporary seed for admin acc
+    const adminPasswordHash = crypto.createHash('sha256').update('admin123').digest('hex');
+
+    const adminStaff = await Staff.create({
+        name: 'Admin',
+        email: 'admin@example.com',
+        passwordHash: adminPasswordHash,
+        role: 'admin',
+    });
+    console.log(`\nStaff created:`);
+    console.log(`Admin: ${adminStaff.name} (id: ${adminStaff.id}, email: ${adminStaff.email}, role: ${adminStaff.role})`);
 
     process.exit(0);
 }
