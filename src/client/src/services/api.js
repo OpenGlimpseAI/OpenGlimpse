@@ -54,3 +54,5 @@ export const getStaffRole = (id) => request('GET', `/staff/${id}/role`);
 // Users
 export const getUsers = () => request('GET', '/users');
 export const createUser = (data) => request('POST', '/users', data);
+export const updateUser = (id, data) => request('PUT', `/users/${id}`, data);
+export const deleteUser = (id) => request('DELETE', `/users/${id}`);

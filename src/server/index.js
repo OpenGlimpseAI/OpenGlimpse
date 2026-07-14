@@ -92,6 +92,47 @@ app.post('/users', async (req, res) => {
     }
 })
 
+app.put('/users/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { name, email, password, role } = req.body;
+        const staffRow = await Staff.findByPk(id);
+        if (staffRow) {
+            const updates = {};
+            if (name !== undefined) updates.name = name;
+            if (email !== undefined) updates.email = email;
+            if (role !== undefined) updates.role = role;
+            if (password) updates.passwordHash = crypto.createHash('sha256').update(password).digest('hex');
+            await staffRow.update(updates);
+            return res.json({ id: staffRow.id, name: staffRow.name, email: staffRow.email, role: staffRow.role });
+        }
+        const userRow = await user.findByPk(id);
+        if (userRow) {
+            if (name !== undefined) await userRow.update({ enName: name });
+            return res.json({ id: userRow.id, name: userRow.enName, email: null, role: 'user' });
+        }
+        return res.status(404).json({ error: 'User not found' });
+    } catch (e) {
+        if (e.name === 'SequelizeUniqueConstraintError') {
+            return res.status(409).json({ error: 'Email already in use' });
+        }
+        res.status(500).json({ error: 'Failed to update user' });
+    }
+})
+
+app.delete('/users/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const deletedStaff = await Staff.destroy({ where: { id } });
+        if (deletedStaff) return res.status(204).send();
+        const deletedUser = await user.destroy({ where: { id } });
+        if (deletedUser) return res.status(204).send();
+        return res.status(404).json({ error: 'User not found' });
+    } catch (e) {
+        res.status(500).json({ error: 'Failed to delete user' });
+    }
+})
+
 app.get('/', (req, res) => {
     res.send('server is running');
 });

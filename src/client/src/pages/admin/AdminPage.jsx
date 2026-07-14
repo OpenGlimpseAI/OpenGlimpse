@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect } from 'react';
 import AddIcon from '@mui/icons-material/Add';
 import StaffList from '../../components/admin/StaffList';
 import StaffForm from '../../components/admin/StaffForm';
-import { getUsers, createUser } from '../../services/api';
+import { getUsers, createUser, updateUser, deleteUser } from '../../services/api';
 
 const ROLE_ORDER = { admin: 0, staff: 1, user: 2 };
 
@@ -29,24 +29,27 @@ export default function AdminPage() {
         setFormOpen(true);
     };
 
-    const handleDelete = (member) => {
+    const handleDelete = async (member) => {
         if (!window.confirm(`Remove ${member.name}?`)) return;
-        setUsers((prev) => prev.filter((u) => u.id !== member.id));
+        try {
+            await deleteUser(member.id);
+            await fetchUsers();
+        } catch (e) {
+            alert(e.message);
+        }
     };
 
     const handleSave = async (data) => {
-        if (editing) {
-            setUsers((prev) =>
-                prev.map((u) => (u.id === editing.id ? { ...u, name: data.name, email: data.email, role: data.role } : u))
-            );
-        } else {
-            try {
+        try {
+            if (editing) {
+                await updateUser(editing.id, data);
+            } else {
                 await createUser(data);
-                await fetchUsers();
-            } catch (e) {
-                alert(e.message);
-                return;
             }
+            await fetchUsers();
+        } catch (e) {
+            alert(e.message);
+            return;
         }
         setFormOpen(false);
     };
