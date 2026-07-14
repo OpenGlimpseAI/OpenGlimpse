@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect } from 'react';
 import AddIcon from '@mui/icons-material/Add';
 import StaffList from '../../components/admin/StaffList';
 import StaffForm from '../../components/admin/StaffForm';
-import { getUsers } from '../../services/api';
+import { getUsers, createUser } from '../../services/api';
 
 const ROLE_ORDER = { admin: 0, staff: 1, user: 2 };
 
@@ -34,19 +34,19 @@ export default function AdminPage() {
         setUsers((prev) => prev.filter((u) => u.id !== member.id));
     };
 
-    const handleSave = (data) => {
+    const handleSave = async (data) => {
         if (editing) {
             setUsers((prev) =>
                 prev.map((u) => (u.id === editing.id ? { ...u, name: data.name, email: data.email, role: data.role } : u))
             );
         } else {
-            const newMember = {
-                id: String(Date.now()),
-                name: data.name,
-                email: data.email,
-                role: data.role,
-            };
-            setUsers((prev) => [...prev, newMember]);
+            try {
+                await createUser(data);
+                await fetchUsers();
+            } catch (e) {
+                alert(e.message);
+                return;
+            }
         }
         setFormOpen(false);
     };

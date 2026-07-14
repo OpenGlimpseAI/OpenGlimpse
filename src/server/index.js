@@ -1,5 +1,6 @@
 const express = require('express');
 const http = require('http');
+const crypto = require('crypto');
 const { Server } = require('socket.io');
 const { sequelize, Staff, user } = require('./database/db.cjs');
 const { attachChatServer } = require('./modules/chat/chatserver.cjs');
@@ -66,6 +67,28 @@ app.get('/users', async (req, res) => {
         res.json([...staffUsers, ...regularUsers]);
     } catch (e) {
         res.status(500).json({ error: 'Failed to fetch users' });
+    }
+})
+
+app.post('/users', async (req, res) => {
+    try {
+        const { name, email, password, role } = req.body;
+        if (!name || !role) return res.status(400).json({ error: 'Name and role are required' });
+        if ((role === 'admin' || role === 'staff') && (!email || !password)) {
+            return res.status(400).json({ error: 'Email and password are required for staff/admin' });
+        }
+        if (role === 'admin' || role === 'staff') {
+            const passwordHash = crypto.createHash('sha256').update(password).digest('hex');
+            const created = await Staff.create({ name, email, passwordHash, role });
+            return res.status(201).json({ id: created.id, name: created.name, email: created.email, role: created.role });
+        }
+        const created = await user.create({ enName: name });
+        return res.status(201).json({ id: created.id, name: created.enName, email: null, role: 'user' });
+    } catch (e) {
+        if (e.name === 'SequelizeUniqueConstraintError') {
+            return res.status(409).json({ error: 'Email already in use' });
+        }
+        res.status(500).json({ error: 'Failed to create user' });
     }
 })
 

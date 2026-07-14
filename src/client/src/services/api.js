@@ -53,3 +53,4 @@ export const getStaffRole = (id) => request('GET', `/staff/${id}/role`);
 
 // Users
 export const getUsers = () => request('GET', '/users');
+export const createUser = (data) => request('POST', '/users', data);
