@@ -2,8 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import ChatBubble from "./ChatBubble.jsx";
 import ChatInput from './ChatInput.jsx';
 import WifiRounded from '@mui/icons-material/WifiRounded'
-import WifiOffRoundedIcon from '@mui/icons-material/WifiOffRounded';
-import {db} from "../client-scripts/db.js";
+import WifiOffRoundedIcon from '@mui/icons-material/WifiOffRounded'
 const CHAT_SERVER_URL = import.meta.env.VITE_CHAT_SERVER_URL || 'ws://localhost:3001';
 
 export default function Chat() {
