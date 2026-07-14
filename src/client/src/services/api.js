@@ -1,12 +1,18 @@
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+const API_BASE = import.meta.env.VITE_API_URL || '';
 
 async function request(method, path, body) {
     const opts = { method, headers: { 'Content-Type': 'application/json' } };
     if (body !== undefined) opts.body = JSON.stringify(body);
     const res = await fetch(`${API_BASE}${path}`, opts);
     if (res.status === 204) return null;
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || `Request failed (${res.status})`);
+    const text = await res.text();
+    if (!text) {
+        if (!res.ok) throw new Error(`Request failed (${res.status})`);
+        return null;
+    }
+    let data;
+    try { data = JSON.parse(text); } catch { data = null; }
+    if (!res.ok) throw new Error(data?.error || `Request failed (${res.status})`);
     return data;
 }
 
@@ -31,6 +37,12 @@ export const removeDelegate = (id, delegateId) => request('DELETE', `/programmes
 export const getAttendance = (id) => request('GET', `/programmes/${id}/attendance`);
 export const getAttendanceSummary = (id) => request('GET', `/programmes/${id}/attendance/summary`);
 export const markAttendance = (id, delegateId, data) => request('PUT', `/programmes/${id}/attendance/${delegateId}`, data);
+
+// Batch attendance
+export const markAttendanceBatch = (id, records) => request('POST', `/programmes/${id}/attendance`, { records });
+
+// Face recognition
+export const recognizeFaces = (id, image) => request('POST', `/programmes/${id}/recognize`, { image });
 
 // Ready to depart
 export const getReadyStatus = (id) => request('GET', `/programmes/${id}/ready-to-depart`);
