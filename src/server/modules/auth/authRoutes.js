@@ -1,6 +1,6 @@
 const express = require('express');
 const crypto = require('crypto');
-const { Staff } = require('../../database/db.cjs');
+const { user } = require('../../database/db.cjs');
 
 const router = express.Router();
 
@@ -8,8 +8,8 @@ function hashPassword(password) {
     return crypto.createHash('sha256').update(password).digest('hex');
 }
 
-function createToken(staffRecord) {
-    return Buffer.from(`${staffRecord.id}:${staffRecord.role}`).toString('base64');
+function createToken(userRecord) {
+    return Buffer.from(`${userRecord.id}:${userRecord.role}`).toString('base64');
 }
 
 function parseToken(token) {
@@ -35,17 +35,17 @@ async function authMiddleware(req, res, next) {
         return res.status(401).json({ error: 'Invalid token' });
     }
 
-    const currentStaff = await Staff.findByPk(payload.id);
-    if (!currentStaff) {
-        return res.status(401).json({ error: 'Invalid staff token' });
+    const currentUser = await user.findByPk(payload.id);
+    if (!currentUser) {
+        return res.status(401).json({ error: 'Invalid user token' });
     }
 
-    req.staff = currentStaff.get({ plain: true });
+    req.user = currentUser.get({ plain: true });
     next();
 }
 
 function ensureStaff(req, res, next) {
-    if (req.staff.role !== 'staff') {
+    if (req.user.role !== 'staff') {
         return res.status(403).json({ error: 'Staff access required' });
     }
     next();
@@ -59,13 +59,13 @@ router.post('/signup', async (req, res) => {
         }
 
         const normalizedEmail = `${email}`.trim().toLowerCase();
-        const existing = await Staff.findOne({ where: { email: normalizedEmail } });
+        const existing = await user.findOne({ where: { email: normalizedEmail } });
         if (existing) {
             return res.status(400).json({ error: 'Email already in use' });
         }
 
-        const created = await Staff.create({
-            name: name.trim(),
+        const created = await user.create({
+            enName: name.trim(),
             email: normalizedEmail,
             passwordHash: hashPassword(password),
             role: 'staff',
@@ -73,7 +73,7 @@ router.post('/signup', async (req, res) => {
 
         return res.status(201).json({
             id: created.id,
-            name: created.name,
+            name: created.enName,
             email: created.email,
             role: created.role,
         });
@@ -83,7 +83,6 @@ router.post('/signup', async (req, res) => {
     }
 });
 
-// Staff create staff or participant accounts. Participants can log in but have limited capabilities.
 router.post('/', authMiddleware, ensureStaff, async (req, res) => {
     try {
         const { name, email, password, role = 'participant' } = req.body;
@@ -92,13 +91,13 @@ router.post('/', authMiddleware, ensureStaff, async (req, res) => {
         }
 
         const normalizedEmail = `${email}`.trim().toLowerCase();
-        const existing = await Staff.findOne({ where: { email: normalizedEmail } });
+        const existing = await user.findOne({ where: { email: normalizedEmail } });
         if (existing) {
             return res.status(400).json({ error: 'Email already in use' });
         }
 
-        const created = await Staff.create({
-            name: name.trim(),
+        const created = await user.create({
+            enName: name.trim(),
             email: normalizedEmail,
             passwordHash: hashPassword(password),
             role: role === 'staff' ? 'staff' : 'participant',
@@ -106,13 +105,13 @@ router.post('/', authMiddleware, ensureStaff, async (req, res) => {
 
         return res.status(201).json({
             id: created.id,
-            name: created.name,
+            name: created.enName,
             email: created.email,
             role: created.role,
         });
     } catch (err) {
-        console.error('Create participant error:', err);
-        return res.status(500).json({ error: 'Create participant failed: ' + (err.message || err.toString()) });
+        console.error('Create account error:', err);
+        return res.status(500).json({ error: 'Create account failed: ' + (err.message || err.toString()) });
     }
 });
 
@@ -124,7 +123,7 @@ router.post('/login', async (req, res) => {
         }
 
         const normalizedEmail = `${email}`.trim().toLowerCase();
-        const account = await Staff.findOne({ where: { email: normalizedEmail } });
+        const account = await user.findOne({ where: { email: normalizedEmail } });
         if (!account || account.passwordHash !== hashPassword(password)) {
             return res.status(401).json({ error: 'Invalid credentials' });
         }
@@ -134,7 +133,7 @@ router.post('/login', async (req, res) => {
 
         return res.json({
             id: accountData.id,
-            name: accountData.name,
+            name: accountData.enName,
             email: accountData.email,
             role: accountData.role,
             photoUrl: accountData.photoUrl,
@@ -147,29 +146,35 @@ router.post('/login', async (req, res) => {
 });
 
 router.get('/all', authMiddleware, ensureStaff, async (req, res) => {
-    const staff = await Staff.findAll({
-        attributes: ['id', 'name', 'email', 'role', 'photoUrl'],
+    const users = await user.findAll({
+        attributes: ['id', 'enName', 'email', 'role', 'photoUrl'],
     });
-    return res.json(staff);
+    return res.json(users.map(u => ({
+        id: u.id,
+        name: u.enName,
+        email: u.email,
+        role: u.role,
+        photoUrl: u.photoUrl,
+    })));
 });
 
 router.patch('/', authMiddleware, async (req, res) => {
     try {
         const { targetId, name, email, password, role } = req.body;
-        const isStaff = req.staff.role === 'staff';
-        const target = targetId ? await Staff.findByPk(targetId) : await Staff.findByPk(req.staff.id);
+        const isStaff = req.user.role === 'staff';
+        const target = targetId ? await user.findByPk(targetId) : await user.findByPk(req.user.id);
 
         if (!target) {
             return res.status(404).json({ error: 'Account not found' });
         }
-        if (targetId && !isStaff && targetId !== req.staff.id) {
+        if (targetId && !isStaff && targetId !== req.user.id) {
             return res.status(403).json({ error: 'Cannot update other accounts' });
         }
         if (role && !isStaff) {
             return res.status(403).json({ error: 'Cannot change role' });
         }
 
-        if (name !== undefined) target.name = `${name}`.trim() || target.name;
+        if (name !== undefined) target.enName = `${name}`.trim() || target.enName;
         if (email !== undefined) target.email = `${email}`.trim().toLowerCase() || target.email;
         if (password) target.passwordHash = hashPassword(password);
         if (role !== undefined && isStaff) target.role = role === 'staff' ? 'staff' : 'participant';
@@ -179,7 +184,7 @@ router.patch('/', authMiddleware, async (req, res) => {
 
         return res.json({
             id: updated.id,
-            name: updated.name,
+            name: updated.enName,
             email: updated.email,
             role: updated.role,
         });
@@ -192,10 +197,10 @@ router.patch('/', authMiddleware, async (req, res) => {
 router.delete('/', authMiddleware, async (req, res) => {
     try {
         const { targetId } = req.body;
-        const isStaff = req.staff.role === 'staff';
-        const deleteId = targetId && isStaff ? targetId : req.staff.id;
+        const isStaff = req.user.role === 'staff';
+        const deleteId = targetId && isStaff ? targetId : req.user.id;
 
-        const target = await Staff.findByPk(deleteId);
+        const target = await user.findByPk(deleteId);
         if (!target) {
             return res.status(404).json({ error: 'Account not found' });
         }

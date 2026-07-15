@@ -16,7 +16,7 @@ import StaffProfile from "./pages/auth/StaffProfile.jsx";
 import ParticipantManagement from "./pages/auth/ParticipantManagement.jsx";
 
 function isSignedIn() {
-  return Boolean(localStorage.getItem('authStaff'));
+  return Boolean(localStorage.getItem('authUser'));
 }
 
 export default function App() {
