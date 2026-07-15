@@ -44,6 +44,10 @@ export const markAttendanceBatch = (id, records) => request('POST', `/programmes
 // Face recognition
 export const recognizeFaces = (id, image) => request('POST', `/programmes/${id}/recognize`, { image });
 
+// QR badge lookup
+export const lookupByBadge = (id, badge) => request('POST', `/programmes/${id}/scan-qr`, { badge });
+export const lookupBadges = (id, badges) => request('POST', `/programmes/${id}/scan-qr`, { badges });
+
 // Ready to depart
 export const getReadyStatus = (id) => request('GET', `/programmes/${id}/ready-to-depart`);
 export const toggleReady = (id, data) => request('PUT', `/programmes/${id}/ready-to-depart`, data);
