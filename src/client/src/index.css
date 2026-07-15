@@ -399,6 +399,104 @@ body {
   @apply bg-emerald-100 text-emerald-700;
 }
 
+/* Auth */
+.auth-page {
+  @apply flex min-h-screen items-center justify-center bg-slate-50 px-4 py-10;
+}
+
+.auth-card {
+  @apply w-full max-w-sm rounded-2xl bg-white p-6 shadow-sm;
+}
+
+.auth-form {
+  @apply mt-4 flex flex-col gap-3 text-sm text-slate-700;
+}
+
+.auth-form label {
+  @apply flex flex-col gap-1 font-medium;
+}
+
+.auth-form input {
+  @apply rounded-lg border border-slate-200 px-3 py-2 text-sm font-normal text-slate-900 outline-none focus:border-sky-400 focus:ring-2 focus:ring-sky-100;
+}
+
+.auth-button {
+  @apply inline-flex items-center justify-center rounded-full bg-sky-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-sky-700;
+}
+
+.auth-button-secondary {
+  @apply bg-slate-100 text-slate-700 hover:bg-slate-200;
+}
+
+.auth-button-danger {
+  @apply bg-red-50 text-red-600 hover:bg-red-100;
+}
+
+.auth-actions {
+  @apply mt-4 flex gap-2;
+}
+
+.auth-small-note {
+  @apply mt-3 text-xs text-slate-500;
+}
+
+.auth-error-text {
+  @apply text-xs font-medium text-red-600;
+}
+
+.auth-success-text {
+  @apply text-xs font-medium text-emerald-600;
+}
+
+.auth-card-wide {
+  @apply w-full max-w-2xl;
+}
+
+.staff-table {
+  @apply w-full border-collapse text-sm mt-2 mb-6;
+}
+
+.staff-table th,
+.staff-table td {
+  @apply text-left px-2 py-2 border-b border-slate-100;
+}
+
+.staff-table td .auth-button {
+  @apply px-3 py-1 text-xs mr-2;
+}
+
+.staff-mgmt-page {
+  @apply mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8;
+}
+
+.staff-mgmt-header {
+  @apply mb-6;
+}
+
+.staff-mgmt-header h1 {
+  @apply text-2xl font-semibold text-slate-900;
+}
+
+.staff-mgmt-header p {
+  @apply mt-1 text-sm text-slate-500;
+}
+
+.staff-mgmt-grid {
+  @apply grid grid-cols-1 gap-6 lg:grid-cols-[2fr_1fr];
+}
+
+.staff-mgmt-panel {
+  @apply rounded-2xl bg-white p-6 shadow-sm;
+}
+
+.staff-mgmt-panel-main {
+  @apply order-1;
+}
+
+.staff-mgmt-panel-form {
+  @apply order-2 h-fit;
+}
+
 .directory-avatar-missing {
   @apply bg-amber-100 text-amber-700;
 }
