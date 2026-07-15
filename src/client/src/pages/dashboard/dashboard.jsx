@@ -10,6 +10,7 @@ import SettingsIcon from "@mui/icons-material/Settings";
 import BarChartIcon from "@mui/icons-material/BarChart";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import PeopleAltIcon from "@mui/icons-material/PeopleAlt";
+import HowToRegIcon from "@mui/icons-material/HowToReg";
 import { getProgrammes, getAttendance, getAttendanceSummary, getRoutes, getRoute, getDelegates, markAttendance, toggleReady } from "../../services/api";
 import { joinProgramme, leaveProgramme, onAttendanceUpdated } from "../../services/socket";
 import { timeAgo } from "../../services/utils";
@@ -566,17 +567,15 @@ export function AdminDashboard() {
                     )}
 
                     {/* Ready to depart */}
-                    <button
-                        onClick={() => handleToggleReady(selectedRoute.id)}
-                        className={`w-full rounded-2xl border-2 px-4 py-5 flex items-center justify-center gap-2 transition-all shadow-sm ${
-                            selectedRoute.ready
-                                ? "border-emerald-300 bg-emerald-100 text-emerald-700"
-                                : "border-emerald-200 bg-emerald-50 hover:bg-emerald-100 hover:border-emerald-400 text-emerald-700"
-                        }`}
-                    >
-                        <CheckCircleIcon sx={{ fontSize: 22, color: "#059669" }} />
-                        <span className="text-sm font-semibold">{selectedRoute.ready ? "Ready ✓" : "Ready to depart?"}</span>
-                    </button>
+                    <div className="dashboard-ready-shell">
+                        <button
+                            onClick={() => handleToggleReady(selectedRoute.id)}
+                            className={`dashboard-ready-btn ${selectedRoute.ready ? "dashboard-ready-btn-on" : ""}`}
+                        >
+                            <HowToRegIcon sx={{ fontSize: 20 }} />
+                            <span>{selectedRoute.ready ? "All accounted for" : "Ready to depart?"}</span>
+                        </button>
+                    </div>
                 </div>
             )}
 

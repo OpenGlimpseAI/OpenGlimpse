@@ -57,3 +57,6 @@ export const markAttendanceBatch = (id, records) => request('POST', `/programmes
 
 // Face recognition
 export const recognizeFaces = (id, image) => request('POST', `/programmes/${id}/recognize`, { image });
+
+// Users
+export const getUsers = () => request('GET', '/users');

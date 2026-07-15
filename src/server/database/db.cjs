@@ -353,7 +353,7 @@ ProgrammeDelegate.listForProgramme = async function (programmeId) {
       ],
     },
     include: [
-      { model: Delegate, as: "delegate", attributes: ["id", "name", "badge"], required: true },
+      { model: Delegate, as: "delegate", attributes: ["id", "name", "badge", "userId"], required: true },
     ],
     order: [sequelize.literal(`"checked_in_at" DESC NULLS LAST`), sequelize.literal(`"delegate.name" ASC`)],
   });
@@ -361,6 +361,7 @@ ProgrammeDelegate.listForProgramme = async function (programmeId) {
     const routes = r.get("routes_json") || [];
     return {
       id: r.delegate.id, name: r.delegate.name, badge: r.delegate.badge,
+      userId: r.delegate.userId,
       routeId: routes.length > 0 ? routes[0].id : null,
       routeName: routes.length > 0 ? routes[0].name : null,
       routeIds: routes.map((rt) => rt.id),
@@ -371,12 +372,28 @@ ProgrammeDelegate.listForProgramme = async function (programmeId) {
   });
 };
 ProgrammeDelegate.addDelegates = async function (programmeId, body) {
-  const { delegates, delegateIds, delegateId, name, badge, routeId } = body;
+  const { delegates, delegateIds, delegateId, name, badge, routeId, userIds } = body;
   const addToRoute = async (did) => {
     if (routeId) {
       await RouteMember.findOrCreate({ where: { routeId, delegateId: did, programmeId }, defaults: { routeId, delegateId: did, programmeId } });
     }
   };
+  // New: accept userIds — find-or-create delegates by userId
+  if (userIds && Array.isArray(userIds)) {
+    const added = [];
+    for (const uid of userIds) {
+      let del = await Delegate.findOne({ where: { userId: uid } });
+      if (!del) {
+        const u = await user.findByPk(uid);
+        if (!u) continue;
+        del = await Delegate.create({ name: u.enName, userId: uid });
+      }
+      await ProgrammeDelegate.findOrCreate({ where: { programmeId, delegateId: del.id }, defaults: { programmeId, delegateId: del.id } });
+      await addToRoute(del.id);
+      added.push({ delegateId: del.id, name: del.name });
+    }
+    return added;
+  }
   if (delegates && Array.isArray(delegates)) {
     const added = [];
     for (const d of delegates) {
@@ -469,6 +486,9 @@ AttendanceRecord.markAttendance = async function (programmeId, delegateId, { sta
     row = existing;
   } else {
     row = await AttendanceRecord.create({ programmeId, delegateId, status, method: method || "manual", notes: notes || "", checkedInAt: new Date() });
+  }
+  if (status === "present") {
+    await ScanEvent.destroy({ where: { programmeId, delegateId: null, status: "unverified" } });
   }
   const delegate = await Delegate.findByPk(delegateId, { attributes: ["name"] });
   const delegateName = delegate?.name || "";
