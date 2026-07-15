@@ -1,15 +1,17 @@
 const WebSocketServer = require('websocket').server;
-const { Messages } = require('../../database/dbcrudmethods')
-const clients = new Set();
+const { Messages } = require('../../database/dbcrudmethods');
+const { parseToken } = require('../auth/authRoutes');
+const { user } = require('../../database/db.cjs');
+const clients = new Map();
 
 function sendJson(connection, payload) {
     connection.sendUTF(JSON.stringify(payload));
 }
 
 function broadcast(payload) {
-    for (const client of clients) {
-        if (client.connected) {
-            sendJson(client, payload);
+    for (const [, client] of clients) {
+        if (client.connection.connected) {
+            sendJson(client.connection, payload);
         }
     }
 }
@@ -28,9 +30,36 @@ function attachChatServer(server) {
         autoAcceptConnections: false,
     });
 
-    socketserver.on('request', (request) => {
+    socketserver.on('request', async (request) => {
+        let token;
+        try {
+            const resourceUrl = new URL(request.resource, 'http://localhost');
+            token = resourceUrl.searchParams.get('token');
+        } catch {
+            token = null;
+        }
+
+        if (!token) {
+            request.reject(401, 'Authentication required');
+            return;
+        }
+
+        const payload = parseToken(token);
+        if (!payload?.id) {
+            request.reject(401, 'Invalid token');
+            return;
+        }
+
+        const currentUser = await user.findByPk(payload.id);
+        if (!currentUser) {
+            request.reject(401, 'Invalid user');
+            return;
+        }
+
+        const userId = currentUser.id;
         const connection = request.accept(null, request.origin);
-        clients.add(connection);
+        clients.set(connection, { connection, userId });
+
         (async ()=>{
             const history = await Messages.read();
             sendJson(connection, {
@@ -44,6 +73,7 @@ function attachChatServer(server) {
                 text:"Chat history could not be found",
             })
         })
+
         connection.on('message', async (message) => {
             if (message.type !== 'utf8') {
                 return;
@@ -52,7 +82,6 @@ function attachChatServer(server) {
             try {
                 const data = JSON.parse(message.utf8Data);
                 const text = typeof data.text === 'string' ? data.text.trim() : "";
-                const senderId = typeof data.senderId === 'string' ? data.senderId.trim() : "";
 
                 if (!text || text.length > 1000) {
                     return sendJson(connection, {
@@ -60,17 +89,11 @@ function attachChatServer(server) {
                         text: "invalid message",
                     });
                 }
-                if (!senderId) {
-                    return sendJson(connection, {
-                        type: "error",
-                        text: "missing sender id",
-                    });
-                }
 
                 const savedMessage = await Messages.create({
                     content: text,
                     timestamp: new Date(),
-                    senderId,
+                    senderId: userId,
                 });
                 broadcast({
                     type: 'message',
