@@ -1,13 +1,16 @@
-import { useState, useEffect, useCallback } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState, useEffect, useCallback, useMemo } from "react";
+import { useNavigate, useParams } from "react-router-dom";
 import PhoneIcon from "@mui/icons-material/Phone";
+import CheckIcon from "@mui/icons-material/Check";
+import SearchIcon from "@mui/icons-material/Search";
+import CloseIcon from "@mui/icons-material/Close";
 import KeyboardArrowDown from "@mui/icons-material/KeyboardArrowDown";
 import GroupsIcon from "@mui/icons-material/Groups";
-import HowToRegIcon from "@mui/icons-material/HowToReg";
 import SettingsIcon from "@mui/icons-material/Settings";
 import BarChartIcon from "@mui/icons-material/BarChart";
+import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import PeopleAltIcon from "@mui/icons-material/PeopleAlt";
-import { getProgrammes, getAttendance, getAttendanceSummary, getReadyStatus, toggleReady } from "../../services/api";
+import { getProgrammes, getAttendance, getAttendanceSummary, getRoutes, getRoute, getDelegates, markAttendance, toggleReady } from "../../services/api";
 import { joinProgramme, leaveProgramme, onAttendanceUpdated } from "../../services/socket";
 
 function timeAgo(iso) {
@@ -18,18 +21,26 @@ function timeAgo(iso) {
     return `${Math.floor(sec / 3600)}h ago`;
 }
 
+const FILTERS = ["All", "Missing", "Present"];
+const ROUTE_TABS = ["Active", "All"];
+
 export function AdminDashboard() {
     const navigate = useNavigate();
+    const { routeId } = useParams();
     const [programmes, setProgrammes] = useState([]);
     const [programmeId, setProgrammeId] = useState(null);
     const [showPicker, setShowPicker] = useState(false);
     const [summary, setSummary] = useState(null);
-    const [present, setPresent] = useState([]);
-    const [missing, setMissing] = useState([]);
-    const [ready, setReady] = useState(false);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
-    const [unidentified, setUnidentified] = useState([]);
+    const [routes, setRoutes] = useState([]);
+    const [selectedRoute, setSelectedRoute] = useState(null);
+    const [allDelegates, setAllDelegates] = useState([]);
+    const [search, setSearch] = useState("");
+    const [routeTab, setRouteTab] = useState("Active");
+    const [filter, setFilter] = useState("All");
+    const [selected, setSelected] = useState(null);
+    const [noteText, setNoteText] = useState("");
     const [tick, setTick] = useState(0);
 
     useEffect(() => {
@@ -47,16 +58,11 @@ export function AdminDashboard() {
         setLoading(true);
         setError(null);
         try {
-            const [att, summ, r] = await Promise.all([
+            const [att, summ] = await Promise.all([
                 getAttendance(id),
                 getAttendanceSummary(id),
-                getReadyStatus(id),
             ]);
-            setPresent(att.present);
-            setMissing(att.missing);
-            setUnidentified(att.unidentified || []);
             setSummary(summ);
-            setReady(r.ready);
         } catch (e) {
             setError(e.message);
         } finally {
@@ -68,26 +74,30 @@ export function AdminDashboard() {
         if (programmeId) {
             loadData(programmeId);
             joinProgramme(programmeId);
+            getRoutes(programmeId).then(setRoutes).catch(() => {});
+            getDelegates(programmeId).then(setAllDelegates).catch(() => {});
             return () => leaveProgramme(programmeId);
         }
     }, [programmeId, loadData]);
 
+    // Deep-link: load route from URL param on mount / programme change
+    useEffect(() => {
+        if (!programmeId || !routeId || !routes.length) return;
+        const match = routes.find((r) => r.id === routeId);
+        if (match) {
+            getRoute(programmeId, routeId).then(setSelectedRoute).catch(() => {});
+        }
+        // eslint-disable-next-line
+    }, [programmeId, routeId, routes.length]);
+
     useEffect(() => {
         return onAttendanceUpdated((event) => {
             if (event.programmeId !== programmeId) return;
-            if (event.status === "present") {
-                setPresent((prev) => {
-                    if (prev.some((d) => d.delegateId === event.delegateId)) return prev;
-                    return [{ delegateId: event.delegateId, name: event.name || "", method: event.method, checkedInAt: event.checkedInAt }, ...prev];
-                });
-                setMissing((prev) => prev.filter((d) => d.delegateId !== event.delegateId));
-            } else {
-                setMissing((prev) => {
-                    if (prev.some((d) => d.delegateId === event.delegateId)) return prev;
-                    return [...prev, { delegateId: event.delegateId, name: event.name || "" }];
-                });
-                setPresent((prev) => prev.filter((d) => d.delegateId !== event.delegateId));
-            }
+            setAllDelegates((prev) => prev.map((d) =>
+                d.id === event.delegateId
+                    ? { ...d, status: event.status, method: event.method, checkedInAt: event.checkedInAt }
+                    : d
+            ));
             setSummary((prev) => prev ? {
                 ...prev,
                 checkedIn: event.status === "present" ? prev.checkedIn + 1 : prev.checkedIn - 1,
@@ -103,21 +113,93 @@ export function AdminDashboard() {
 
     const handleProgrammeChange = (id) => {
         setProgrammeId(id);
+        setSelectedRoute(null);
+        setSelected(null);
+        setSearch("");
         setShowPicker(false);
     };
 
-    const handleToggleReady = async () => {
+    const handleToggleReady = async (routeId) => {
         if (!programmeId) return;
-        const next = !ready;
+        const route = routes.find((r) => r.id === routeId);
+        if (!route) return;
+        const next = !route.ready;
         try {
-            const r = await toggleReady(programmeId, { ready: next });
-            setReady(r.ready);
+            await toggleReady(programmeId, routeId, { ready: next });
+            setRoutes((prev) => prev.map((r) => r.id === routeId ? { ...r, ready: next } : r));
+            setSelectedRoute((prev) => prev?.id === routeId ? { ...prev, ready: next } : prev);
         } catch (e) {
             setError(e.message);
         }
     };
 
+    const handleSelectRoute = async (route) => {
+        if (selectedRoute?.id === route.id) {
+            setSelectedRoute(null);
+            setSearch("");
+            setFilter("All");
+            navigate(`/dashboard`, { replace: true });
+            return;
+        }
+        try {
+            const full = await getRoute(programmeId, route.id);
+            setSelectedRoute(full);
+            navigate(`/dashboard/routes/${route.id}`, { replace: true });
+        } catch (e) {
+            setError(e.message);
+        }
+    };
+
+    const handleCheckIn = async (id, notes = "") => {
+        try {
+            await markAttendance(programmeId, id, { status: "present", method: "manual", notes });
+            setNoteText("");
+        } catch (e) {
+            setError(e.message);
+        }
+    };
+
+    const handleUndo = async (id) => {
+        try {
+            await markAttendance(programmeId, id, { status: "absent", method: "manual", notes: "" });
+        } catch (e) {
+            setError(e.message);
+        }
+        setNoteText("");
+    };
+
     const currentProgramme = programmes.find((p) => p.id === programmeId);
+
+    const checkedMap = useMemo(() => {
+        const map = {};
+        allDelegates.forEach((d) => { map[d.id] = d.status === "present"; });
+        return map;
+    }, [allDelegates]);
+
+    const routeDelegates = useMemo(() => {
+        let list = allDelegates;
+        if (selectedRoute) list = list.filter((d) => d.routeIds?.includes(selectedRoute.id));
+        if (search.trim()) {
+            const q = search.toLowerCase();
+            list = list.filter((d) => d.name.toLowerCase().includes(q));
+        }
+        if (filter === "Missing") list = list.filter((d) => !checkedMap[d.id]);
+        else if (filter === "Present") list = list.filter((d) => checkedMap[d.id]);
+        return [...list].sort((a, b) => (checkedMap[a.id] === checkedMap[b.id] ? 0 : checkedMap[a.id] ? 1 : -1));
+    }, [allDelegates, selectedRoute, search, filter, checkedMap]);
+
+    const routeMissing = routeDelegates.filter((d) => !checkedMap[d.id]).length;
+
+    const handleBackdrop = (e) => { if (e.target === e.currentTarget) { setSelected(null); setNoteText(""); } };
+
+    useEffect(() => {
+        if (!selected) return;
+        const onKey = (e) => { if (e.key === "Escape") { setSelected(null); setNoteText(""); } };
+        window.addEventListener("keydown", onKey);
+        return () => window.removeEventListener("keydown", onKey);
+    }, [selected]);
+
+    const isPresent = selected ? checkedMap[selected.id] : false;
 
     if (loading && programmes.length === 0) {
         return (
@@ -169,15 +251,28 @@ export function AdminDashboard() {
             <header className="dashboard-header">
                 <div className="dashboard-header-inner">
                     <div className="flex items-center gap-2">
-                        <button
-                            className="dashboard-programme-btn"
-                            onClick={() => setShowPicker((p) => !p)}
-                        >
-                            <span>{currentProgramme?.name || "Select programme"}</span>
-                            <KeyboardArrowDown
-                                className={`dashboard-chevron ${showPicker ? "dashboard-chevron-open" : ""}`}
-                            />
-                        </button>
+                        {selectedRoute ? (
+                            <div className="flex items-center gap-2 min-w-0">
+                                <button
+                                    className="text-xs text-sky-600 font-semibold hover:text-sky-700 transition-colors shrink-0 whitespace-nowrap"
+                                    onClick={() => { setSelectedRoute(null); setSearch(""); setFilter("All"); navigate("/dashboard", { replace: true }); }}
+                                >
+                                    &larr; All Routes
+                                </button>
+                                <span className="text-xs text-slate-300">/</span>
+                                <span className="text-sm font-medium text-slate-700 truncate">{selectedRoute.name}</span>
+                            </div>
+                        ) : (
+                            <button
+                                className="dashboard-programme-btn"
+                                onClick={() => setShowPicker((p) => !p)}
+                            >
+                                <span>{currentProgramme?.name || "Select programme"}</span>
+                                <KeyboardArrowDown
+                                    className={`dashboard-chevron ${showPicker ? "dashboard-chevron-open" : ""}`}
+                                />
+                            </button>
+                        )}
                         <button
                             className="text-slate-400 hover:text-sky-600 transition-colors w-10 h-10 flex items-center justify-center"
                             onClick={() => navigate("/directory")}
@@ -203,9 +298,6 @@ export function AdminDashboard() {
                     {currentProgramme && (
                         <p className="dashboard-route">
                             {currentProgramme.startDate} – {currentProgramme.endDate}
-                            <span className="ml-2 text-xs uppercase px-2 py-0.5 rounded-full bg-slate-100 text-slate-500">
-                                {currentProgramme.status}
-                            </span>
                         </p>
                     )}
                 </div>
@@ -226,88 +318,275 @@ export function AdminDashboard() {
                 )}
             </header>
 
-            <div className="dashboard-counter-shell">
-                <div className="dashboard-counter-card">
-                    <GroupsIcon sx={{ fontSize: 20 }} className="dashboard-counter-icon" />
-                    <span className="dashboard-counter-value">{checked}/{total}</span>
-                    <span className="dashboard-counter-label">checked in</span>
-                </div>
+            <div className="px-4 sm:px-6 space-y-3 pb-3">
+                {selectedRoute && (
+                    <div className="flex items-center justify-between bg-white rounded-2xl border border-slate-100 px-4 py-3 shadow-sm w-full">
+                        <div className="flex items-center gap-2">
+                            <GroupsIcon sx={{ fontSize: 16 }} className="text-slate-400" />
+                            <span className="text-xs text-slate-500">Delegates</span>
+                        </div>
+                        <div className="flex items-center gap-3">
+                            <div className="flex items-baseline gap-1">
+                                <span className="text-lg font-semibold text-slate-900">{selectedRoute.checkedIn}/{selectedRoute.delegateCount}</span>
+                                <span className="text-xs text-emerald-600 font-medium">checked in</span>
+                            </div>
+                            {selectedRoute.delegateCount - selectedRoute.checkedIn > 0 && (
+                                <span className="text-xs font-semibold text-amber-600 bg-amber-50 rounded-full px-2 py-0.5">
+                                    {selectedRoute.delegateCount - selectedRoute.checkedIn} missing
+                                </span>
+                            )}
+                        </div>
+                    </div>
+                )}
+                {!selectedRoute && (
+                    <div className="dashboard-counter-card">
+                        <GroupsIcon sx={{ fontSize: 20 }} className="dashboard-counter-icon" />
+                        <span className="dashboard-counter-value">{checked}/{total}</span>
+                        <span className="dashboard-counter-label">checked in</span>
+                    </div>
+                )}
             </div>
 
-            <div className="dashboard-sections">
-                <section className="dashboard-section">
-                    <h2 className="dashboard-section-heading dashboard-section-heading-missing">
-                        {missing.length} missing
-                    </h2>
-                    {missing.length === 0 ? (
-                        <p className="text-sm text-slate-400 px-1">All delegates checked in</p>
-                    ) : (
-                        <ul className="dashboard-card">
-                            {missing.map((d) => (
-                                <li key={d.delegateId} className="dashboard-row">
-                                    <span className="dashboard-row-name">{d.name}</span>
-                                    {d.notes && <span className="text-xs text-amber-500 mr-2">{d.notes}</span>}
-                                    <button className="dashboard-call-btn" aria-label={`Call ${d.name}`}>
-                                        <PhoneIcon sx={{ fontSize: 16 }} />
-                                    </button>
-                                </li>
-                            ))}
-                        </ul>
-                    )}
-                </section>
-
-                {unidentified.length > 0 && (
-                    <section className="dashboard-section">
-                        <h2 className="dashboard-section-heading text-slate-500">
-                            {unidentified.length} unidentified scans
-                        </h2>
-                        <ul className="dashboard-card">
-                            {unidentified.map((d) => (
-                                <li key={d.scanId} className="dashboard-row">
-                                    <span className="text-xs text-slate-400">Scan at {new Date(d.scannedAt).toLocaleTimeString()}</span>
-                                    <span className="text-xs uppercase px-2 py-0.5 rounded-full bg-slate-100 text-slate-500">unverified</span>
-                                </li>
-                            ))}
-                        </ul>
-                    </section>
+            {!selectedRoute && (
+                <div className="mx-4 sm:px-6 space-y-2 mb-4">
+                    {/* Route tabs */}
+                    <div className="flex gap-2">
+                        {ROUTE_TABS.map((t) => (
+                            <button
+                                key={t}
+                                className={`rounded-full border px-4 py-1.5 text-xs font-medium transition-all ${
+                                    routeTab === t
+                                        ? "border-sky-500 bg-sky-50 text-sky-700"
+                                        : "border-slate-200 text-slate-600 hover:border-slate-300"
+                                }`}
+                                onClick={() => setRouteTab(t)}
+                            >
+                                {t}
+                            </button>
+                        ))}
+                    </div>
+                    {routes.filter((r) => routeTab === "Active" ? !r.ready : true).length === 0 ? (
+                        <p className="text-sm text-slate-400 text-center pt-4">No routes yet</p>
+                    ) : routes.filter((r) => routeTab === "Active" ? !r.ready : true).map((r) => {
+                    const pct = r.delegateCount > 0 ? Math.round((r.checkedIn / r.delegateCount) * 100) : 0;
+                    const isSelected = selectedRoute?.id === r.id;
+                    return (
+                        <div
+                            key={r.id}
+                            className={`rounded-2xl px-4 py-3 shadow-sm border cursor-pointer transition-colors ${isSelected ? "bg-white border-sky-300" : "bg-white border-slate-100 hover:border-sky-200"}`}
+                            onClick={() => handleSelectRoute(r)}
+                        >
+                            <div className="flex items-center justify-between mb-2">
+                                <div className="flex items-center gap-2">
+                                    <span className="text-sm font-medium text-slate-800">{r.name}</span>
+                                    {r.ready ? (
+                                        <span className="text-xs uppercase px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-600">ready</span>
+                                    ) : isSelected ? (
+                                        <span className="text-xs uppercase px-2 py-0.5 rounded-full bg-sky-100 text-sky-600">active</span>
+                                    ) : (
+                                        <span className="text-xs uppercase px-2 py-0.5 rounded-full bg-amber-50 text-amber-600">pending</span>
+                                    )}
+                                </div>
+                                {!r.ready && (
+                                    <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                                        <button
+                                            className="text-xs text-slate-400 hover:text-emerald-600 transition-colors"
+                                            onClick={() => handleToggleReady(r.id)}
+                                        >
+                                            Ready to depart?
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
+                            <div className="h-2 rounded-full bg-slate-100 overflow-hidden">
+                                <div className={`h-full rounded-full transition-all duration-500 ${r.ready ? "bg-emerald-500" : "bg-emerald-500"}`} style={{ width: `${pct}%` }} />
+                            </div>
+                            <div className="flex justify-between mt-1.5">
+                                <span className="text-xs text-emerald-600">{r.checkedIn} checked in</span>
+                                {!r.ready && r.delegateCount - r.checkedIn > 0 && (
+                                    <span className="text-xs text-amber-600" onClick={(e) => e.stopPropagation()}>{r.delegateCount - r.checkedIn} missing</span>
+                                )}
+                            </div>
+                        </div>
+                    );
+                })}
+                    </div>
                 )}
 
-                <section className="dashboard-section">
-                    <h2 className="dashboard-section-heading dashboard-section-heading-present">
-                        {present.length} checked in
-                    </h2>
-                    {present.length === 0 ? (
-                        <p className="text-sm text-slate-400 px-1">No one checked in yet</p>
-                    ) : (
-                        <ul className="dashboard-card">
-                            {present.map((d) => (
-                                <li key={d.delegateId} className="dashboard-row">
-                                    <div className="dashboard-row-left">
-                                        <div className="dashboard-avatar" />
-                                        <span className="dashboard-row-name">{d.name}</span>
-                                    </div>
-                                    <div className="flex items-center gap-2">
-                                        <span className="text-xs text-slate-400">{timeAgo(d.checkedInAt)}</span>
-                                        <span className={`dashboard-badge ${d.method === "auto" ? "dashboard-badge-auto" : "dashboard-badge-manual"}`}>
-                                            {d.method}
-                                        </span>
-                                    </div>
-                                </li>
+            {selectedRoute && (
+                <div className="px-4 sm:px-6 space-y-3 pb-4">
+                    {/* Search & filter */}
+                    <div>
+                        <div className="flex items-center gap-2">
+                            <div className="flex-1 directory-search-box">
+                                <SearchIcon sx={{ fontSize: 18 }} className="directory-search-icon" />
+                                <input
+                                    type="text"
+                                    placeholder="Search delegates..."
+                                    value={search}
+                                    onChange={(e) => setSearch(e.target.value)}
+                                    className="directory-search-input"
+                                />
+                                {search && (
+                                    <button className="directory-search-clear" onClick={() => setSearch("")}>
+                                        <CloseIcon sx={{ fontSize: 16 }} />
+                                    </button>
+                                )}
+                            </div>
+                        </div>
+                        <div className="flex gap-2 mt-3">
+                            {FILTERS.map((f) => (
+                                <button
+                                    key={f}
+                                    className={`directory-filter-btn ${f === filter ? "directory-filter-btn-active" : ""}`}
+                                    onClick={() => setFilter(f)}
+                                >
+                                    {f}
+                                </button>
                             ))}
-                        </ul>
-                    )}
-                </section>
-            </div>
+                        </div>
+                    </div>
 
-            <div className="dashboard-ready-shell">
-                <button
-                    className={`dashboard-ready-btn ${ready ? "dashboard-ready-btn-on" : ""}`}
-                    onClick={handleToggleReady}
-                >
-                    <HowToRegIcon sx={{ fontSize: 20 }} />
-                    <span>{ready ? "All accounted for" : "Ready to depart?"}</span>
-                </button>
-            </div>
+                    {/* Delegate list */}
+                    <div>
+                        {routeDelegates.length === 0 ? (
+                            <p className="text-sm text-slate-400 text-center pt-4">No delegates found</p>
+                        ) : (
+                            <ul className="directory-card">
+                                {routeDelegates.map((d) => {
+                                    const present = checkedMap[d.id];
+                                    return (
+                                        <li
+                                            key={d.id}
+                                            className="directory-row directory-row-clickable"
+                                            onClick={() => { setSelected(d); setNoteText(""); }}
+                                        >
+                                            <div className="directory-row-left">
+                                                <div className={`directory-avatar ${present ? "directory-avatar-present" : "directory-avatar-missing"}`}>
+                                                    {d.name.charAt(0)}
+                                                </div>
+                                                <div className="directory-row-text">
+                                                    <span className="directory-row-name">{d.name}</span>
+                                                    <span className={`directory-row-status ${present ? "directory-status-present" : "directory-status-missing"}`}>
+                                                        {present
+                                                            ? d.method === "auto" ? "Checked in (auto)" : "Checked in (manual)"
+                                                            : d.notes || "Not checked in"}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                            <div className="directory-row-actions" onClick={(e) => e.stopPropagation()}>
+                                                {present ? (
+                                                    <button className="directory-action-btn directory-action-undo" onClick={() => handleUndo(d.id)}>
+                                                        Undo
+                                                    </button>
+                                                ) : (
+                                                    <>
+                                                        <button className="directory-action-btn directory-action-check" onClick={() => handleCheckIn(d.id)}>
+                                                            <CheckIcon sx={{ fontSize: 16 }} />
+                                                            Check in
+                                                        </button>
+                                                        <button className="directory-call-btn-sm" aria-label={`Call ${d.name}`}>
+                                                            <PhoneIcon sx={{ fontSize: 14 }} />
+                                                        </button>
+                                                    </>
+                                                )}
+                                            </div>
+                                        </li>
+                                    );
+                                })}
+                            </ul>
+                        )}
+                    </div>
+
+                    {/* Profile sheet */}
+                    {selected && (
+                        <div className="profile-backdrop" onClick={handleBackdrop}>
+                            <div className="profile-sheet">
+                                <div className="profile-handle" />
+                                <div className="profile-hero">
+                                    <div className={`profile-hero-avatar ${isPresent ? "profile-hero-avatar-present" : "profile-hero-avatar-missing"}`}>
+                                        {selected.name.charAt(0)}
+                                    </div>
+                                    <h2 className="profile-hero-name">{selected.name}</h2>
+                                    <span className={`profile-hero-status ${isPresent ? "profile-hero-status-present" : "profile-hero-status-missing"}`}>
+                                        {isPresent ? "Checked in" : "Not checked in"}
+                                    </span>
+                                </div>
+                                <div className="profile-details">
+                                    <div className="profile-detail-row">
+                                        <span className="profile-detail-label">Badge</span>
+                                        <span className="profile-detail-value">{selected.badge || "---"}</span>
+                                    </div>
+                                    <div className="profile-detail-row">
+                                        <span className="profile-detail-label">Route</span>
+                                        <span className="profile-detail-value">{selected.routeName || "---"}</span>
+                                    </div>
+                                    {isPresent && selected.method && (
+                                        <div className="profile-detail-row">
+                                            <span className="profile-detail-label">Checked in</span>
+                                            <span className="profile-detail-value">{timeAgo(selected.checkedInAt)}</span>
+                                        </div>
+                                    )}
+                                    {isPresent && selected.method && (
+                                        <div className="profile-detail-row">
+                                            <span className="profile-detail-label">Method</span>
+                                            <span className="profile-detail-value">
+                                                {selected.method === "auto" ? "Facial recognition" : "Manual check-in"}
+                                            </span>
+                                        </div>
+                                    )}
+                                    {!isPresent && selected.notes && (
+                                        <div className="profile-detail-row">
+                                            <span className="profile-detail-label">Note</span>
+                                            <span className="profile-detail-value profile-detail-value-note">{selected.notes}</span>
+                                        </div>
+                                    )}
+                                </div>
+                                {!isPresent && (
+                                    <div className="px-4 py-2">
+                                        <input
+                                            className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs outline-none focus:border-sky-400"
+                                            placeholder="Add a note (e.g. badge missing, verified by photo)"
+                                            value={noteText}
+                                            onChange={(e) => setNoteText(e.target.value)}
+                                        />
+                                    </div>
+                                )}
+                                <div className="profile-actions">
+                                    <button className="profile-action-btn profile-action-call">
+                                        <PhoneIcon sx={{ fontSize: 18 }} />
+                                        Call
+                                    </button>
+                                    {isPresent ? (
+                                        <button className="profile-action-btn profile-action-absent" onClick={() => { handleUndo(selected.id); setSelected(null); setNoteText(""); }}>
+                                            Mark as Absent
+                                        </button>
+                                    ) : (
+                                        <button className="profile-action-btn profile-action-present" onClick={() => { handleCheckIn(selected.id, noteText); setSelected(null); }}>
+                                            <CheckIcon sx={{ fontSize: 18 }} />
+                                            Mark as Present
+                                        </button>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Ready to depart */}
+                    <button
+                        onClick={() => handleToggleReady(selectedRoute.id)}
+                        className={`w-full rounded-2xl border-2 px-4 py-5 flex items-center justify-center gap-2 transition-all shadow-sm ${
+                            selectedRoute.ready
+                                ? "border-emerald-300 bg-emerald-100 text-emerald-700"
+                                : "border-emerald-200 bg-emerald-50 hover:bg-emerald-100 hover:border-emerald-400 text-emerald-700"
+                        }`}
+                    >
+                        <CheckCircleIcon sx={{ fontSize: 22, color: "#059669" }} />
+                        <span className="text-sm font-semibold">{selectedRoute.ready ? "Ready ✓" : "Ready to depart?"}</span>
+                    </button>
+                </div>
+            )}
+
         </main>
     );
 }

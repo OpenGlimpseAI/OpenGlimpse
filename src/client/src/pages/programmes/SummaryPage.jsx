@@ -1,38 +1,47 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
-import GroupsIcon from "@mui/icons-material/Groups";
-import CheckCircleIcon from "@mui/icons-material/CheckCircle";
-import WarningAmberIcon from "@mui/icons-material/WarningAmber";
-import QuestionMarkIcon from "@mui/icons-material/QuestionMark";
-import { getProgrammes, getAttendanceSummary, getRoutes } from "../../services/api";
+import ScheduleIcon from "@mui/icons-material/Schedule";
+import { getProgrammes, getAttendanceSummary } from "../../services/api";
 
-function StatCard({ icon, label, value, iconClass }) {
-    return (
-        <div className="flex flex-col items-center gap-1 rounded-2xl bg-white px-4 py-5 shadow-sm flex-1 min-w-[100px]">
-            <span className={iconClass || "text-slate-400"}>{icon}</span>
-            <span className="text-3xl font-semibold tracking-tight text-slate-900">{value}</span>
-            <span className="text-xs font-medium text-slate-500">{label}</span>
-        </div>
-    );
-}
-
-function RouteBar({ route }) {
+function RouteSection({ route }) {
     const pct = route.total > 0 ? Math.round((route.checkedIn / route.total) * 100) : 0;
     return (
-        <div className="bg-white rounded-2xl px-4 py-3 shadow-sm border border-slate-100">
-            <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-medium text-slate-800">{route.routeName}</span>
-                <span className="text-xs text-slate-500">{route.checkedIn}/{route.total} · {pct}%</span>
+        <section className="rounded-2xl bg-white shadow-sm border border-slate-100 overflow-hidden">
+            <div className="px-4 py-3 border-b border-slate-100">
+                <div className="flex items-center justify-between">
+                    <h3 className="text-sm font-semibold text-slate-800">{route.routeName || route.name}</h3>
+                    {route.missing === 0 ? (
+                        <span className="text-xs font-semibold text-emerald-600">All checked in</span>
+                    ) : (
+                        <span className="text-xs font-semibold text-amber-600">{route.missing} missing</span>
+                    )}
+                </div>
             </div>
-            <div className="h-2 rounded-full bg-slate-100 overflow-hidden">
-                <div className="h-full rounded-full bg-emerald-500 transition-all duration-500" style={{ width: `${pct}%` }} />
+            <div className="p-4 space-y-3">
+                <div className="flex flex-wrap gap-2">
+                    <div className="flex flex-col items-center gap-1 rounded-xl bg-slate-50 px-4 py-3 flex-1 min-w-[60px]">
+                        <span className="text-lg font-semibold text-slate-900">{route.total}</span>
+                        <span className="text-xs font-medium text-slate-500">Total</span>
+                    </div>
+                    <div className="flex flex-col items-center gap-1 rounded-xl bg-emerald-50 px-4 py-3 flex-1 min-w-[60px]">
+                        <span className="text-lg font-semibold text-emerald-700">{route.checkedIn}</span>
+                        <span className="text-xs font-medium text-emerald-600">Checked In</span>
+                    </div>
+                    <div className="flex flex-col items-center gap-1 rounded-xl bg-amber-50 px-4 py-3 flex-1 min-w-[60px]">
+                        <span className="text-lg font-semibold text-amber-700">{route.missing}</span>
+                        <span className="text-xs font-medium text-amber-600">Missing</span>
+                    </div>
+                    <div className="flex flex-col items-center gap-1 rounded-xl bg-slate-100 px-4 py-3 flex-1 min-w-[60px]">
+                        <span className="text-lg font-semibold text-slate-600">{route.unidentified}</span>
+                        <span className="text-xs font-medium text-slate-500">Unidentified</span>
+                    </div>
+                </div>
+                <div className="h-2 rounded-full bg-slate-100 overflow-hidden">
+                    <div className={`h-full rounded-full transition-all duration-500 ${route.missing === 0 ? "bg-emerald-500" : "bg-emerald-400"}`} style={{ width: `${pct}%` }} />
+                </div>
             </div>
-            <div className="flex justify-between mt-1.5">
-                <span className="text-xs text-emerald-600">{route.checkedIn} checked in</span>
-                {route.missing > 0 && <span className="text-xs text-amber-600">{route.missing} missing</span>}
-            </div>
-        </div>
+        </section>
     );
 }
 
@@ -41,7 +50,6 @@ export default function SummaryPage() {
     const navigate = useNavigate();
     const [summary, setSummary] = useState(null);
     const [programmeName, setProgrammeName] = useState("");
-    const [routes, setRoutes] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
 
@@ -51,11 +59,9 @@ export default function SummaryPage() {
         Promise.all([
             getAttendanceSummary(id),
             getProgrammes(),
-            getRoutes(id),
         ])
-            .then(([summ, progs, routeList]) => {
+            .then(([summ, progs]) => {
                 setSummary(summ);
-                setRoutes(routeList);
                 const p = progs.find((x) => x.id === id);
                 setProgrammeName(p?.name || "Programme");
             })
@@ -103,39 +109,51 @@ export default function SummaryPage() {
                 </div>
             </header>
 
-            <div className="px-4 pb-6 sm:px-6 space-y-4">
-                <div className="flex flex-wrap gap-3">
-                    <StatCard icon={<GroupsIcon sx={{ fontSize: 20 }} />} label="Total" value={summary?.total ?? 0} iconClass="text-slate-400" />
-                    <StatCard icon={<CheckCircleIcon sx={{ fontSize: 20 }} />} label="Checked In" value={summary?.checkedIn ?? 0} iconClass="text-emerald-500" />
-                    <StatCard icon={<WarningAmberIcon sx={{ fontSize: 20 }} />} label="Missing" value={summary?.missing ?? 0} iconClass="text-amber-500" />
-                    <StatCard icon={<QuestionMarkIcon sx={{ fontSize: 20 }} />} label="Unidentified" value={summary?.unidentified ?? 0} iconClass="text-slate-400" />
-                </div>
+            <div className="px-4 pb-6 sm:px-6 space-y-3 pt-4">
+                {(summary?.byRoute ?? []).length > 0 ? (
+                    <div className="space-y-3">
+                        {(summary.byRoute).map((r) => (
+                            <RouteSection key={r.routeId} route={r} />
+                        ))}
+                    </div>
+                ) : (
+                    <div className="flex flex-wrap gap-3">
+                        <div className="flex flex-col items-center gap-1 rounded-2xl bg-white px-4 py-5 shadow-sm flex-1 min-w-[100px]">
+                            <span className="text-3xl font-semibold tracking-tight text-slate-900">{summary?.total ?? 0}</span>
+                            <span className="text-xs font-medium text-slate-500">Total</span>
+                        </div>
+                        <div className="flex flex-col items-center gap-1 rounded-2xl bg-white px-4 py-5 shadow-sm flex-1 min-w-[100px]">
+                            <span className="text-3xl font-semibold tracking-tight text-emerald-600">{summary?.checkedIn ?? 0}</span>
+                            <span className="text-xs font-medium text-emerald-600">Checked In</span>
+                        </div>
+                        <div className="flex flex-col items-center gap-1 rounded-2xl bg-white px-4 py-5 shadow-sm flex-1 min-w-[100px]">
+                            <span className="text-3xl font-semibold tracking-tight text-amber-600">{summary?.missing ?? 0}</span>
+                            <span className="text-xs font-medium text-amber-600">Missing</span>
+                        </div>
+                    </div>
+                )}
 
-                <section className="space-y-2">
-                    <h2 className="text-sm font-semibold text-slate-700">By Route / Coach</h2>
-                    {routes.length === 0 ? (
-                        <p className="text-sm text-slate-400">No routes for this programme</p>
-                    ) : (
-                        <div className="space-y-2">
-                            {routes.map((r) => (
-                                <RouteBar key={r.routeId || r.id} route={r} />
+                {summary?.unidentified > 0 && (
+                    <section className="rounded-2xl bg-white shadow-sm border border-slate-100 overflow-hidden">
+                        <div className="px-4 py-3 border-b border-slate-100">
+                            <div className="flex items-center justify-between">
+                                <h3 className="text-sm font-semibold text-slate-800">Unidentified Scans</h3>
+                                <span className="text-xs font-semibold text-slate-500">{summary.unidentified} total</span>
+                            </div>
+                        </div>
+                        <div className="divide-y divide-slate-100">
+                            {(summary.unidentifiedScans ?? []).map((s) => (
+                                <div key={s.scanId} className="px-4 py-3 flex items-center gap-2">
+                                    <ScheduleIcon sx={{ fontSize: 14, color: "#94a3b8" }} />
+                                    <span className="text-xs text-slate-500">
+                                        {new Date(s.scannedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                    </span>
+                                    <span className="text-xs text-slate-400 font-mono truncate">{s.scanId.slice(0, 8)}…</span>
+                                </div>
                             ))}
                         </div>
-                    )}
-                </section>
-
-                <section className="rounded-2xl bg-white px-4 py-4 shadow-sm border border-slate-100">
-                    <h2 className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Overall</h2>
-                    <div className="h-3 rounded-full bg-slate-100 overflow-hidden">
-                        <div className="h-full rounded-full bg-emerald-500 transition-all duration-500"
-                            style={{ width: `${summary?.total > 0 ? Math.round((summary.checkedIn / summary.total) * 100) : 0}%` }}
-                        />
-                    </div>
-                    <div className="flex justify-between mt-1.5 text-xs text-slate-500">
-                        <span>{summary?.checkedIn ?? 0} checked in</span>
-                        <span>{summary?.total ?? 0} total</span>
-                    </div>
-                </section>
+                    </section>
+                )}
             </div>
         </main>
     );

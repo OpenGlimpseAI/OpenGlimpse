@@ -6,7 +6,6 @@ async function addRoute(req, res) {
     if (!name) return res.status(400).json({ error: 'name is required' });
 
     try {
-        // Check programme exists
         const { Programme } = require('./models');
         const existing = await Programme.findByPk(id);
         if (!existing) return res.status(404).json({ error: 'Programme not found' });
@@ -42,12 +41,46 @@ async function removeRoute(req, res) {
 
 async function listRoutes(req, res) {
     const { id } = req.params;
+    const archived = "archived" in req.query ? req.query.archived === "true" : undefined;
     try {
-        const routes = await Route.listForProgramme(id);
+        const routes = await Route.listForProgramme(id, { archived });
         res.json(routes);
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
 }
 
-module.exports = { addRoute, updateRoute, removeRoute, listRoutes };
+async function getRoute(req, res) {
+    const { id, routeId } = req.params;
+    try {
+        const route = await Route.getById(routeId, id);
+        if (!route) return res.status(404).json({ error: 'Route not found' });
+        res.json(route);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+}
+
+async function archiveRoute(req, res) {
+    const { id, routeId } = req.params;
+    try {
+        const route = await Route.archiveById(routeId, id);
+        if (!route) return res.status(404).json({ error: "Route not found" });
+        res.json(route);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+}
+
+async function restoreRoute(req, res) {
+    const { id, routeId } = req.params;
+    try {
+        const route = await Route.restoreById(routeId, id);
+        if (!route) return res.status(404).json({ error: "Route not found" });
+        res.json(route);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+}
+
+module.exports = { addRoute, getRoute, updateRoute, removeRoute, listRoutes, archiveRoute, restoreRoute };
