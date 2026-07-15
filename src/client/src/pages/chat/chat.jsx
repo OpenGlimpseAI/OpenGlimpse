@@ -5,16 +5,28 @@ import WifiRounded from '@mui/icons-material/WifiRounded'
 import WifiOffRoundedIcon from '@mui/icons-material/WifiOffRounded'
 const CHAT_SERVER_URL = import.meta.env.VITE_CHAT_SERVER_URL || 'ws://localhost:3001';
 
+function getAuthUser() {
+    try {
+        return JSON.parse(localStorage.getItem('authUser'));
+    } catch {
+        return null;
+    }
+}
+
 export default function Chat() {
     const socketRef = useRef(null);
-    const clientIdRef = useRef(localStorage.getItem("chatClientId") || crypto.randomUUID());
+    const authUser = useRef(getAuthUser());
+    const clientIdRef = useRef(authUser.current?.id);
     const [messages, setMessages] = useState([]);
     const [messageInput, setMessageInput] = useState('');
     const [isConnected, setIsConnected] = useState(false);
 
     useEffect(() => {
-        localStorage.setItem("chatClientId",clientIdRef.current);
-        const socket = new WebSocket(CHAT_SERVER_URL);
+        const token = authUser.current?.token;
+        if (!token) return;
+
+        const wsUrl = `${CHAT_SERVER_URL}?token=${encodeURIComponent(token)}`;
+        const socket = new WebSocket(wsUrl);
         socketRef.current = socket;
 
         socket.onopen = () => {
