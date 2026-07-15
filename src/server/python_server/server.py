@@ -13,10 +13,10 @@ print("Facenet model loaded successfully!", flush=True)
 
 
 def _get_bbox(region):
-    x = int(region.get("x", region.get("x", 0)))
-    y = int(region.get("y", region.get("y", 0)))
-    w = int(region.get("w", region.get("width", region.get("w", 0))))
-    h = int(region.get("h", region.get("height", region.get("h", 0))))
+    x = int(region.get("x", 0))
+    y = int(region.get("y", 0))
+    w = int(region.get("w", region.get("width", 0)))
+    h = int(region.get("h", region.get("height", 0)))
     return x, y, w, h
 
 
@@ -66,7 +66,7 @@ async def detect_faces(file: UploadFile = File(...)):
         if img is None:
             return {"success": False, "error": "Failed to decode image"}
 
-        faces = DeepFace.extract_faces(img_path=img, enforce_detection=True)
+        faces = DeepFace.extract_faces(img_path=img, enforce_detection=False)
 
         bboxes = []
         for face in faces:
@@ -90,7 +90,7 @@ async def embed_all_faces(file: UploadFile = File(...)):
         if img is None:
             return {"success": False, "error": "Failed to decode image"}
 
-        faces = DeepFace.extract_faces(img_path=img, enforce_detection=True)
+        faces = DeepFace.extract_faces(img_path=img, enforce_detection=False)
 
         results = []
         for face in faces:
