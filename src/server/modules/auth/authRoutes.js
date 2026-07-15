@@ -51,38 +51,6 @@ function ensureStaff(req, res, next) {
     next();
 }
 
-router.post('/signup', async (req, res) => {
-    try {
-        const { name, email, password } = req.body;
-        if (!name || !email || !password) {
-            return res.status(400).json({ error: 'Name, email and password are required' });
-        }
-
-        const normalizedEmail = `${email}`.trim().toLowerCase();
-        const existing = await user.findOne({ where: { email: normalizedEmail } });
-        if (existing) {
-            return res.status(400).json({ error: 'Email already in use' });
-        }
-
-        const created = await user.create({
-            enName: name.trim(),
-            email: normalizedEmail,
-            passwordHash: hashPassword(password),
-            role: 'staff',
-        });
-
-        return res.status(201).json({
-            id: created.id,
-            name: created.enName,
-            email: created.email,
-            role: created.role,
-        });
-    } catch (err) {
-        console.error('Signup error:', err);
-        return res.status(500).json({ error: 'Signup failed: ' + (err.message || err.toString()) });
-    }
-});
-
 router.post('/', authMiddleware, ensureStaff, async (req, res) => {
     try {
         const { name, email, password, role = 'participant' } = req.body;

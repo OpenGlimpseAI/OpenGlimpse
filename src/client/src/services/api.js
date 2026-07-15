@@ -49,7 +49,6 @@ export const getReadyStatus = (id) => request('GET', `/programmes/${id}/ready-to
 export const toggleReady = (id, data) => request('PUT', `/programmes/${id}/ready-to-depart`, data);
 
 // Auth
-export const authSignup = (data) => request('POST', '/api/auth/signup', data);
 export const authLogin = (data) => request('POST', '/api/auth/login', data);
 export const updateUserProfile = (data, token) => requestWithAuth('PATCH', '/api/auth', data, token);
 export const deleteUserAccount = (data, token) => requestWithAuth('DELETE', '/api/auth', data, token);

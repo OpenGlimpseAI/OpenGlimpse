@@ -1,7 +1,8 @@
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
-const { sequelize } = require('./database/db.cjs');
+const crypto = require('crypto');
+const { sequelize, user } = require('./database/db.cjs');
 const { attachChatServer } = require('./modules/chat/chatserver.cjs');
 const registerProgrammeRoutes = require('./modules/programmes/index');
 const authRoutes = require('./modules/auth/authRoutes.js');
@@ -62,6 +63,18 @@ async function start() {
     try {
         await sequelize.sync({ alter: true });
         console.log('Database synced');
+
+        const existingStaff = await user.findOne({ where: { role: 'staff' } });
+        if (!existingStaff) {
+            const passwordHash = crypto.createHash('sha256').update('admin123').digest('hex');
+            await user.create({
+                enName: 'Admin',
+                email: 'admin@openglimpse.com',
+                passwordHash,
+                role: 'staff',
+            });
+            console.log('Seeded default staff account: admin@openglimpse.com');
+        }
     } catch (err) {
         console.error('Database sync failed:', err);
         process.exit(1);
