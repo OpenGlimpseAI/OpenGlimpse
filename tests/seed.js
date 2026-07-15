@@ -35,16 +35,8 @@ function delay(ms) {
 }
 
 async function clearDatabase() {
-    const tables = [
-        'offline_queue', 'chat_messages', 'scan_events', 'programme_delegates',
-        'ready_to_depart', 'attendance_records', 'delegates',
-        'routes', 'programmes', 'faceEmbeddings', 'admins', 'attendees',
-        'messages', 'users'
-    ];
     console.log('Clearing database...');
-    for (const table of tables) {
-        await sequelize.query(`DELETE FROM "${table}"`);
-    }
+    await sequelize.sync({ force: true });
     console.log('Database cleared.\n');
 }
 
@@ -89,7 +81,7 @@ async function seed() {
             console.log(`  Test images: ${testImages.map(f => path.basename(f)).join(', ')}`);
         }
 
-        const user = await User.create(folder);
+        const user = await User.create(folder, null, { email: `${folder}@test.com` });
         console.log(`  Created user: ${user.id}`);
 
         const imageData = fs.readFileSync(defaultImage);
