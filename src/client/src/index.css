@@ -625,3 +625,60 @@ body {
   from { transform: translateY(100%); }
   to { transform: translateY(0); }
 }
+
+.auth-required {
+  color: #dc2626;
+}
+
+/* Face Capture */
+.auth-fieldset {
+  @apply mt-2 rounded-xl border border-slate-200 p-3;
+}
+
+.auth-fieldset legend {
+  @apply text-sm font-semibold text-slate-700;
+}
+
+.face-source-tabs {
+  @apply mt-2 flex gap-2;
+}
+
+.face-source-btn {
+  @apply flex-1 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-600 transition-colors;
+}
+
+.face-source-btn:hover {
+  @apply border-slate-300 bg-slate-50;
+}
+
+.face-source-btn.active {
+  @apply border-sky-500 bg-sky-50 text-sky-700;
+}
+
+.face-url-row {
+  @apply mt-2 flex gap-2;
+}
+
+.face-url-input {
+  @apply flex-1 rounded-lg border border-slate-200 px-3 py-1.5 text-xs outline-none focus:border-sky-400 focus:ring-2 focus:ring-sky-100;
+}
+
+.face-file-input {
+  @apply mt-2 block w-full text-xs text-slate-500 file:mr-2 file:rounded-lg file:border-0 file:bg-sky-50 file:px-3 file:py-1.5 file:text-xs file:font-medium file:text-sky-700;
+}
+
+.face-camera-box {
+  @apply mt-2 flex flex-col items-center gap-2;
+}
+
+.face-camera-video {
+  @apply w-full max-w-xs rounded-lg bg-black;
+}
+
+.face-preview-row {
+  @apply mt-2 flex items-center gap-3;
+}
+
+.face-preview-img {
+  @apply h-14 w-14 rounded-full border-2 border-sky-200 object-cover;
+}

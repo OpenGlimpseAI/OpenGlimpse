@@ -48,6 +48,9 @@ export const recognizeFaces = (id, image) => request('POST', `/programmes/${id}/
 export const getReadyStatus = (id) => request('GET', `/programmes/${id}/ready-to-depart`);
 export const toggleReady = (id, data) => request('PUT', `/programmes/${id}/ready-to-depart`, data);
 
+// Face
+export const uploadUserFace = (userId, image, token) => requestWithAuth('PATCH', `/api/user/${userId}/face/default`, { image }, token);
+
 // Auth
 export const authLogin = (data) => request('POST', '/api/auth/login', data);
 export const updateUserProfile = (data, token) => requestWithAuth('PATCH', '/api/auth', data, token);
