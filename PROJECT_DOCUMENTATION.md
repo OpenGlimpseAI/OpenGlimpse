@@ -105,7 +105,7 @@ P1 = must-have MVP; P2 = high value, build after P1; P3 = nice-to-have.
 
 ### 4.2 Backend
 - Node.js REST API (Express.js) for programmes, routes, attendance, user management, and chat
-- Real-time sync: WebSockets (Socket.io) for instant multi-device attendance updates
+- Real-time sync: WebSockets (Socket.io) for instant multi-device attendance updates and in-app chat
 - Database: PostgreSQL — stores programmes, participants, facial embeddings (vectors), scan events, chat messages, user accounts
 - Offline queue processing: backend receives offline scans, validates embeddings, and merges with live data without duplication
 - Auth: staff login via JWT; delegate identity verified by facial embedding similarity
