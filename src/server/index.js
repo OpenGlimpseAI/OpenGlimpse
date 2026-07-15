@@ -35,7 +35,7 @@ app.use((req, res, next) => {
     next();
 });
 
-attachChatServer(server);
+attachChatServer(io);
 attachFaceServer(app);
 
 io.on('connection', (socket) => {
