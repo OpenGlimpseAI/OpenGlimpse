@@ -184,3 +184,4 @@ router.delete('/', authMiddleware, async (req, res) => {
 module.exports = router;
 module.exports.authMiddleware = authMiddleware;
 module.exports.ensureStaff = ensureStaff;
+module.exports.parseToken = parseToken;
