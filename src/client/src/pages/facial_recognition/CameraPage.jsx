@@ -8,8 +8,28 @@ import { getProgrammes, recognizeFaces, markAttendanceBatch } from '../../servic
 const MODEL_URL = 'https://cdn.jsdelivr.net/gh/justadudewhohacks/face-api.js@0.22.2/weights/';
 const DETECTION_FRAME_SKIP = 8;
 
+function getAuthUser() {
+    const raw = localStorage.getItem('authUser');
+    if (!raw) return null;
+    try {
+        return JSON.parse(raw);
+    } catch {
+        return null;
+    }
+}
+
 export default function CameraPage() {
     const navigate = useNavigate();
+    const currentUser = getAuthUser();
+
+    if (!currentUser) {
+        navigate('/login');
+        return null;
+    }
+    if (currentUser.role !== 'staff') {
+        navigate('/');
+        return null;
+    }
 
     const videoRef = useRef(null);
     const canvasRef = useRef(null);
