@@ -11,6 +11,7 @@ import {
     getProgrammes, createProgramme, updateProgramme, deleteProgramme,
     getRoutes, addRoute, updateRoute, deleteRoute,
     getDelegates, addDelegate, removeDelegate, setDelegateRoutes,
+    getUsers,
 } from "../../services/api";
 
 function RouteManageModal({ route, allDelegates, programmeId, onClose, onSaved }) {
@@ -53,7 +54,11 @@ function RouteManageModal({ route, allDelegates, programmeId, onClose, onSaved }
             <div className="bg-white w-full sm:max-w-lg sm:rounded-2xl rounded-t-2xl max-h-[80vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
                 <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100">
                     <h3 className="text-sm font-semibold text-slate-800">Delegates on {route.name}</h3>
-                    <button className="text-slate-400 hover:text-slate-600 text-lg leading-none" onClick={onClose}>✕</button>
+                    <div className="flex items-center gap-2">
+                        <button className="text-[11px] text-sky-600 font-semibold hover:text-sky-800 transition-colors" onClick={() => setSelectedIds(allDelegates.map((d) => d.id))}>Add All</button>
+                        <button className="text-[11px] text-slate-500 font-semibold hover:text-slate-700 transition-colors" onClick={() => setSelectedIds([])}>Remove All</button>
+                        <button className="text-slate-400 hover:text-slate-600 text-lg leading-none" onClick={onClose}>✕</button>
+                    </div>
                 </div>
                 <div className="flex-1 overflow-y-auto p-3 space-y-1">
                     {allDelegates.length === 0 ? (
@@ -113,6 +118,68 @@ function DelegateRow({ d, onRemove }) {
     );
 }
 
+function UserPicker({ users, alreadyAdded, onAdd, onCancel, routes }) {
+    const [selectedIds, setSelectedIds] = useState([]);
+    const [adding, setAdding] = useState(false);
+    const [assignRouteId, setAssignRouteId] = useState(routes.length === 1 ? routes[0].id : "");
+
+    const available = users.filter((u) => !alreadyAdded(u.id));
+
+    const handleSubmit = async () => {
+        if (!selectedIds.length) return;
+        setAdding(true);
+        try {
+            await onAdd(selectedIds, assignRouteId || undefined);
+        } finally {
+            setAdding(false);
+        }
+    };
+
+    return (
+        <div className="space-y-2">
+            <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold text-sky-700">Add from user list</span>
+                {selectedIds.length > 0 && (
+                    <span className="text-[10px] text-sky-500">{selectedIds.length} selected</span>
+                )}
+            </div>
+            <div className="max-h-48 overflow-y-auto space-y-0.5">
+                {available.length === 0 ? (
+                    <p className="text-xs text-slate-400 text-center py-4">All users are already added.</p>
+                ) : (
+                    available.map((u) => {
+                        const checked = selectedIds.includes(u.id);
+                        return (
+                            <label key={u.id} className={`flex items-center gap-2 px-2 py-1.5 rounded-lg cursor-pointer transition-colors ${checked ? "bg-sky-100" : "hover:bg-sky-50/60"}`}>
+                                <input type="checkbox" className="accent-sky-600 scale-90" checked={checked} onChange={() => setSelectedIds((prev) => checked ? prev.filter((i) => i !== u.id) : [...prev, u.id])} />
+                                <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-sky-200 text-[10px] font-semibold text-sky-700">
+                                    {u.enName.charAt(0)}
+                                </div>
+                                <span className="text-xs font-medium text-slate-700">{u.enName}</span>
+                                {u.zhName && <span className="text-[10px] text-slate-400">{u.zhName}</span>}
+                            </label>
+                        );
+                    })
+                )}
+            </div>
+            {routes.length > 1 && (
+                <select className="w-full rounded-lg border border-sky-200 px-2 py-1.5 text-xs outline-none focus:border-sky-400" value={assignRouteId} onChange={(e) => setAssignRouteId(e.target.value)}>
+                    <option value="">No route assignment</option>
+                    {routes.map((r) => (
+                        <option key={r.id} value={r.id}>{r.name}</option>
+                    ))}
+                </select>
+            )}
+            <div className="flex gap-2 pt-1">
+                <button className="flex-1 bg-sky-600 text-white rounded-lg py-1.5 text-xs font-semibold hover:bg-sky-700 transition-colors disabled:opacity-50" onClick={handleSubmit} disabled={!selectedIds.length || adding}>
+                    {adding ? "Adding..." : `Add (${selectedIds.length})`}
+                </button>
+                <button className="flex-1 bg-white text-slate-500 rounded-lg py-1.5 text-xs font-semibold border border-slate-200 hover:bg-slate-50 transition-colors" onClick={onCancel}>Cancel</button>
+            </div>
+        </div>
+    );
+}
+
 export default function ProgrammePage() {
     const navigate = useNavigate();
     const [programmes, setProgrammes] = useState([]);
@@ -135,14 +202,14 @@ export default function ProgrammePage() {
     const [delegates, setDelegates] = useState([]);
     const [delegatesLoading, setDelegatesLoading] = useState(false);
     const [showAddDelegate, setShowAddDelegate] = useState(false);
-    const [newDelName, setNewDelName] = useState("");
-    const [newDelBadge, setNewDelBadge] = useState("");
+    const [allUsers, setAllUsers] = useState([]);
+    const [usersLoading, setUsersLoading] = useState(false);
 
     const [manageRoute, setManageRoute] = useState(null);
 
     const loadProgrammes = () => {
         setLoading(true);
-        getProgrammes().then(setProgrammes).catch((e) => setError(e.message)).finally(() => setLoading(false));
+        getProgrammes().then((data) => setProgrammes(data || [])).catch((e) => setError(e.message)).finally(() => setLoading(false));
     };
 
     useEffect(() => { loadProgrammes(); }, []);
@@ -150,7 +217,8 @@ export default function ProgrammePage() {
     const loadDelegates = async (id) => {
         setDelegatesLoading(true);
         try {
-            setDelegates(await getDelegates(id));
+            const data = await getDelegates(id);
+            setDelegates(data || []);
         } catch (e) {
             setError(e.message);
         } finally {
@@ -231,12 +299,10 @@ export default function ProgrammePage() {
         } catch (e) { setError(e.message); }
     };
 
-    const handleAddDelegate = async (e) => {
-        e.preventDefault();
-        if (!newDelName.trim() || !expandedId) return;
+    const handleAddDelegate = async (userIds, routeId) => {
+        if (!userIds?.length || !expandedId) return;
         try {
-            await addDelegate(expandedId, { name: newDelName.trim(), badge: newDelBadge.trim() || undefined });
-            setNewDelName(""); setNewDelBadge("");
+            await addDelegate(expandedId, { userIds, routeId: routeId || undefined });
             setShowAddDelegate(false);
             loadDelegates(expandedId);
         } catch (e) { setError(e.message); }
@@ -252,6 +318,19 @@ export default function ProgrammePage() {
 
     const delegateCountForRoute = (routeId) =>
         delegates.filter((d) => d.routeIds?.includes(routeId)).length;
+
+    const openAddDelegate = async () => {
+        setUsersLoading(true);
+        setShowAddDelegate(true);
+        try {
+            const users = await getUsers();
+            setAllUsers(users || []);
+        } catch (e) { setError(e.message); }
+        finally { setUsersLoading(false); }
+    };
+
+    const alreadyInProgramme = (userId) =>
+        delegates.some((d) => d.userId === userId);
 
     return (
         <main className="directory-page">
@@ -294,7 +373,7 @@ export default function ProgrammePage() {
             <div className="flex-1 px-4 pb-6 sm:px-6 space-y-2">
                 {loading ? (
                     <p className="text-center text-slate-400 pt-8">Loading...</p>
-                ) : programmes.length === 0 ? (
+                ) : !programmes || programmes.length === 0 ? (
                     <p className="text-center text-slate-400 pt-8">No programmes. Create one to get started.</p>
                 ) : (
                     programmes.map((p) => (
@@ -363,26 +442,32 @@ export default function ProgrammePage() {
                                                 Delegates
                                                 {delegates.length > 0 && <span className="ml-1.5 text-slate-400 font-normal normal-case">({delegates.length})</span>}
                                             </h3>
-                                            <button className="text-sky-600 text-xs font-semibold flex items-center gap-1 hover:text-sky-700 transition-colors" onClick={() => setShowAddDelegate(true)}>
+                                            <button className="text-sky-600 text-xs font-semibold flex items-center gap-1 hover:text-sky-700 transition-colors" onClick={openAddDelegate}>
                                                 <PersonAddIcon sx={{ fontSize: 14 }} /> Add
                                             </button>
                                         </div>
 
                                         {showAddDelegate && (
-                                            <form className="rounded-xl bg-sky-50 p-3 border border-sky-100 space-y-2" onSubmit={handleAddDelegate}>
-                                                <input className="w-full rounded-lg border border-sky-200 px-3 py-1.5 text-xs outline-none focus:border-sky-400" placeholder="Delegate name" value={newDelName} onChange={(e) => setNewDelName(e.target.value)} autoFocus />
-                                                <input className="w-full rounded-lg border border-sky-200 px-3 py-1.5 text-xs outline-none focus:border-sky-400" placeholder="Badge (optional)" value={newDelBadge} onChange={(e) => setNewDelBadge(e.target.value)} />
-                                                <p className="text-[10px] text-slate-400">Assign to a route via the route's Manage button above.</p>
-                                                <div className="flex gap-2">
-                                                    <button type="submit" className="flex-1 bg-sky-600 text-white rounded-lg py-1.5 text-xs font-semibold hover:bg-sky-700 transition-colors">Add Delegate</button>
-                                                    <button type="button" className="flex-1 bg-slate-100 text-slate-600 rounded-lg py-1.5 text-xs font-semibold hover:bg-slate-200 transition-colors" onClick={() => setShowAddDelegate(false)}>Cancel</button>
-                                                </div>
-                                            </form>
+                                            <div className="rounded-xl bg-sky-50 p-3 border border-sky-100 space-y-2">
+                                                {usersLoading ? (
+                                                    <p className="text-xs text-slate-400 text-center py-4">Loading users...</p>
+                                                ) : !allUsers || allUsers.length === 0 ? (
+                                                    <p className="text-xs text-slate-400 text-center py-4">No users found.</p>
+                                                ) : (
+                                                    <UserPicker
+                                                        users={allUsers}
+                                                        alreadyAdded={(uid) => alreadyInProgramme(uid)}
+                                                        onAdd={(userIds, routeId) => handleAddDelegate(userIds, routeId)}
+                                                        onCancel={() => setShowAddDelegate(false)}
+                                                        routes={routes}
+                                                    />
+                                                )}
+                                            </div>
                                         )}
 
                                         {delegatesLoading ? (
                                             <p className="text-xs text-slate-400 text-center py-4">Loading...</p>
-                                        ) : delegates.length === 0 ? (
+                                        ) : !delegates || delegates.length === 0 ? (
                                             <div className="text-center py-6">
                                                 <p className="text-xs text-slate-400">No delegates assigned yet.</p>
                                                 <p className="text-[10px] text-slate-300 mt-1">Add delegates above, then assign them to routes via Manage.</p>

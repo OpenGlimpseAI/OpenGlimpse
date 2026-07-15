@@ -12,9 +12,9 @@ const { attachFaceServer } = require('./modules/facial_recog/facialrecogserver.j
 
 const app = express();
 const server = http.createServer(app);
-const allowedOrigin = process.env.CLIENT_URL || 'http://localhost:5173';
+const allowedOrigin = process.env.CLIENT_URL || /^https?:\/\/localhost:\d+$/;
 const io = new Server(server, {
-    cors: { origin: process.env.CLIENT_URL || [/^http:\/\/localhost:\d+$/], methods: ['GET', 'POST', 'PUT', 'DELETE'] },
+    cors: { origin: allowedOrigin, methods: ['GET', 'POST', 'PUT', 'DELETE'] },
 });
 const port = process.env.PORT || 3001;
 
@@ -41,6 +41,17 @@ io.on('connection', (socket) => {
 });
 
 registerProgrammeRoutes(app, io);
+
+// Users
+app.get('/users', async (req, res) => {
+    try {
+        const { user } = require('./database/db.cjs');
+        const users = await user.findAll({ attributes: ['id', 'enName', 'zhName'], order: [['enName', 'ASC']] });
+        res.json(users);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
 
 app.get('/', (req, res) => {
     res.send('server is running');
