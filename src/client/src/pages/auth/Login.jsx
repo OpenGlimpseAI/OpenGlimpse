@@ -1,21 +1,20 @@
 import { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
-import { staffLogin } from '../../services/api.js';
+import { useNavigate } from 'react-router-dom';
+import { authLogin } from '../../services/api.js';
 
 export default function Login() {
+  const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
-  const navigate = useNavigate();
 
   const handleSubmit = async (event) => {
     event.preventDefault();
     setError('');
-
     try {
-      const data = await staffLogin({ email, password });
-      localStorage.setItem('authStaff', JSON.stringify(data));
-      navigate('/dashboard');
+      const data = await authLogin({ email, password });
+      localStorage.setItem('authUser', JSON.stringify(data));
+      navigate('/');
     } catch (err) {
       setError(err.message || 'Unable to login');
     }
@@ -48,7 +47,7 @@ export default function Login() {
           <button className="auth-button" type="submit">Login</button>
         </form>
         <p className="auth-small-note">
-          New here? <Link to="/signup">Create an account</Link>.
+          Don't have an account? <a href="/signup">Sign up</a>
         </p>
       </section>
     </main>

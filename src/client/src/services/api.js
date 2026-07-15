@@ -48,13 +48,13 @@ export const recognizeFaces = (id, image) => request('POST', `/programmes/${id}/
 export const getReadyStatus = (id) => request('GET', `/programmes/${id}/ready-to-depart`);
 export const toggleReady = (id, data) => request('PUT', `/programmes/${id}/ready-to-depart`, data);
 
-// Staff auth
-export const staffSignup = (data) => request('POST', '/api/staff/signup', data);
-export const staffLogin = (data) => request('POST', '/api/staff/login', data);
-export const updateStaffProfile = (data, token) => requestWithAuth('PATCH', '/api/staff', data, token);
-export const deleteStaffAccount = (data, token) => requestWithAuth('DELETE', '/api/staff', data, token);
-export const getAllStaff = (token) => requestWithAuth('GET', '/api/staff/all', undefined, token);
-export const createStaffAccount = (data, token) => requestWithAuth('POST', '/api/staff', data, token);
+// Auth
+export const authSignup = (data) => request('POST', '/api/auth/signup', data);
+export const authLogin = (data) => request('POST', '/api/auth/login', data);
+export const updateUserProfile = (data, token) => requestWithAuth('PATCH', '/api/auth', data, token);
+export const deleteUserAccount = (data, token) => requestWithAuth('DELETE', '/api/auth', data, token);
+export const getAllUsers = (token) => requestWithAuth('GET', '/api/auth/all', undefined, token);
+export const createUserAccount = (data, token) => requestWithAuth('POST', '/api/auth', data, token);
 
 async function requestWithAuth(method, path, body, token) {
     const opts = {
