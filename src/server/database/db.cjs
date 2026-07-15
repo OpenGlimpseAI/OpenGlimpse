@@ -79,7 +79,7 @@ const AttendanceRecord = sequelize.define("AttendanceRecord", {
   programmeId: { type: DataTypes.UUID, allowNull: false, field: "programme_id" },
   delegateId: { type: DataTypes.UUID, allowNull: false, field: "delegate_id" },
   status: { type: DataTypes.TEXT, allowNull: false, validate: { isIn: [["present", "absent"]] } },
-  method: { type: DataTypes.TEXT, allowNull: false, validate: { isIn: [["auto", "manual"]] } },
+  method: { type: DataTypes.TEXT, allowNull: false, validate: { isIn: [["auto", "manual", "qr"]] } },
   checkedInAt: { type: DataTypes.DATE, defaultValue: DataTypes.NOW, field: "checked_in_at" },
   checkedInBy: { type: DataTypes.UUID, field: "checked_in_by" },
   notes: { type: DataTypes.TEXT, defaultValue: "" },

@@ -3,7 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import KeyboardArrowDown from '@mui/icons-material/KeyboardArrowDown';
 import CheckIcon from '@mui/icons-material/Check';
 import UndoIcon from '@mui/icons-material/Undo';
-import { getProgrammes, recognizeFaces, markAttendanceBatch } from '../../services/api';
+import { getProgrammes, recognizeFaces, markAttendanceBatch, lookupByBadge } from '../../services/api';
+import QrScanner from '../../components/qr_scanner/QrScanner';
 
 const MODEL_URL = 'https://cdn.jsdelivr.net/gh/justadudewhohacks/face-api.js@0.22.2/weights/';
 const DETECTION_FRAME_SKIP = 8;
@@ -37,6 +38,7 @@ export default function CameraPage() {
     const rafRef = useRef(null);
     const cancelledRef = useRef(false);
     const frameCountRef = useRef(0);
+    const scanKeyRef = useRef(0);
 
     const [programmes, setProgrammes] = useState([]);
     const [programmeId, setProgrammeId] = useState(null);
@@ -52,6 +54,7 @@ export default function CameraPage() {
     const [selected, setSelected] = useState(new Set());
     const [confirming, setConfirming] = useState(false);
     const [done, setDone] = useState(false);
+    const [mode, setMode] = useState('facial');
 
     useEffect(() => {
         getProgrammes()
@@ -126,13 +129,15 @@ export default function CameraPage() {
         setConfirming(false);
         setDone(false);
         stopStream();
-        startCamera(facingMode);
+        if (mode === 'facial') {
+            startCamera(facingMode);
+        }
 
         return () => {
             cancelledRef.current = true;
             stopStream();
         };
-    }, [facingMode, startCamera, stopStream, programmeId]);
+    }, [facingMode, startCamera, stopStream, programmeId, mode]);
 
     function detectLoop() {
         if (cancelledRef.current) return;
@@ -243,7 +248,7 @@ export default function CameraPage() {
             const records = Array.from(selected).map((delegateId) => ({
                 delegateId,
                 status: 'present',
-                method: 'auto',
+                method: mode === 'qr' ? 'qr' : 'auto',
             }));
             await markAttendanceBatch(programmeId, records);
             setDone(true);
@@ -263,16 +268,58 @@ export default function CameraPage() {
         setConfirming(false);
         setDone(false);
         setError(null);
-        startCamera(facingMode);
+        scanKeyRef.current += 1;
+        if (mode === 'facial') {
+            startCamera(facingMode);
+        }
     }
 
     const currentProgramme = programmes.find((p) => p.id === programmeId);
+
+    async function handleQrScan(decodedText) {
+        if (!programmeId) return;
+        setRecognizing(true);
+        setStatus('Looking up badge...');
+        try {
+            const result = await lookupByBadge(programmeId, decodedText);
+            setMatches(result.matches.map((m) => ({
+                delegateId: m.delegateId,
+                name: m.name,
+                confidence: null,
+                imageData: null,
+            })));
+            setSelected(new Set(result.matches.map((m) => m.delegateId)));
+            setCaptured(true);
+            if (result.errors.length > 0) {
+                setError(result.errors.join('; '));
+            }
+        } catch (e) {
+            setError(e.message);
+        } finally {
+            setRecognizing(false);
+        }
+    }
+
+    function handleModeChange(newMode) {
+        if (newMode === mode) return;
+        cancelledRef.current = true;
+        stopStream();
+        setCaptured(false);
+        setCapturedImage(null);
+        setMatches([]);
+        setSelected(new Set());
+        setConfirming(false);
+        setDone(false);
+        setError(null);
+        cancelledRef.current = false;
+        setMode(newMode);
+    }
 
     return (
         <main className="directory-page" style={{ minHeight: '100dvh' }}>
             <header className="directory-header">
                 <div className="flex items-center gap-2">
-                    <h1 className="directory-title">Facial Recognition</h1>
+                    <h1 className="directory-title">{mode === 'facial' ? 'Facial Recognition' : 'QR Code Scanner'}</h1>
                     <div className="relative">
                         <button
                             className="flex items-center gap-1 text-xs text-slate-500 bg-slate-100 rounded-full px-3 py-1"
@@ -307,13 +354,42 @@ export default function CameraPage() {
                 </div>
             )}
 
+            <div className="px-4 pb-3">
+                <div className="flex bg-slate-100 rounded-full p-0.5 max-w-[260px] mx-auto">
+                    <button
+                        className={`flex-1 rounded-full px-4 py-1.5 text-xs font-semibold transition-colors ${
+                            mode === 'facial' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'
+                        }`}
+                        onClick={() => handleModeChange('facial')}
+                    >
+                        Face Recognition
+                    </button>
+                    <button
+                        className={`flex-1 rounded-full px-4 py-1.5 text-xs font-semibold transition-colors ${
+                            mode === 'qr' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'
+                        }`}
+                        onClick={() => handleModeChange('qr')}
+                    >
+                        QR Code
+                    </button>
+                </div>
+            </div>
+
             {!captured ? (
                 <>
-                    <div className="flex items-center justify-center gap-1 px-4 pb-1">
-                        {status !== 'Detecting faces...' && (
-                            <span className="text-xs text-slate-400">{status}</span>
-                        )}
-                    </div>
+                    {mode === 'facial' && (
+                        <div className="flex items-center justify-center gap-1 px-4 pb-1">
+                            {status !== 'Detecting faces...' && (
+                                <span className="text-xs text-slate-400">{status}</span>
+                            )}
+                        </div>
+                    )}
+
+                    {mode === 'qr' && (
+                        <div className="flex items-center justify-center gap-1 px-4 pb-1">
+                            <span className="text-xs text-slate-400">Point camera at a QR code</span>
+                        </div>
+                    )}
 
                     <div className="px-4">
                         <div style={{
@@ -325,43 +401,57 @@ export default function CameraPage() {
                             borderRadius: 12,
                             overflow: 'hidden',
                         }}>
-                            <video
-                                ref={videoRef}
-                                autoPlay
-                                muted
-                                playsInline
-                                style={{
-                                    display: 'block',
-                                    width: '100%',
-                                    height: 'auto',
-                                    transform: facingMode === 'user' ? 'scaleX(-1)' : 'none',
-                                }}
-                            />
-                            <canvas
-                                ref={canvasRef}
-                                style={{
-                                    position: 'absolute',
-                                    top: 0,
-                                    left: 0,
-                                    width: '100%',
-                                    height: '100%',
-                                }}
-                            />
+                            {mode === 'facial' && (
+                                <>
+                                    <video
+                                        ref={videoRef}
+                                        autoPlay
+                                        muted
+                                        playsInline
+                                        style={{
+                                            display: 'block',
+                                            width: '100%',
+                                            height: 'auto',
+                                            transform: facingMode === 'user' ? 'scaleX(-1)' : 'none',
+                                        }}
+                                    />
+                                    <canvas
+                                        ref={canvasRef}
+                                        style={{
+                                            position: 'absolute',
+                                            top: 0,
+                                            left: 0,
+                                            width: '100%',
+                                            height: '100%',
+                                        }}
+                                    />
+                                </>
+                            )}
+                            {mode === 'qr' && (
+                                <QrScanner
+                                    key={scanKeyRef.current}
+                                    onScan={handleQrScan}
+                                    onError={(msg) => setError(msg)}
+                                    facingMode={facingMode}
+                                />
+                            )}
                         </div>
                     </div>
 
                     <div className="flex gap-2 px-4 pt-3 pb-6 justify-center">
-                        <button
-                            className={`rounded-xl px-6 py-2.5 text-sm font-semibold transition-colors ${
-                                programmeId
-                                    ? 'bg-sky-600 text-white hover:bg-sky-700'
-                                    : 'bg-slate-200 text-slate-400 cursor-not-allowed'
-                            }`}
-                            disabled={!programmeId}
-                            onClick={handleCapture}
-                        >
-                            Capture & Recognize
-                        </button>
+                        {mode === 'facial' && (
+                            <button
+                                className={`rounded-xl px-6 py-2.5 text-sm font-semibold transition-colors ${
+                                    programmeId
+                                        ? 'bg-sky-600 text-white hover:bg-sky-700'
+                                        : 'bg-slate-200 text-slate-400 cursor-not-allowed'
+                                }`}
+                                disabled={!programmeId}
+                                onClick={handleCapture}
+                            >
+                                Capture & Recognize
+                            </button>
+                        )}
                         <button
                             className="bg-slate-100 text-slate-600 rounded-xl px-4 py-2.5 text-sm font-semibold hover:bg-slate-200 transition-colors"
                             onClick={toggleCamera}
@@ -375,7 +465,7 @@ export default function CameraPage() {
                     {recognizing ? (
                         <div className="flex flex-col items-center gap-3 pt-8">
                             <div className="w-8 h-8 border-2 border-sky-600 border-t-transparent rounded-full animate-spin" />
-                            <p className="text-sm text-slate-500">Recognizing faces...</p>
+                            <p className="text-sm text-slate-500">{mode === 'facial' ? 'Recognizing faces...' : 'Looking up badge...'}</p>
                         </div>
                     ) : done ? (
                         <div className="flex flex-col items-center gap-4 pt-8">
@@ -435,9 +525,11 @@ export default function CameraPage() {
                                                     )}
                                                     <div>
                                                         <p className="text-sm font-medium text-slate-800">{m.name}</p>
-                                                        <p className="text-xs text-slate-400">
-                                                            Confidence: {Math.round(m.confidence * 100)}%
-                                                        </p>
+                                                        {m.confidence !== null && (
+                                                            <p className="text-xs text-slate-400">
+                                                                Confidence: {Math.round(m.confidence * 100)}%
+                                                            </p>
+                                                        )}
                                                     </div>
                                                 </div>
                                                 <div className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${

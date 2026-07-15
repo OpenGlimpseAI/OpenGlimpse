@@ -9,6 +9,7 @@ import DashboardIcon from '@mui/icons-material/Dashboard';
 import CameraAlt from '@mui/icons-material/CameraAlt';
 import Settings from '@mui/icons-material/Settings';
 import AccountCircle from '@mui/icons-material/AccountCircle';
+import QrCode from '@mui/icons-material/QrCode';
 import Paper from '@mui/material/Paper';
 
 function getAuthUser() {
@@ -68,6 +69,14 @@ export default function FixedBottomNavigation() {
                             to="/profile"
                         />
                     )}
+                    <BottomNavigationAction
+                        className="bottom-nav-action"
+                        label="Badge"
+                        value="badge"
+                        icon={<QrCode />}
+                        component={Link}
+                        to="/badge"
+                    />
                     <BottomNavigationAction
                         className="bottom-nav-action"
                         label="Settings"
