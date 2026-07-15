@@ -69,14 +69,16 @@ export default function FixedBottomNavigation() {
                             to="/profile"
                         />
                     )}
-                    <BottomNavigationAction
-                        className="bottom-nav-action"
-                        label="Badge"
-                        value="badge"
-                        icon={<QrCode />}
-                        component={Link}
-                        to="/badge"
-                    />
+                    {!isStaff && (
+                        <BottomNavigationAction
+                            className="bottom-nav-action"
+                            label="Badge"
+                            value="badge"
+                            icon={<QrCode />}
+                            component={Link}
+                            to="/badge"
+                        />
+                    )}
                     <BottomNavigationAction
                         className="bottom-nav-action"
                         label="Settings"

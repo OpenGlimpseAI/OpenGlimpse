@@ -279,6 +279,7 @@ export default function CameraPage() {
     async function handleQrScan(decodedText) {
         if (!programmeId) return;
         setRecognizing(true);
+        setCaptured(true);
         setStatus('Looking up badge...');
         try {
             const result = await lookupByBadge(programmeId, decodedText);
@@ -289,7 +290,6 @@ export default function CameraPage() {
                 imageData: null,
             })));
             setSelected(new Set(result.matches.map((m) => m.delegateId)));
-            setCaptured(true);
             if (result.errors.length > 0) {
                 setError(result.errors.join('; '));
             }
