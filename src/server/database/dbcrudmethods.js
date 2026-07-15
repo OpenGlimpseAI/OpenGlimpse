@@ -20,15 +20,19 @@ class Model {
 }
 
 class User extends Model {
-    constructor({ id, enName, zhName } = {}) {
+    constructor({ id, enName, zhName, email, passwordHash, photoUrl, role } = {}) {
         super()
         this.id = id
         this.enName = enName
         this.zhName = zhName
+        this.email = email
+        this.passwordHash = passwordHash
+        this.photoUrl = photoUrl
+        this.role = role
     }
 
-    static async create(enName, zhName = null) {
-        const record = await user.create({ enName, zhName })
+    static async create(enName, zhName = null, { email, passwordHash, photoUrl, role } = {}) {
+        const record = await user.create({ enName, zhName, email, passwordHash, photoUrl, role })
         return new User(record.toJSON())
     }
 
@@ -38,10 +42,14 @@ class User extends Model {
         return new User(record.toJSON())
     }
 
-    async update({ enName, zhName } = {}) {
+    async update({ enName, zhName, email, passwordHash, photoUrl, role } = {}) {
         const fields = {}
         if (enName !== undefined) fields.enName = enName
         if (zhName !== undefined) fields.zhName = zhName
+        if (email !== undefined) fields.email = email
+        if (passwordHash !== undefined) fields.passwordHash = passwordHash
+        if (photoUrl !== undefined) fields.photoUrl = photoUrl
+        if (role !== undefined) fields.role = role
         if (Object.keys(fields).length === 0) return
         return await user.update(fields, { where: { id: this.id } })
     }

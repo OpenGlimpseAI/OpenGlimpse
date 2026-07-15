@@ -20,7 +20,11 @@ const user = sequelize.define("users", {
   id: { type: DataTypes.UUID, defaultValue: DataTypes.UUIDV4, primaryKey: true, allowNull: false },
   enName: { type: DataTypes.STRING, allowNull: false },
   zhName: { type: DataTypes.STRING, allowNull: true },
-});
+  email: { type: DataTypes.TEXT, allowNull: false, unique: true },
+  passwordHash: { type: DataTypes.TEXT, allowNull: true, field: "password_hash" },
+  photoUrl: { type: DataTypes.TEXT, allowNull: true, field: "photo_url" },
+  role: { type: DataTypes.TEXT, allowNull: true, validate: { isIn: [["staff", "participant"]] } },
+}, { timestamps: true, createdAt: "created_at", updatedAt: false });
 
 const messages = sequelize.define("messages", {
   content: { type: DataTypes.STRING, allowNull: false },
@@ -102,15 +106,6 @@ const ProgrammeDelegate = sequelize.define("ProgrammeDelegate", {
   tableName: "programme_delegates", timestamps: false,
   indexes: [{ unique: true, fields: ["programme_id", "delegate_id"] }, { fields: ["programme_id"] }, { fields: ["delegate_id"] }],
 });
-
-const Staff = sequelize.define("Staff", {
-  id: { type: DataTypes.UUID, defaultValue: DataTypes.UUIDV4, primaryKey: true },
-  name: { type: DataTypes.TEXT, allowNull: false },
-  email: { type: DataTypes.TEXT, allowNull: false, unique: true },
-  passwordHash: { type: DataTypes.TEXT, allowNull: false, field: "password_hash" },
-  photoUrl: { type: DataTypes.TEXT, field: "photo_url" },
-  role: { type: DataTypes.TEXT, defaultValue: "staff", validate: { isIn: [["admin", "staff"]] } },
-}, { tableName: "staff", timestamps: true, createdAt: "created_at", updatedAt: false });
 
 const ScanEvent = sequelize.define("ScanEvent", {
   id: { type: DataTypes.UUID, defaultValue: DataTypes.UUIDV4, primaryKey: true },
@@ -418,5 +413,5 @@ ReadyToDepart.setStatus = async function (programmeId, ready) {
   return { ready: record.ready, toggledBy: record.toggledBy, toggledAt: record.toggledAt };
 };
 
-module.exports = { sequelize, user, messages, attendee, admin, faceEmbeddings, Programme, Route, Delegate, AttendanceRecord, ReadyToDepart, ProgrammeDelegate, Staff, ScanEvent, ChatMessage, OfflineQueue };
+module.exports = { sequelize, user, messages, attendee, admin, faceEmbeddings, Programme, Route, Delegate, AttendanceRecord, ReadyToDepart, ProgrammeDelegate, ScanEvent, ChatMessage, OfflineQueue };
 
