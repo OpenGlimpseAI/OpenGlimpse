@@ -38,22 +38,26 @@ export default function FixedBottomNavigation() {
                         component={Link}
                         to="/chat"
                     />
-                    <BottomNavigationAction
-                        className="bottom-nav-action"
-                        label="Dashboard"
-                        value="dashboard"
-                        icon={<DashboardIcon />}
-                        component={Link}
-                        to="/dashboard"
-                    />
-                    <BottomNavigationAction
-                        className="bottom-nav-action"
-                        label="Camera"
-                        value="camera"
-                        icon={<CameraAlt />}
-                        component={Link}
-                        to="/camera"
-                    />
+                    {isStaff && (
+                        <BottomNavigationAction
+                            className="bottom-nav-action"
+                            label="Dashboard"
+                            value="dashboard"
+                            icon={<DashboardIcon />}
+                            component={Link}
+                            to="/dashboard"
+                        />
+                    )}
+                    {isStaff && (
+                        <BottomNavigationAction
+                            className="bottom-nav-action"
+                            label="Camera"
+                            value="camera"
+                            icon={<CameraAlt />}
+                            component={Link}
+                            to="/camera"
+                        />
+                    )}
                     {isStaff && (
                         <BottomNavigationAction
                             className="bottom-nav-action"

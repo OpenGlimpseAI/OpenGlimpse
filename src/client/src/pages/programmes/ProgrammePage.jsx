@@ -71,8 +71,29 @@ function DelegateRow({ d, routes, programmeId, onRemove, onRefresh }) {
     );
 }
 
+function getAuthUser() {
+    const raw = localStorage.getItem('authUser');
+    if (!raw) return null;
+    try {
+        return JSON.parse(raw);
+    } catch {
+        return null;
+    }
+}
+
 export default function ProgrammePage() {
     const navigate = useNavigate();
+    const currentUser = getAuthUser();
+
+    if (!currentUser) {
+        navigate('/login');
+        return null;
+    }
+    if (currentUser.role !== 'staff') {
+        navigate('/');
+        return null;
+    }
+
     const [programmes, setProgrammes] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
