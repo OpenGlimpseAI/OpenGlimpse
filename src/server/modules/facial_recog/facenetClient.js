@@ -67,18 +67,17 @@ function launchServer() {
         stdio: ['ignore', 'pipe', 'pipe'],
     });
 
-    serverProcess.stdout.on('data', (data) => {
+    function onServerOutput(data) {
         const msg = data.toString();
         console.log(`[Python Server] ${msg.trim()}`);
-        if (msg.includes('Facenet model loaded successfully')) {
+        if (msg.includes('Uvicorn running on')) {
             serverReady = true;
             if (readyResolve) readyResolve();
         }
-    });
+    }
 
-    serverProcess.stderr.on('data', (data) => {
-        console.error(`[Python Server] ${data.toString().trim()}`);
-    });
+    serverProcess.stdout.on('data', onServerOutput);
+    serverProcess.stderr.on('data', onServerOutput);
 
     serverProcess.on('close', (code) => {
         console.log(`[Python Server] Exited with code ${code}`);
@@ -122,10 +121,19 @@ async function callPythonServer(endpoint, imageInput) {
         body: formData,
     });
 
-    const data = await response.json();
+    let data;
+    try {
+        data = await response.json();
+    } catch {
+        const text = await response.text();
+        throw new Error(
+            `Python server request to ${endpoint} failed (${response.status}): ${text.slice(0, 500)}`
+        );
+    }
 
-    if (!data.success) {
-        throw new Error(data.error || `Python server request to ${endpoint} failed.`);
+    if (!response.ok || !data.success) {
+        const serverError = data.detail || data.error || JSON.stringify(data);
+        throw new Error(`Python server request to ${endpoint} failed: ${serverError}`);
     }
 
     return data;
