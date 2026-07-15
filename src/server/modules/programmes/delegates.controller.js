@@ -1,4 +1,4 @@
-const { ProgrammeDelegate, Programme, Delegate } = require('./models');
+const { ProgrammeDelegate, Programme, Delegate, user } = require('./models');
 
 async function listDelegates(req, res) {
     const { id } = req.params;
@@ -38,4 +38,21 @@ async function removeDelegate(req, res) {
     }
 }
 
-module.exports = { listDelegates, addDelegates, removeDelegate };
+async function updateDelegate(req, res) {
+    const { delegateId } = req.params;
+    const { userId } = req.body;
+    try {
+        const delegate = await Delegate.findByPk(delegateId);
+        if (!delegate) return res.status(404).json({ error: 'Delegate not found' });
+        if (userId !== undefined) {
+            const userRecord = await user.findByPk(userId);
+            if (!userRecord) return res.status(400).json({ error: 'User not found' });
+        }
+        await delegate.update({ userId: userId || null });
+        res.json({ id: delegate.id, name: delegate.name, userId: delegate.userId });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+}
+
+module.exports = { listDelegates, addDelegates, removeDelegate, updateDelegate };
