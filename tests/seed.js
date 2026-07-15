@@ -37,7 +37,7 @@ function delay(ms) {
 async function clearDatabase() {
     const tables = [
         'offline_queue', 'chat_messages', 'scan_events', 'programme_delegates',
-        'ready_to_depart', 'attendance_records', 'staff', 'delegates',
+        'ready_to_depart', 'attendance_records', 'delegates',
         'routes', 'programmes', 'faceEmbeddings', 'admins', 'attendees',
         'messages', 'users'
     ];
