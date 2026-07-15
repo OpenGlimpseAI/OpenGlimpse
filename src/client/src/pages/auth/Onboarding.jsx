@@ -8,7 +8,6 @@ export default function Onboarding() {
         <p>Access your profile, manage staff, and continue with event registration.</p>
         <div className="auth-actions">
           <Link className="auth-button" to="/login">Login</Link>
-          <Link className="auth-button auth-button-secondary" to="/signup">Sign Up</Link>
         </div>
       </section>
     </main>

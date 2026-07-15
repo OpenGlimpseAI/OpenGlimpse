@@ -46,9 +46,6 @@ export default function Login() {
           {error && <p className="auth-error-text">{error}</p>}
           <button className="auth-button" type="submit">Login</button>
         </form>
-        <p className="auth-small-note">
-          Don't have an account? <a href="/signup">Sign up</a>
-        </p>
       </section>
     </main>
   );

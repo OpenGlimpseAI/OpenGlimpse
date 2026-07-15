@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { updateUserProfile, deleteUserAccount } from '../../services/api.js';
 
 function getAuthUser() {
@@ -93,11 +93,6 @@ export default function StaffProfile() {
           <button className="auth-button auth-button-secondary" onClick={handleLogout}>Logout</button>
           <button className="auth-button auth-button-danger" onClick={handleDelete}>Delete Account</button>
         </div>
-        {currentUser.role === 'staff' && (
-          <p className="auth-small-note">
-            <Link to="/staff">Manage participants</Link>
-          </p>
-        )}
       </section>
     </main>
   );

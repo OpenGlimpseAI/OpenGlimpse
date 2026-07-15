@@ -1,4 +1,3 @@
-import Placeholder from './components/shared/Placeholder';
 import Chat from './pages/chat/chat.jsx';
 import Directory from './pages/directory/directory.jsx';
 import BottomNav from './components/navbar/bottomnav.jsx'
@@ -11,7 +10,6 @@ import ProgrammePage from "./pages/programmes/ProgrammePage.jsx";
 import SummaryPage from "./pages/programmes/SummaryPage.jsx";
 import Onboarding from "./pages/auth/Onboarding.jsx";
 import Login from "./pages/auth/Login.jsx";
-import Signup from "./pages/auth/Signup.jsx";
 import StaffProfile from "./pages/auth/StaffProfile.jsx";
 import ParticipantManagement from "./pages/auth/ParticipantManagement.jsx";
 
@@ -31,12 +29,10 @@ export default function App() {
       <>
       {signedIn && <BottomNav />}
       <Routes>
-        <Route path="/" element={signedIn ? <Placeholder /> : <Onboarding />} />
+        <Route path="/" element={signedIn ? <StaffProfile /> : <Onboarding />} />
         <Route path="/onboarding" element={<Onboarding />} />
         <Route path="/login" element={<Login />} />
-        <Route path="/signup" element={<Signup />} />
-        <Route path="/profile" element={<StaffProfile />} />
-        <Route path="/staff" element={<ParticipantManagement />} />
+        <Route path="/profile" element={<ParticipantManagement />} />
         <Route path="/chat" element={<Chat/>} />
         <Route path="/camera" element={<CameraPage />} />
         <Route path="/dashboard" element={<AdminDashboard />} />
