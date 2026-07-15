@@ -11,8 +11,29 @@ import { getProgrammes, getAttendance, getAttendanceSummary, getReadyStatus, tog
 import { joinProgramme, leaveProgramme, onAttendanceUpdated } from "../../services/socket";
 import { timeAgo } from "../../services/utils";
 
+function getAuthUser() {
+    const raw = localStorage.getItem('authUser');
+    if (!raw) return null;
+    try {
+        return JSON.parse(raw);
+    } catch {
+        return null;
+    }
+}
+
 export function AdminDashboard() {
     const navigate = useNavigate();
+    const currentUser = getAuthUser();
+
+    if (!currentUser) {
+        navigate('/login');
+        return null;
+    }
+    if (currentUser.role !== 'staff') {
+        navigate('/');
+        return null;
+    }
+
     const [programmes, setProgrammes] = useState([]);
     const [programmeId, setProgrammeId] = useState(null);
     const [showPicker, setShowPicker] = useState(false);
