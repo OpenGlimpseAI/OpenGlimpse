@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getAllUsers, createUserAccount, updateUserProfile, deleteUserAccount } from '../../services/api.js';
+import { getAllUsers, createUserAccount, updateUserProfile, deleteUserAccount, uploadUserFace } from '../../services/api.js';
 
 function getAuthUser() {
   const raw = localStorage.getItem('authUser');
@@ -18,11 +18,20 @@ export default function ParticipantManagement() {
   const navigate = useNavigate();
   const currentUser = getAuthUser();
 
+  const videoRef = useRef(null);
+  const canvasRef = useRef(null);
+  const streamRef = useRef(null);
+
   const [accounts, setAccounts] = useState([]);
   const [selected, setSelected] = useState(null);
   const [form, setForm] = useState(emptyForm);
   const [error, setError] = useState('');
   const [status, setStatus] = useState('');
+  const [faceSource, setFaceSource] = useState(null);
+  const [faceImageBase64, setFaceImageBase64] = useState(null);
+  const [facePreview, setFacePreview] = useState(null);
+  const [cameraActive, setCameraActive] = useState(false);
+  const [uploadingFace, setUploadingFace] = useState(false);
 
   if (!currentUser) {
     navigate('/login');
@@ -46,15 +55,113 @@ export default function ParticipantManagement() {
     }
   };
 
+  const toBase64 = (blob) => new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => resolve(reader.result.split(',')[1]);
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
+
+  const handleUrlImage = async (url) => {
+    try {
+      const res = await fetch(url);
+      const blob = await res.blob();
+      const b64 = await toBase64(blob);
+      setFaceImageBase64(b64);
+      setFacePreview(URL.createObjectURL(blob));
+    } catch {
+      setError('Failed to load image from URL');
+    }
+  };
+
+  const handleFileImage = (file) => {
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const b64 = reader.result.split(',')[1];
+      setFaceImageBase64(b64);
+      setFacePreview(reader.result);
+    };
+    reader.onerror = () => setError('Failed to read image file');
+    reader.readAsDataURL(file);
+  };
+
+  const startCamera = useCallback(async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
+      streamRef.current = stream;
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        await videoRef.current.play();
+        setCameraActive(true);
+      }
+    } catch {
+      setError('Camera access denied or not available');
+    }
+  }, []);
+
+  const stopCamera = useCallback(() => {
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(t => t.stop());
+      streamRef.current = null;
+    }
+    setCameraActive(false);
+  }, []);
+
+  const captureFromCamera = () => {
+    const video = videoRef.current;
+    const canvas = canvasRef.current;
+    if (!video || !canvas) return;
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(video, 0, 0);
+    const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
+    setFaceImageBase64(dataUrl.split(',')[1]);
+    setFacePreview(dataUrl);
+    stopCamera();
+    setFaceSource('camera');
+  };
+
+  const clearFace = () => {
+    stopCamera();
+    setFaceSource(null);
+    setFaceImageBase64(null);
+    setFacePreview(null);
+  };
+
+  useEffect(() => {
+    return () => stopCamera();
+  }, [stopCamera]);
+
   const handleCreate = async (event) => {
     event.preventDefault();
     setError('');
     setStatus('');
+    setUploadingFace(false);
+
+    if (!faceImageBase64) {
+      setError('Face image is required — use URL, file upload, or camera');
+      return;
+    }
 
     try {
-      await createUserAccount(form, currentUser.token);
-      setStatus('Account created successfully');
+      const newUser = await createUserAccount(form, currentUser.token);
+
+      setUploadingFace(true);
+      try {
+        await uploadUserFace(newUser.id, faceImageBase64, currentUser.token);
+      } catch (faceErr) {
+        setError('Account created but face upload failed: ' + (faceErr.message || ''));
+        setForm(emptyForm);
+        clearFace();
+        fetchAccounts();
+        return;
+      }
+      setUploadingFace(false);
+
+      setStatus('Account created successfully with face registration');
       setForm(emptyForm);
+      clearFace();
       fetchAccounts();
     } catch (err) {
       setError(err.message || 'Create account failed');
@@ -71,6 +178,7 @@ export default function ParticipantManagement() {
     });
     setStatus('Editing ' + account.name);
     setError('');
+    clearFace();
   };
 
   const handleUpdate = async (event) => {
@@ -87,6 +195,7 @@ export default function ParticipantManagement() {
       setStatus('Account updated successfully');
       setSelected(null);
       setForm(emptyForm);
+      clearFace();
       fetchAccounts();
     } catch (err) {
       setError(err.message || 'Update failed');
@@ -117,6 +226,7 @@ export default function ParticipantManagement() {
     setForm(emptyForm);
     setStatus('');
     setError('');
+    clearFace();
   };
 
   return (
@@ -193,8 +303,78 @@ export default function ParticipantManagement() {
                 <option value="staff">Staff</option>
               </select>
             </label>
-            <button className="auth-button" type="submit">
-              {selected ? 'Update Account' : 'Create Account'}
+
+            {!selected && (
+              <fieldset className="auth-fieldset">
+                <legend>Face Registration <span className="auth-required">*</span></legend>
+                <p className="auth-small-note">Attach a face image for facial recognition — required</p>
+
+                <div className="face-source-tabs">
+                  {['url', 'file', 'camera'].map((src) => (
+                    <button
+                      key={src}
+                      type="button"
+                      className={`face-source-btn ${faceSource === src ? 'active' : ''}`}
+                      onClick={() => {
+                        if (faceSource === src) { clearFace(); return; }
+                        clearFace();
+                        setFaceSource(src);
+                        if (src === 'camera') startCamera();
+                      }}
+                    >
+                      {src === 'url' ? 'URL' : src === 'file' ? 'Upload' : 'Camera'}
+                    </button>
+                  ))}
+                </div>
+
+                {faceSource === 'url' && (
+                  <div className="face-url-row">
+                    <input
+                      type="url"
+                      placeholder="https://example.com/face.jpg"
+                      className="face-url-input"
+                      onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleUrlImage(e.target.value); } }}
+                    />
+                    <button type="button" className="auth-button auth-button-secondary" onClick={(e) => handleUrlImage(e.target.closest('.face-url-row').querySelector('input').value)}>
+                      Load
+                    </button>
+                  </div>
+                )}
+
+                {faceSource === 'file' && (
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => { const f = e.target.files[0]; if (f) handleFileImage(f); }}
+                    className="face-file-input"
+                  />
+                )}
+
+                {faceSource === 'camera' && (
+                  <div className="face-camera-box">
+                    <video ref={videoRef} className="face-camera-video" playsInline muted />
+                    <canvas ref={canvasRef} style={{ display: 'none' }} />
+                    {cameraActive && (
+                      <button type="button" className="auth-button" onClick={captureFromCamera}>
+                        Capture
+                      </button>
+                    )}
+                  </div>
+                )}
+
+                {facePreview && (
+                  <div className="face-preview-row">
+                    <img src={facePreview} alt="Face preview" className="face-preview-img" />
+                    <button type="button" className="auth-button auth-button-danger" onClick={clearFace}>
+                      Remove
+                    </button>
+                  </div>
+                )}
+              </fieldset>
+            )}
+
+            <button className="auth-button" type="submit" disabled={uploadingFace || (!selected && !faceImageBase64)}>
+              {uploadingFace ? 'Uploading face...' : selected ? 'Update Account' : 'Create Account'}
             </button>
             {selected && (
               <button type="button" className="auth-button auth-button-secondary" onClick={handleCancelEdit}>
