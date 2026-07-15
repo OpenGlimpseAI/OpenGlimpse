@@ -42,7 +42,7 @@ const faceEmbeddings = sequelize.define("faceEmbeddings", {
   userId: { type: DataTypes.UUID, allowNull: false, references: { model: user, key: "id" } },
   imageType: { type: DataTypes.STRING, allowNull: false },
   imageData: { type: DataTypes.BLOB("long"), allowNull: false },
-  embeddings: { type: DataTypes.STRING, allowNull: false },
+  embeddings: { type: DataTypes.TEXT, allowNull: false },
   model: { type: DataTypes.STRING, allowNull: false },
 });
 
@@ -68,6 +68,7 @@ const Delegate = sequelize.define("Delegate", {
   name: { type: DataTypes.TEXT, allowNull: false },
   badge: { type: DataTypes.TEXT },
   photoUrl: { type: DataTypes.TEXT, field: "photo_url" },
+  userId: { type: DataTypes.UUID, allowNull: true, field: "user_id", references: { model: user, key: "id" } },
 }, { tableName: "delegates", timestamps: true, createdAt: "created_at", updatedAt: false });
 
 const AttendanceRecord = sequelize.define("AttendanceRecord", {
@@ -182,6 +183,7 @@ Programme.hasMany(ProgrammeDelegate, { foreignKey: "programme_id", as: "programm
 Delegate.hasMany(ProgrammeDelegate, { foreignKey: "delegate_id", as: "programmeDelegates", onDelete: "CASCADE" });
 ProgrammeDelegate.belongsTo(Programme, { foreignKey: "programme_id", as: "programme" });
 ProgrammeDelegate.belongsTo(Delegate, { foreignKey: "delegate_id", as: "delegate" });
+Delegate.belongsTo(user, { foreignKey: "user_id", as: "user" });
 
 Programme.hasMany(ScanEvent, { foreignKey: "programme_id", as: "scanEvents", onDelete: "CASCADE" });
 ScanEvent.belongsTo(Programme, { foreignKey: "programme_id", as: "programme" });
@@ -473,6 +475,19 @@ AttendanceRecord.markAttendance = async function (programmeId, delegateId, { sta
   const payload = { programmeId: row.programmeId, delegateId: row.delegateId, name: delegateName, status: row.status, method: row.method, checkedInAt: row.checkedInAt };
   if (io) io.to(`programme:${programmeId}`).emit("attendance:updated", payload);
   return payload;
+};
+AttendanceRecord.markAttendanceBatch = async function (programmeId, records, io) {
+  const success = [];
+  const errors = [];
+  for (const rec of records) {
+    try {
+      const result = await AttendanceRecord.markAttendance(programmeId, rec.delegateId, rec, io);
+      success.push(result);
+    } catch (e) {
+      errors.push({ delegateId: rec.delegateId, error: e.message });
+    }
+  }
+  return { success, errors };
 };
 AttendanceRecord.getSummary = async function (programmeId) {
   const total = await ProgrammeDelegate.count({ where: { programmeId } });
