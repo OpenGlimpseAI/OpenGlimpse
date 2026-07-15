@@ -1,26 +1,25 @@
 import { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
-import { staffSignup } from '../../services/api.js';
+import { useNavigate } from 'react-router-dom';
+import { authSignup } from '../../services/api.js';
 
 export default function Signup() {
+  const navigate = useNavigate();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
   const [message, setMessage] = useState('');
-  const navigate = useNavigate();
+  const [error, setError] = useState('');
 
   const handleSubmit = async (event) => {
     event.preventDefault();
     setError('');
     setMessage('');
-
     try {
-      await staffSignup({ name, email, password });
+      await authSignup({ name, email, password });
       setMessage('Account created. Redirecting to login...');
       setTimeout(() => navigate('/login'), 1000);
     } catch (err) {
-      setError(err.message || 'Unable to sign up');
+      setError(err.message || 'Signup failed');
     }
   };
 
@@ -58,10 +57,10 @@ export default function Signup() {
           </label>
           {error && <p className="auth-error-text">{error}</p>}
           {message && <p className="auth-success-text">{message}</p>}
-          <button className="auth-button" type="submit">Create Account</button>
+          <button className="auth-button" type="submit">Sign Up</button>
         </form>
         <p className="auth-small-note">
-          Already registered? <Link to="/login">Login</Link>.
+          Already have an account? <a href="/login">Login</a>
         </p>
       </section>
     </main>

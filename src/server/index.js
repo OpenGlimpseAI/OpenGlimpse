@@ -47,7 +47,7 @@ io.on('connection', (socket) => {
 });
 
 registerProgrammeRoutes(app, io);
-app.use('/api/staff', authRoutes);
+app.use('/api/auth', authRoutes);
 
 app.get('/', (req, res) => {
     res.send('server is running');
@@ -60,7 +60,7 @@ app.use((err, req, res, next) => {
 
 async function start() {
     try {
-        await sequelize.sync();
+        await sequelize.sync({ alter: true });
         console.log('Database synced');
     } catch (err) {
         console.error('Database sync failed:', err);

@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getAllStaff, createStaffAccount, updateStaffProfile, deleteStaffAccount } from '../../services/api.js';
+import { getAllUsers, createUserAccount, updateUserProfile, deleteUserAccount } from '../../services/api.js';
 
-function getAuthStaff() {
-  const raw = localStorage.getItem('authStaff');
+function getAuthUser() {
+  const raw = localStorage.getItem('authUser');
   if (!raw) return null;
   try {
     return JSON.parse(raw);
@@ -16,7 +16,7 @@ const emptyForm = { name: '', email: '', password: '', role: 'participant' };
 
 export default function ParticipantManagement() {
   const navigate = useNavigate();
-  const currentStaff = getAuthStaff();
+  const currentUser = getAuthUser();
 
   const [accounts, setAccounts] = useState([]);
   const [selected, setSelected] = useState(null);
@@ -24,11 +24,11 @@ export default function ParticipantManagement() {
   const [error, setError] = useState('');
   const [status, setStatus] = useState('');
 
-  if (!currentStaff) {
+  if (!currentUser) {
     navigate('/login');
     return null;
   }
-  if (currentStaff.role !== 'staff') {
+  if (currentUser.role !== 'staff') {
     navigate('/profile');
     return null;
   }
@@ -39,7 +39,7 @@ export default function ParticipantManagement() {
 
   const fetchAccounts = async () => {
     try {
-      const data = await getAllStaff(currentStaff.token);
+      const data = await getAllUsers(currentUser.token);
       setAccounts(data);
     } catch (err) {
       setError(err.message || 'Unable to load accounts');
@@ -52,7 +52,7 @@ export default function ParticipantManagement() {
     setStatus('');
 
     try {
-      await createStaffAccount(form, currentStaff.token);
+      await createUserAccount(form, currentUser.token);
       setStatus('Account created successfully');
       setForm(emptyForm);
       fetchAccounts();
@@ -83,7 +83,7 @@ export default function ParticipantManagement() {
       const payload = { targetId: selected.id, name: form.name, email: form.email, role: form.role };
       if (form.password) payload.password = form.password;
 
-      await updateStaffProfile(payload, currentStaff.token);
+      await updateUserProfile(payload, currentUser.token);
       setStatus('Account updated successfully');
       setSelected(null);
       setForm(emptyForm);
@@ -100,7 +100,7 @@ export default function ParticipantManagement() {
     setStatus('');
 
     try {
-      await deleteStaffAccount({ targetId: accountId }, currentStaff.token);
+      await deleteUserAccount({ targetId: accountId }, currentUser.token);
       setStatus('Account deleted successfully');
       if (selected?.id === accountId) {
         setSelected(null);
@@ -108,7 +108,7 @@ export default function ParticipantManagement() {
       }
       fetchAccounts();
     } catch (err) {
-      setError(err.message || 'Delete account failed');
+      setError(err.message || 'Delete failed');
     }
   };
 
@@ -123,7 +123,7 @@ export default function ParticipantManagement() {
     <main className="staff-mgmt-page">
       <header className="staff-mgmt-header">
         <h1>Participant Management</h1>
-        <p>Welcome back, {currentStaff.name}. Manage participant and staff accounts below.</p>
+        <p>Welcome back, {currentUser.name}. Manage participant and staff accounts below.</p>
       </header>
 
       {error && <p className="auth-error-text">{error}</p>}

@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { updateStaffProfile, deleteStaffAccount } from '../../services/api.js';
+import { updateUserProfile, deleteUserAccount } from '../../services/api.js';
 
-function getAuthStaff() {
-  const raw = localStorage.getItem('authStaff');
+function getAuthUser() {
+  const raw = localStorage.getItem('authUser');
   if (!raw) return null;
   try {
     return JSON.parse(raw);
@@ -14,21 +14,21 @@ function getAuthStaff() {
 
 export default function StaffProfile() {
   const navigate = useNavigate();
-  const currentStaff = getAuthStaff();
+  const currentUser = getAuthUser();
 
-  const [name, setName] = useState(currentStaff?.name || '');
-  const [email, setEmail] = useState(currentStaff?.email || '');
+  const [name, setName] = useState(currentUser?.name || '');
+  const [email, setEmail] = useState(currentUser?.email || '');
   const [password, setPassword] = useState('');
   const [status, setStatus] = useState('');
   const [error, setError] = useState('');
 
-  if (!currentStaff) {
+  if (!currentUser) {
     navigate('/login');
     return null;
   }
 
   const handleLogout = () => {
-    localStorage.removeItem('authStaff');
+    localStorage.removeItem('authUser');
     navigate('/login');
   };
 
@@ -41,8 +41,8 @@ export default function StaffProfile() {
       const payload = { name, email };
       if (password) payload.password = password;
 
-      const data = await updateStaffProfile(payload, currentStaff.token);
-      localStorage.setItem('authStaff', JSON.stringify({ ...currentStaff, ...data, token: currentStaff.token }));
+      const data = await updateUserProfile(payload, currentUser.token);
+      localStorage.setItem('authUser', JSON.stringify({ ...currentUser, ...data, token: currentUser.token }));
       setStatus('Profile updated successfully');
       setPassword('');
     } catch (err) {
@@ -55,8 +55,8 @@ export default function StaffProfile() {
     if (!confirmed) return;
 
     try {
-      await deleteStaffAccount({}, currentStaff.token);
-      localStorage.removeItem('authStaff');
+      await deleteUserAccount({}, currentUser.token);
+      localStorage.removeItem('authUser');
       navigate('/login');
     } catch (err) {
       setError(err.message || 'Account deletion failed');
@@ -67,8 +67,8 @@ export default function StaffProfile() {
     <main className="auth-page">
       <section className="auth-card">
         <header>
-          <h1>Welcome, {currentStaff.name}</h1>
-          <p>Your account role is {currentStaff.role}.</p>
+          <h1>Welcome, {currentUser.name}</h1>
+          <p>Your account role is {currentUser.role}.</p>
         </header>
 
         <form onSubmit={handleSave} className="auth-form">
@@ -93,7 +93,7 @@ export default function StaffProfile() {
           <button className="auth-button auth-button-secondary" onClick={handleLogout}>Logout</button>
           <button className="auth-button auth-button-danger" onClick={handleDelete}>Delete Account</button>
         </div>
-        {currentStaff.role === 'staff' && (
+        {currentUser.role === 'staff' && (
           <p className="auth-small-note">
             <Link to="/staff">Manage participants</Link>
           </p>
