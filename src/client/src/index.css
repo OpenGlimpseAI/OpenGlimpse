@@ -279,21 +279,6 @@ body {
 }
 
 /* Ready toggle */
-.dashboard-ready-shell {
-  @apply fixed bottom-16 left-0 right-0 px-4 sm:px-6;
-}
-
-.dashboard-ready-btn {
-  @apply flex w-full items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-slate-200 bg-white/90 py-4 text-sm font-semibold text-slate-500 shadow-sm backdrop-blur transition-all;
-}
-
-.dashboard-ready-btn:hover {
-  @apply border-sky-300 text-sky-600;
-}
-
-.dashboard-ready-btn-on {
-  @apply border-emerald-300 bg-emerald-50/90 text-emerald-700;
-}
 
 /* Directory */
 .directory-page {

@@ -1,4 +1,5 @@
 import { useState, useMemo, useRef, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import PhoneIcon from "@mui/icons-material/Phone";
 import CheckIcon from "@mui/icons-material/Check";
 import SearchIcon from "@mui/icons-material/Search";
@@ -7,7 +8,8 @@ import PersonIcon from "@mui/icons-material/Person";
 import BadgeIcon from "@mui/icons-material/Badge";
 import ScheduleIcon from "@mui/icons-material/Schedule";
 import KeyboardArrowDown from "@mui/icons-material/KeyboardArrowDown";
-import { getProgrammes, getDelegates, markAttendance } from "../../services/api";
+import EditIcon from "@mui/icons-material/Edit";
+import { getProgrammes, getDelegates, getRoutes, getRoute, setDelegateRoutes } from "../../services/api";
 import { joinProgramme, leaveProgramme, onAttendanceUpdated } from "../../services/socket";
 
 function timeAgo(iso) {
@@ -21,16 +23,20 @@ function timeAgo(iso) {
 const FILTERS = ["All", "Missing", "Present"];
 
 export default function Directory() {
+    const navigate = useNavigate();
     const [programmes, setProgrammes] = useState([]);
     const [programmeId, setProgrammeId] = useState(null);
     const [showPicker, setShowPicker] = useState(false);
     const [allDelegates, setAllDelegates] = useState([]);
+    const [routes, setRoutes] = useState([]);
     const [search, setSearch] = useState("");
     const [filter, setFilter] = useState("All");
     const [selected, setSelected] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [noteText, setNoteText] = useState("");
+    const [assigning, setAssigning] = useState(null);
+    const [selectedRouteIds, setSelectedRouteIds] = useState([]);
     const sheetRef = useRef(null);
 
     useEffect(() => {
@@ -45,8 +51,14 @@ export default function Directory() {
     useEffect(() => {
         if (!programmeId) return;
         setLoading(true);
-        getDelegates(programmeId)
-            .then(setAllDelegates)
+        Promise.all([
+            getDelegates(programmeId),
+            getRoutes(programmeId),
+        ])
+            .then(([delegates, routeList]) => {
+                setAllDelegates(delegates);
+                setRoutes(routeList);
+            })
             .catch((e) => setError(e.message))
             .finally(() => setLoading(false));
     }, [programmeId]);
@@ -68,22 +80,21 @@ export default function Directory() {
         });
     }, [programmeId]);
 
-    const handleCheckIn = async (id, notes = "") => {
+    const handleAssignRoute = async (delegateId) => {
         try {
-            await markAttendance(programmeId, id, { status: "present", method: "manual", notes });
-            setNoteText("");
+            const validIds = selectedRouteIds.filter((id) => id);
+            await setDelegateRoutes(programmeId, delegateId, validIds);
+            setAssigning(null);
+            setSelectedRouteIds([]);
+            const [delegates, routeList] = await Promise.all([
+                getDelegates(programmeId),
+                getRoutes(programmeId),
+            ]);
+            setAllDelegates(delegates);
+            setRoutes(routeList);
         } catch (e) {
-            setError(e.message);
+            // ignore
         }
-    };
-
-    const handleUndo = async (id) => {
-        try {
-            await markAttendance(programmeId, id, { status: "absent", method: "manual", notes: "" });
-        } catch (e) {
-            setError(e.message);
-        }
-        setNoteText("");
     };
 
     const currentProgramme = programmes.find((p) => p.id === programmeId);
@@ -147,9 +158,13 @@ export default function Directory() {
     return (
         <main className="directory-page">
             <header className="directory-header">
-                <div className="flex items-center gap-2">
-                    <h1 className="directory-title">Directory</h1>
-                    <div className="relative">
+                <div className="flex items-center gap-3">
+                    <button className="text-xs text-sky-600 font-semibold hover:text-sky-700 transition-colors" onClick={() => navigate("/dashboard")}>
+                        &larr; Back to Dashboard
+                    </button>
+                    <div className="flex items-center gap-2">
+                        <h1 className="directory-title">Directory</h1>
+                        <div className="relative">
                         <button
                             className="flex items-center gap-1 text-xs text-slate-500 bg-slate-100 rounded-full px-3 py-1"
                             onClick={() => setShowPicker((p) => !p)}
@@ -174,7 +189,8 @@ export default function Directory() {
                         )}
                     </div>
                 </div>
-                {missingCount > 0 && (
+            </div>
+            {missingCount > 0 && (
                     <span className="directory-missing-pill">{missingCount} missing</span>
                 )}
             </header>
@@ -231,27 +247,38 @@ export default function Directory() {
                                         <div className="directory-row-text">
                                             <span className="directory-row-name">{d.name}</span>
                                             <span className={`directory-row-status ${present ? "directory-status-present" : "directory-status-missing"}`}>
-                                                {present
-                                                    ? d.method === "auto" ? "Checked in (auto)" : "Checked in (manual)"
-                                                    : d.notes || "Not checked in"}
+                                                {d.routeNames?.length > 0 ? d.routeNames.join(", ") : "No route"} &middot; {present ? "Checked in" : "Not checked in"}
                                             </span>
                                         </div>
                                     </div>
                                     <div className="directory-row-actions" onClick={(e) => e.stopPropagation()}>
-                                        {present ? (
-                                            <button className="directory-action-btn directory-action-undo" onClick={() => handleUndo(d.id)}>
-                                                Undo
-                                            </button>
+                                        {assigning?.id === d.id ? (
+                                            <div className="flex flex-col gap-1 items-end">
+                                                <div className="flex flex-wrap gap-1 justify-end">
+                                                    {routes.map((r) => {
+                                                        const checked = selectedRouteIds.includes(r.id);
+                                                        return (
+                                                            <label key={r.id} className={`text-xs rounded-lg px-2 py-1 border cursor-pointer transition-colors ${checked ? "bg-sky-50 border-sky-400 text-sky-700" : "border-slate-200 text-slate-600 hover:border-slate-300"}`}>
+                                                                <input type="checkbox" className="mr-1" checked={checked} onChange={() => {
+                                                                    setSelectedRouteIds((prev) =>
+                                                                        checked ? prev.filter((id) => id !== r.id) : [...prev, r.id]
+                                                                    );
+                                                                }} />
+                                                                {r.name}
+                                                            </label>
+                                                        );
+                                                    })}
+                                                </div>
+                                                <div className="flex gap-1 mt-1">
+                                                    <button className="text-xs text-sky-600 font-semibold" onClick={() => handleAssignRoute(d.id)}>Save</button>
+                                                    <button className="text-xs text-slate-400" onClick={() => setAssigning(null)}>Cancel</button>
+                                                </div>
+                                            </div>
                                         ) : (
-                                            <>
-                                                <button className="directory-action-btn directory-action-check" onClick={() => handleCheckIn(d.id)}>
-                                                    <CheckIcon sx={{ fontSize: 16 }} />
-                                                    Check in
-                                                </button>
-                                                <button className="directory-call-btn-sm" aria-label={`Call ${d.name}`}>
-                                                    <PhoneIcon sx={{ fontSize: 14 }} />
-                                                </button>
-                                            </>
+                                            <button className="directory-action-btn" style={{background: "#f1f5f9", color: "#64748b"}} onClick={() => { setAssigning({ id: d.id }); setSelectedRouteIds(d.routeIds || []); }}>
+                                                <EditIcon sx={{ fontSize: 14 }} />
+                                                Route
+                                            </button>
                                         )}
                                     </div>
                                 </li>
@@ -282,8 +309,8 @@ export default function Directory() {
                             </div>
                             <div className="profile-detail-row">
                                 <PersonIcon sx={{ fontSize: 18 }} className="profile-detail-icon" />
-                                <span className="profile-detail-label">Route</span>
-                                <span className="profile-detail-value">{selected.routeName || "—"}</span>
+                                <span className="profile-detail-label">Routes</span>
+                                <span className="profile-detail-value">{(selected.routeNames?.length > 0 ? selected.routeNames : ["—"]).join(", ")}</span>
                             </div>
                             {isPresent && selected.method && (
                                 <div className="profile-detail-row">
@@ -309,31 +336,11 @@ export default function Directory() {
                                 </div>
                             )}
                         </div>
-                        {!isPresent && (
-                            <div className="px-4 py-2">
-                                <input
-                                    className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs outline-none focus:border-sky-400"
-                                    placeholder="Add a note (e.g. badge missing, verified by photo)"
-                                    value={noteText}
-                                    onChange={(e) => setNoteText(e.target.value)}
-                                />
-                            </div>
-                        )}
                         <div className="profile-actions">
                             <button className="profile-action-btn profile-action-call">
                                 <PhoneIcon sx={{ fontSize: 18 }} />
                                 Call
                             </button>
-                            {isPresent ? (
-                                <button className="profile-action-btn profile-action-absent" onClick={() => { handleUndo(selected.id); setSelected(null); setNoteText(""); }}>
-                                    Mark as Absent
-                                </button>
-                            ) : (
-                                <button className="profile-action-btn profile-action-present" onClick={() => { handleCheckIn(selected.id, noteText); setSelected(null); }}>
-                                    <CheckIcon sx={{ fontSize: 18 }} />
-                                    Mark as Present
-                                </button>
-                            )}
                         </div>
                     </div>
                 </div>

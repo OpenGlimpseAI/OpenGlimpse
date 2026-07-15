@@ -6,67 +6,109 @@ import DeleteIcon from "@mui/icons-material/Delete";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import PersonAddIcon from "@mui/icons-material/PersonAdd";
 import RemoveCircleOutlineRoundedIcon from "@mui/icons-material/RemoveCircleOutlineRounded";
+import PeopleIcon from "@mui/icons-material/People";
 import {
     getProgrammes, createProgramme, updateProgramme, deleteProgramme,
     getRoutes, addRoute, updateRoute, deleteRoute,
-    getDelegates, addDelegate, removeDelegate,
+    getDelegates, addDelegate, removeDelegate, setDelegateRoutes,
 } from "../../services/api";
 
-function DelegateRow({ d, routes, programmeId, onRemove, onRefresh }) {
-    const [assigning, setAssigning] = useState(false);
-    const [selectedRoute, setSelectedRoute] = useState(d.routeId || "");
+function RouteManageModal({ route, allDelegates, programmeId, onClose, onSaved }) {
+    const [selectedIds, setSelectedIds] = useState([]);
+    const [saving, setSaving] = useState(false);
 
-    const handleAssignRoute = async () => {
-        if (!selectedRoute) return;
+    useEffect(() => {
+        if (route) {
+            setSelectedIds(
+                allDelegates.filter((d) => d.routeIds?.includes(route.id)).map((d) => d.id)
+            );
+        }
+    }, [route, allDelegates]);
+
+    if (!route) return null;
+
+    const handleSave = async () => {
+        setSaving(true);
         try {
-            await updateRoute(programmeId, selectedRoute, { addDelegateIds: [d.id] });
-            if (d.routeId) {
-                await updateRoute(programmeId, d.routeId, { removeDelegateIds: [d.id] });
+            for (const d of allDelegates) {
+                const was = d.routeIds?.includes(route.id);
+                const now = selectedIds.includes(d.id);
+                if (was === now) continue;
+                let ids = [...(d.routeIds || [])];
+                if (now && !ids.includes(route.id)) ids.push(route.id);
+                else ids = ids.filter((id) => id !== route.id);
+                await setDelegateRoutes(programmeId, d.id, ids);
             }
-            setAssigning(false);
-            onRefresh();
+            onSaved();
+            onClose();
         } catch (e) {
             // ignore
+        } finally {
+            setSaving(false);
         }
     };
 
     return (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40" onClick={onClose}>
+            <div className="bg-white w-full sm:max-w-lg sm:rounded-2xl rounded-t-2xl max-h-[80vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
+                <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100">
+                    <h3 className="text-sm font-semibold text-slate-800">Delegates on {route.name}</h3>
+                    <button className="text-slate-400 hover:text-slate-600 text-lg leading-none" onClick={onClose}>✕</button>
+                </div>
+                <div className="flex-1 overflow-y-auto p-3 space-y-1">
+                    {allDelegates.length === 0 ? (
+                        <p className="text-xs text-slate-400 text-center py-8">No delegates in this programme yet.</p>
+                    ) : (
+                        allDelegates.map((d) => {
+                            const checked = selectedIds.includes(d.id);
+                            return (
+                                <label key={d.id} className={`flex items-center gap-3 px-3 py-2 rounded-xl cursor-pointer transition-colors ${checked ? "bg-sky-50" : "hover:bg-slate-50"}`}>
+                                    <input type="checkbox" className="accent-sky-600" checked={checked} onChange={() => setSelectedIds((prev) => checked ? prev.filter((i) => i !== d.id) : [...prev, d.id])} />
+                                    <div className="flex items-center gap-2 min-w-0">
+                                        <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-slate-100 text-xs font-semibold text-slate-600">{d.name.charAt(0)}</div>
+                                        <span className="text-sm text-slate-800">{d.name}</span>
+                                        {d.badge && <span className="text-xs text-slate-400">{d.badge}</span>}
+                                    </div>
+                                </label>
+                            );
+                        })
+                    )}
+                </div>
+                <div className="border-t border-slate-100 px-4 py-3 flex gap-2">
+                    <button className="flex-1 bg-sky-600 text-white rounded-xl py-2 text-sm font-semibold hover:bg-sky-700 transition-colors disabled:opacity-50" onClick={handleSave} disabled={saving}>
+                        {saving ? "Saving..." : `Save (${selectedIds.length} delegates)`}
+                    </button>
+                    <button className="px-6 bg-slate-100 text-slate-600 rounded-xl py-2 text-sm font-semibold hover:bg-slate-200 transition-colors" onClick={onClose}>Cancel</button>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+function DelegateRow({ d, onRemove }) {
+    return (
         <div className="flex items-center justify-between bg-white rounded-xl px-4 py-3 border border-slate-100">
-            <div className="flex items-center gap-3 min-w-0">
-                <div className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-semibold ${
-                    d.status === "present" ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"
-                }`}>
+            <div className="flex items-center gap-3 min-w-0 flex-1">
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-slate-100 text-xs font-semibold text-slate-600">
                     {d.name.charAt(0)}
                 </div>
                 <div className="min-w-0">
-                    <span className="text-sm text-slate-800">{d.name}</span>
-                    {d.badge && <span className="ml-2 text-xs text-slate-400">{d.badge}</span>}
-                    <span className={`ml-2 text-xs ${d.status === "present" ? "text-emerald-500" : "text-amber-500"}`}>
-                        {d.status === "present" ? "checked in" : "absent"}
-                    </span>
+                    <div className="flex items-center gap-2">
+                        <span className="text-sm font-medium text-slate-800">{d.name}</span>
+                        {d.badge && <span className="text-xs text-slate-400">{d.badge}</span>}
+                    </div>
+                    {d.routeNames?.length > 0 && (
+                        <div className="flex flex-wrap gap-1 mt-1">
+                            {d.routeNames.map((rn, i) => (
+                                <span key={i} className="text-[10px] bg-sky-50 text-sky-600 px-1.5 py-0.5 rounded font-medium">{rn}</span>
+                            ))}
+                        </div>
+                    )}
                 </div>
             </div>
-            <div className="flex items-center gap-1 shrink-0">
-                {assigning ? (
-                    <div className="flex items-center gap-1">
-                        <select className="text-xs rounded-lg border border-slate-200 px-2 py-1 outline-none" value={selectedRoute} onChange={(e) => setSelectedRoute(e.target.value)}>
-                            <option value="">No route</option>
-                            {routes.filter((r) => r.id !== d.routeId).map((r) => (
-                                <option key={r.id} value={r.id}>{r.name}</option>
-                            ))}
-                        </select>
-                        <button className="text-xs text-sky-600 font-semibold" onClick={handleAssignRoute}>Set</button>
-                        <button className="text-xs text-slate-400" onClick={() => setAssigning(false)}>X</button>
-                    </div>
-                ) : (
-                    <button className="text-xs text-slate-400 hover:text-sky-600 transition-colors" onClick={() => setAssigning(true)}>
-                        {d.routeName || "Assign route"}
-                    </button>
-                )}
-                <button className="text-slate-400 hover:text-red-600 transition-colors" onClick={() => onRemove(d.id)}>
-                    <RemoveCircleOutlineRoundedIcon sx={{ fontSize: 14 }} />
-                </button>
-            </div>
+            <button className="text-slate-400 hover:text-red-600 transition-colors shrink-0" onClick={() => onRemove(d.id)} title="Remove from programme">
+                <RemoveCircleOutlineRoundedIcon sx={{ fontSize: 16 }} />
+            </button>
         </div>
     );
 }
@@ -95,14 +137,12 @@ export default function ProgrammePage() {
     const [showAddDelegate, setShowAddDelegate] = useState(false);
     const [newDelName, setNewDelName] = useState("");
     const [newDelBadge, setNewDelBadge] = useState("");
-    const [newDelRoute, setNewDelRoute] = useState("");
+
+    const [manageRoute, setManageRoute] = useState(null);
 
     const loadProgrammes = () => {
         setLoading(true);
-        getProgrammes()
-            .then(setProgrammes)
-            .catch((e) => setError(e.message))
-            .finally(() => setLoading(false));
+        getProgrammes().then(setProgrammes).catch((e) => setError(e.message)).finally(() => setLoading(false));
     };
 
     useEffect(() => { loadProgrammes(); }, []);
@@ -110,8 +150,7 @@ export default function ProgrammePage() {
     const loadDelegates = async (id) => {
         setDelegatesLoading(true);
         try {
-            const list = await getDelegates(id);
-            setDelegates(list);
+            setDelegates(await getDelegates(id));
         } catch (e) {
             setError(e.message);
         } finally {
@@ -185,7 +224,7 @@ export default function ProgrammePage() {
     };
 
     const handleDeleteRoute = async (routeId) => {
-        if (!confirm("Delete this route?")) return;
+        if (!confirm("Delete this route? Delegates will keep their other routes.")) return;
         try {
             await deleteRoute(expandedId, routeId);
             setRoutes(await getRoutes(expandedId));
@@ -196,8 +235,8 @@ export default function ProgrammePage() {
         e.preventDefault();
         if (!newDelName.trim() || !expandedId) return;
         try {
-            await addDelegate(expandedId, { name: newDelName.trim(), badge: newDelBadge.trim() || undefined, routeId: newDelRoute || undefined });
-            setNewDelName(""); setNewDelBadge(""); setNewDelRoute("");
+            await addDelegate(expandedId, { name: newDelName.trim(), badge: newDelBadge.trim() || undefined });
+            setNewDelName(""); setNewDelBadge("");
             setShowAddDelegate(false);
             loadDelegates(expandedId);
         } catch (e) { setError(e.message); }
@@ -210,6 +249,9 @@ export default function ProgrammePage() {
             loadDelegates(expandedId);
         } catch (e) { setError(e.message); }
     };
+
+    const delegateCountForRoute = (routeId) =>
+        delegates.filter((d) => d.routeIds?.includes(routeId)).length;
 
     return (
         <main className="directory-page">
@@ -257,45 +299,48 @@ export default function ProgrammePage() {
                 ) : (
                     programmes.map((p) => (
                         <div key={p.id} className="rounded-2xl bg-white shadow-sm border border-slate-100 overflow-hidden">
-                            <button className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-slate-50 transition-colors" onClick={() => toggleExpand(p.id)}>
+                            <div className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-slate-50 transition-colors cursor-pointer" onClick={() => toggleExpand(p.id)}>
                                 <div>
                                     <span className="text-sm font-medium text-slate-800">{p.name}</span>
                                     <span className="ml-2 text-xs text-slate-400">{p.startDate} – {p.endDate}</span>
-                                    <span className={`ml-2 text-xs uppercase px-2 py-0.5 rounded-full ${
-                                        p.status === "active" ? "bg-emerald-50 text-emerald-600" :
-                                        p.status === "completed" ? "bg-slate-100 text-slate-500" : "bg-amber-50 text-amber-600"
-                                    }`}>{p.status}</span>
                                 </div>
                                 <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
                                     <span className="text-xs text-slate-400">{p.checkedIn}/{p.totalDelegates}</span>
                                     <button className="text-slate-400 hover:text-sky-600 transition-colors" onClick={() => openEdit(p)}><EditIcon sx={{ fontSize: 16 }} /></button>
                                     <button className="text-slate-400 hover:text-red-600 transition-colors" onClick={() => handleDelete(p.id)}><DeleteIcon sx={{ fontSize: 16 }} /></button>
                                 </div>
-                            </button>
+                            </div>
 
                             {expandedId === p.id && (
                                 <div className="border-t border-slate-100">
+                                    {/* Routes Section */}
                                     <div className="px-4 py-3 bg-slate-50 space-y-2">
-                                        <h3 className="text-xs font-semibold text-slate-500 uppercase">Routes / Coaches</h3>
+                                        <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Routes / Coaches</h3>
                                         {routesLoading ? (
                                             <p className="text-xs text-slate-400">Loading...</p>
                                         ) : routes.length === 0 ? (
-                                            <p className="text-xs text-slate-400">No routes yet</p>
+                                            <p className="text-xs text-slate-400 py-2">No routes yet. Add one below.</p>
                                         ) : (
-                                            <div className="space-y-1">
+                                            <div className="space-y-1.5">
                                                 {routes.map((r) => (
-                                                    <div key={r.id} className="flex items-center justify-between bg-white rounded-xl px-4 py-3 border border-slate-100">
+                                                    <div key={r.id} className="flex items-center bg-white rounded-xl px-4 py-2.5 border border-slate-100">
                                                         {editingRouteId === r.id ? (
                                                             <div className="flex items-center gap-2 flex-1">
-                                                                <input className="flex-1 rounded-lg border border-slate-200 px-2 py-1 text-xs outline-none focus:border-sky-400" value={editingRouteName} onChange={(e) => setEditingRouteName(e.target.value)} />
+                                                                <input className="flex-1 rounded-lg border border-slate-200 px-2 py-1 text-xs outline-none focus:border-sky-400" value={editingRouteName} onChange={(e) => setEditingRouteName(e.target.value)} autoFocus />
                                                                 <button className="text-xs text-sky-600 font-semibold" onClick={() => handleUpdateRoute(r.id)}>Save</button>
                                                                 <button className="text-xs text-slate-500" onClick={() => setEditingRouteId(null)}>Cancel</button>
                                                             </div>
                                                         ) : (
                                                             <>
-                                                                <span className="text-sm text-slate-800">{r.name}</span>
-                                                                <div className="flex items-center gap-2">
-                                                                    <span className="text-xs text-slate-400">{r.checkedIn}/{r.delegateCount} checked</span>
+                                                                <div className="flex-1 min-w-0">
+                                                                    <span className="text-sm font-medium text-slate-800">{r.name}</span>
+                                                                    <span className="ml-2 text-xs text-slate-400">
+                                                                        <PeopleIcon sx={{ fontSize: 12, verticalAlign: "middle", mr: 0.3 }} />
+                                                                        {delegateCountForRoute(r.id)} delegates
+                                                                    </span>
+                                                                </div>
+                                                                <div className="flex items-center gap-1 shrink-0">
+                                                                    <button className="text-[11px] bg-sky-600 text-white rounded-lg px-2.5 py-1 font-semibold hover:bg-sky-700 transition-colors" onClick={() => setManageRoute(r)}>Manage</button>
                                                                     <button className="text-slate-400 hover:text-sky-600 transition-colors" onClick={() => { setEditingRouteId(r.id); setEditingRouteName(r.name); }}><EditIcon sx={{ fontSize: 14 }} /></button>
                                                                     <button className="text-slate-400 hover:text-red-600 transition-colors" onClick={() => handleDeleteRoute(r.id)}><DeleteIcon sx={{ fontSize: 14 }} /></button>
                                                                 </div>
@@ -307,13 +352,17 @@ export default function ProgrammePage() {
                                         )}
                                         <form className="flex items-center gap-2 pt-1" onSubmit={handleAddRoute}>
                                             <input className="flex-1 rounded-xl border border-slate-200 px-3 py-1.5 text-xs outline-none focus:border-sky-400" placeholder="New route name..." value={newRouteName} onChange={(e) => setNewRouteName(e.target.value)} />
-                                            <button type="submit" className="bg-sky-600 text-white rounded-xl px-3 py-1.5 text-xs font-semibold hover:bg-sky-700 transition-colors">Add</button>
+                                            <button type="submit" className="bg-sky-600 text-white rounded-xl px-3 py-1.5 text-xs font-semibold hover:bg-sky-700 transition-colors shrink-0">Add</button>
                                         </form>
                                     </div>
 
+                                    {/* Delegates Section */}
                                     <div className="border-t border-slate-100 px-4 py-3 bg-white space-y-2">
                                         <div className="flex items-center justify-between">
-                                            <h3 className="text-xs font-semibold text-slate-500 uppercase">Delegates</h3>
+                                            <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
+                                                Delegates
+                                                {delegates.length > 0 && <span className="ml-1.5 text-slate-400 font-normal normal-case">({delegates.length})</span>}
+                                            </h3>
                                             <button className="text-sky-600 text-xs font-semibold flex items-center gap-1 hover:text-sky-700 transition-colors" onClick={() => setShowAddDelegate(true)}>
                                                 <PersonAddIcon sx={{ fontSize: 14 }} /> Add
                                             </button>
@@ -321,14 +370,9 @@ export default function ProgrammePage() {
 
                                         {showAddDelegate && (
                                             <form className="rounded-xl bg-sky-50 p-3 border border-sky-100 space-y-2" onSubmit={handleAddDelegate}>
-                                                <input className="w-full rounded-lg border border-sky-200 px-3 py-1.5 text-xs outline-none focus:border-sky-400" placeholder="Delegate name" value={newDelName} onChange={(e) => setNewDelName(e.target.value)} />
-                                                <div className="flex gap-2">
-                                                    <input className="flex-1 rounded-lg border border-sky-200 px-3 py-1.5 text-xs outline-none focus:border-sky-400" placeholder="Badge (optional)" value={newDelBadge} onChange={(e) => setNewDelBadge(e.target.value)} />
-                                                    <select className="flex-1 rounded-lg border border-sky-200 px-3 py-1.5 text-xs outline-none focus:border-sky-400" value={newDelRoute} onChange={(e) => setNewDelRoute(e.target.value)}>
-                                                        <option value="">No route</option>
-                                                        {routes.map((r) => (<option key={r.id} value={r.id}>{r.name}</option>))}
-                                                    </select>
-                                                </div>
+                                                <input className="w-full rounded-lg border border-sky-200 px-3 py-1.5 text-xs outline-none focus:border-sky-400" placeholder="Delegate name" value={newDelName} onChange={(e) => setNewDelName(e.target.value)} autoFocus />
+                                                <input className="w-full rounded-lg border border-sky-200 px-3 py-1.5 text-xs outline-none focus:border-sky-400" placeholder="Badge (optional)" value={newDelBadge} onChange={(e) => setNewDelBadge(e.target.value)} />
+                                                <p className="text-[10px] text-slate-400">Assign to a route via the route's Manage button above.</p>
                                                 <div className="flex gap-2">
                                                     <button type="submit" className="flex-1 bg-sky-600 text-white rounded-lg py-1.5 text-xs font-semibold hover:bg-sky-700 transition-colors">Add Delegate</button>
                                                     <button type="button" className="flex-1 bg-slate-100 text-slate-600 rounded-lg py-1.5 text-xs font-semibold hover:bg-slate-200 transition-colors" onClick={() => setShowAddDelegate(false)}>Cancel</button>
@@ -337,13 +381,16 @@ export default function ProgrammePage() {
                                         )}
 
                                         {delegatesLoading ? (
-                                            <p className="text-xs text-slate-400">Loading...</p>
+                                            <p className="text-xs text-slate-400 text-center py-4">Loading...</p>
                                         ) : delegates.length === 0 ? (
-                                            <p className="text-xs text-slate-400">No delegates assigned yet</p>
+                                            <div className="text-center py-6">
+                                                <p className="text-xs text-slate-400">No delegates assigned yet.</p>
+                                                <p className="text-[10px] text-slate-300 mt-1">Add delegates above, then assign them to routes via Manage.</p>
+                                            </div>
                                         ) : (
                                             <div className="space-y-1">
                                                 {delegates.map((d) => (
-                                                    <DelegateRow key={d.id} d={d} routes={routes} programmeId={expandedId} onRemove={handleRemoveDelegate} onRefresh={() => loadDelegates(expandedId)} />
+                                                    <DelegateRow key={d.id} d={d} onRemove={handleRemoveDelegate} />
                                                 ))}
                                             </div>
                                         )}
@@ -354,6 +401,16 @@ export default function ProgrammePage() {
                     ))
                 )}
             </div>
+
+            {manageRoute && (
+                <RouteManageModal
+                    route={manageRoute}
+                    allDelegates={delegates}
+                    programmeId={expandedId}
+                    onClose={() => setManageRoute(null)}
+                    onSaved={() => loadDelegates(expandedId)}
+                />
+            )}
         </main>
     );
 }

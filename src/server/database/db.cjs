@@ -60,6 +60,7 @@ const Route = sequelize.define("Route", {
   id: { type: DataTypes.UUID, defaultValue: DataTypes.UUIDV4, primaryKey: true },
   programmeId: { type: DataTypes.UUID, allowNull: false, field: "programme_id" },
   name: { type: DataTypes.TEXT, allowNull: false },
+  archived: { type: DataTypes.BOOLEAN, defaultValue: false },
 }, { tableName: "routes", timestamps: true, createdAt: "created_at", updatedAt: false });
 
 const Delegate = sequelize.define("Delegate", {
@@ -86,6 +87,7 @@ const AttendanceRecord = sequelize.define("AttendanceRecord", {
 const ReadyToDepart = sequelize.define("ReadyToDepart", {
   id: { type: DataTypes.UUID, defaultValue: DataTypes.UUIDV4, primaryKey: true },
   programmeId: { type: DataTypes.UUID, allowNull: false, unique: true, field: "programme_id" },
+  routeId: { type: DataTypes.UUID, allowNull: true, field: "route_id" },
   ready: { type: DataTypes.BOOLEAN, defaultValue: false },
   toggledBy: { type: DataTypes.UUID, field: "toggled_by" },
   toggledAt: { type: DataTypes.DATE, field: "toggled_at" },
@@ -95,11 +97,25 @@ const ProgrammeDelegate = sequelize.define("ProgrammeDelegate", {
   id: { type: DataTypes.UUID, defaultValue: DataTypes.UUIDV4, primaryKey: true },
   programmeId: { type: DataTypes.UUID, allowNull: false, field: "programme_id" },
   delegateId: { type: DataTypes.UUID, allowNull: false, field: "delegate_id" },
-  routeId: { type: DataTypes.UUID, allowNull: true, field: "route_id" },
   notes: { type: DataTypes.TEXT, defaultValue: "" },
 }, {
   tableName: "programme_delegates", timestamps: false,
   indexes: [{ unique: true, fields: ["programme_id", "delegate_id"] }, { fields: ["programme_id"] }, { fields: ["delegate_id"] }],
+});
+
+const RouteMember = sequelize.define("RouteMember", {
+  id: { type: DataTypes.UUID, defaultValue: DataTypes.UUIDV4, primaryKey: true },
+  routeId: { type: DataTypes.UUID, allowNull: false, field: "route_id" },
+  delegateId: { type: DataTypes.UUID, allowNull: false, field: "delegate_id" },
+  programmeId: { type: DataTypes.UUID, allowNull: false, field: "programme_id" },
+}, {
+  tableName: "route_members", timestamps: false,
+  indexes: [
+    { unique: true, fields: ["route_id", "delegate_id"] },
+    { fields: ["route_id"] },
+    { fields: ["delegate_id"] },
+    { fields: ["programme_id"] },
+  ],
 });
 
 const Staff = sequelize.define("Staff", {
@@ -153,14 +169,18 @@ AttendanceRecord.belongsTo(Programme, { foreignKey: "programme_id", as: "program
 AttendanceRecord.belongsTo(Delegate, { foreignKey: "delegate_id", as: "delegate" });
 Delegate.hasMany(AttendanceRecord, { foreignKey: "delegate_id", as: "attendanceRecords" });
 
-Programme.hasOne(ReadyToDepart, { foreignKey: "programme_id", as: "readyStatus", onDelete: "CASCADE" });
+Route.hasOne(ReadyToDepart, { foreignKey: "route_id", as: "readyStatus", onDelete: "CASCADE" });
+ReadyToDepart.belongsTo(Route, { foreignKey: "route_id", as: "route" });
 ReadyToDepart.belongsTo(Programme, { foreignKey: "programme_id", as: "programme" });
 
+Route.hasMany(RouteMember, { foreignKey: "route_id", as: "routeMembers", onDelete: "CASCADE" });
+RouteMember.belongsTo(Route, { foreignKey: "route_id", as: "route" });
+RouteMember.belongsTo(Delegate, { foreignKey: "delegate_id", as: "delegate" });
+RouteMember.belongsTo(Programme, { foreignKey: "programme_id", as: "programme" });
+
 Programme.hasMany(ProgrammeDelegate, { foreignKey: "programme_id", as: "programmeDelegates", onDelete: "CASCADE" });
-Route.hasMany(ProgrammeDelegate, { foreignKey: "route_id", as: "delegates" });
 Delegate.hasMany(ProgrammeDelegate, { foreignKey: "delegate_id", as: "programmeDelegates", onDelete: "CASCADE" });
 ProgrammeDelegate.belongsTo(Programme, { foreignKey: "programme_id", as: "programme" });
-ProgrammeDelegate.belongsTo(Route, { foreignKey: "route_id", as: "route" });
 ProgrammeDelegate.belongsTo(Delegate, { foreignKey: "delegate_id", as: "delegate" });
 
 Programme.hasMany(ScanEvent, { foreignKey: "programme_id", as: "scanEvents", onDelete: "CASCADE" });
@@ -227,21 +247,41 @@ Programme.removeById = async function (id) {
 };
 
 // Route
-Route.listForProgramme = async function (programmeId) {
+Route.listForProgramme = async function (programmeId, opts = {}) {
+  const where = { programmeId };
+  if (opts.archived !== undefined) where.archived = opts.archived;
   const routes = await Route.findAll({
-    where: { programmeId },
+    where,
     attributes: {
       include: [
-        [sequelize.literal(`(SELECT COUNT(*)::int FROM programme_delegates WHERE route_id = "Route".id)`), "delegate_count"],
-        [sequelize.literal(`(SELECT COUNT(*)::int FROM attendance_records ar JOIN programme_delegates pd ON pd.delegate_id = ar.delegate_id AND pd.programme_id = ar.programme_id WHERE pd.route_id = "Route".id AND ar.status = 'present')`), "checked_in"],
+        [sequelize.literal(`(SELECT COUNT(*)::int FROM route_members WHERE route_id = "Route".id)`), "delegate_count"],
+        [sequelize.literal(`(SELECT COUNT(*)::int FROM attendance_records ar JOIN route_members rm ON rm.delegate_id = ar.delegate_id WHERE rm.route_id = "Route".id AND ar.status = 'present')`), "checked_in"],
+        [sequelize.literal(`(SELECT COALESCE(bool_or(ready), false) FROM ready_to_depart WHERE route_id = "Route".id)`), "ready"],
       ],
     },
     order: [["created_at", "ASC"]],
   });
   return routes.map((r) => ({
-    id: r.id, programmeId: r.programmeId, name: r.name,
-    delegateCount: Number(r.get("delegate_count")), checkedIn: Number(r.get("checked_in")),
+    id: r.id, programmeId: r.programmeId, name: r.name, archived: r.archived,
+    delegateCount: Number(r.get("delegate_count")), checkedIn: Number(r.get("checked_in")), ready: r.get("ready") || false,
   }));
+};
+Route.getById = async function (routeId, programmeId) {
+  const r = await Route.findOne({
+    where: { id: routeId, programmeId },
+    attributes: {
+      include: [
+        [sequelize.literal(`(SELECT COUNT(*)::int FROM route_members WHERE route_id = "Route".id)`), "delegate_count"],
+        [sequelize.literal(`(SELECT COUNT(*)::int FROM attendance_records ar JOIN route_members rm ON rm.delegate_id = ar.delegate_id WHERE rm.route_id = "Route".id AND ar.status = 'present')`), "checked_in"],
+        [sequelize.literal(`(SELECT COALESCE(bool_or(ready), false) FROM ready_to_depart WHERE route_id = "Route".id)`), "ready"],
+      ],
+    },
+  });
+  if (!r) return null;
+  return {
+    id: r.id, programmeId: r.programmeId, name: r.name, archived: r.archived,
+    delegateCount: Number(r.get("delegate_count")), checkedIn: Number(r.get("checked_in")), ready: r.get("ready") || false,
+  };
 };
 Route.createForProgramme = async function (programmeId, name) {
   const r = await Route.create({ programmeId, name });
@@ -251,13 +291,20 @@ Route.updateForProgramme = async function (routeId, programmeId, body) {
   const { name, addDelegateIds, removeDelegateIds } = body;
   if (!(await Route.findOne({ where: { id: routeId, programmeId } }))) return null;
   if (name !== undefined) await Route.update({ name }, { where: { id: routeId } });
-  if (addDelegateIds?.length > 0) await ProgrammeDelegate.update({ routeId }, { where: { programmeId, delegateId: addDelegateIds } });
-  if (removeDelegateIds?.length > 0) await ProgrammeDelegate.update({ routeId: null }, { where: { programmeId, delegateId: removeDelegateIds, routeId } });
+  if (addDelegateIds?.length > 0) {
+    await RouteMember.bulkCreate(
+      addDelegateIds.map((did) => ({ routeId, programmeId, delegateId: did })),
+      { ignoreDuplicates: true }
+    );
+  }
+  if (removeDelegateIds?.length > 0) {
+    await RouteMember.destroy({ where: { routeId, delegateId: removeDelegateIds } });
+  }
   const r = await Route.findByPk(routeId, {
     attributes: {
       include: [
-        [sequelize.literal(`(SELECT COUNT(*)::int FROM programme_delegates WHERE route_id = "Route".id)`), "delegate_count"],
-        [sequelize.literal(`(SELECT COUNT(*)::int FROM attendance_records ar JOIN programme_delegates pd ON pd.delegate_id = ar.delegate_id AND pd.programme_id = ar.programme_id WHERE pd.route_id = "Route".id AND ar.status = 'present')`), "checked_in"],
+        [sequelize.literal(`(SELECT COUNT(*)::int FROM route_members WHERE route_id = "Route".id)`), "delegate_count"],
+        [sequelize.literal(`(SELECT COUNT(*)::int FROM attendance_records ar JOIN route_members rm ON rm.delegate_id = ar.delegate_id WHERE rm.route_id = "Route".id AND ar.status = 'present')`), "checked_in"],
       ],
     },
   });
@@ -269,6 +316,22 @@ Route.updateForProgramme = async function (routeId, programmeId, body) {
 Route.removeById = async function (routeId, programmeId) {
   return (await Route.destroy({ where: { id: routeId, programmeId } })) > 0;
 };
+Route.archiveById = async function (routeId, programmeId) {
+  const r = await Route.findOne({ where: { id: routeId, programmeId } });
+  if (!r) return null;
+  await r.update({ archived: true });
+  const delegateCount = await RouteMember.count({ where: { routeId } });
+  const checkedIn = await AttendanceRecord.count({
+    where: { programmeId, status: "present", delegateId: { [Sequelize.Op.in]: sequelize.literal(`(SELECT delegate_id FROM route_members WHERE route_id = '${routeId}')`) } },
+  });
+  return { id: r.id, programmeId: r.programmeId, name: r.name, archived: true, delegateCount, checkedIn };
+};
+Route.restoreById = async function (routeId, programmeId) {
+  const r = await Route.findOne({ where: { id: routeId, programmeId, archived: true } });
+  if (!r) return null;
+  await r.update({ archived: false });
+  return { id: r.id, programmeId: r.programmeId, name: r.name, archived: false };
+};
 
 // ProgrammeDelegate
 ProgrammeDelegate.listForProgramme = async function (programmeId) {
@@ -279,51 +342,72 @@ ProgrammeDelegate.listForProgramme = async function (programmeId) {
         [sequelize.literal(`(SELECT status FROM attendance_records WHERE programme_id = "ProgrammeDelegate"."programme_id" AND delegate_id = "ProgrammeDelegate"."delegate_id" LIMIT 1)`), "attendance_status"],
         [sequelize.literal(`(SELECT method FROM attendance_records WHERE programme_id = "ProgrammeDelegate"."programme_id" AND delegate_id = "ProgrammeDelegate"."delegate_id" LIMIT 1)`), "attendance_method"],
         [sequelize.literal(`(SELECT checked_in_at FROM attendance_records WHERE programme_id = "ProgrammeDelegate"."programme_id" AND delegate_id = "ProgrammeDelegate"."delegate_id" LIMIT 1)`), "checked_in_at"],
+        [sequelize.literal(`(
+          SELECT COALESCE(json_agg(json_build_object('id', rm.route_id, 'name', r.name) ORDER BY r.name), '[]'::json)
+          FROM route_members rm
+          JOIN routes r ON r.id = rm.route_id
+          WHERE rm.delegate_id = "ProgrammeDelegate"."delegate_id" AND rm.programme_id = "ProgrammeDelegate"."programme_id"
+        )`), "routes_json"],
       ],
     },
     include: [
       { model: Delegate, as: "delegate", attributes: ["id", "name", "badge"], required: true },
-      { model: Route, as: "route", attributes: ["id", "name"], required: false },
     ],
     order: [sequelize.literal(`"checked_in_at" DESC NULLS LAST`), sequelize.literal(`"delegate.name" ASC`)],
   });
-  return rows.map((r) => ({
-    id: r.delegate.id, name: r.delegate.name, badge: r.delegate.badge,
-    routeId: r.route?.id || null, routeName: r.route?.name || null,
-    status: r.get("attendance_status") || "absent", method: r.get("attendance_method") || null,
-    checkedInAt: r.get("checked_in_at") || null, notes: r.notes || "",
-  }));
+  return rows.map((r) => {
+    const routes = r.get("routes_json") || [];
+    return {
+      id: r.delegate.id, name: r.delegate.name, badge: r.delegate.badge,
+      routeId: routes.length > 0 ? routes[0].id : null,
+      routeName: routes.length > 0 ? routes[0].name : null,
+      routeIds: routes.map((rt) => rt.id),
+      routeNames: routes.map((rt) => rt.name),
+      status: r.get("attendance_status") || "absent", method: r.get("attendance_method") || null,
+      checkedInAt: r.get("checked_in_at") || null, notes: r.notes || "",
+    };
+  });
 };
 ProgrammeDelegate.addDelegates = async function (programmeId, body) {
   const { delegates, delegateIds, delegateId, name, badge, routeId } = body;
+  const addToRoute = async (did) => {
+    if (routeId) {
+      await RouteMember.findOrCreate({ where: { routeId, delegateId: did, programmeId }, defaults: { routeId, delegateId: did, programmeId } });
+    }
+  };
   if (delegates && Array.isArray(delegates)) {
     const added = [];
     for (const d of delegates) {
       const [del] = await Delegate.findOrCreate({ where: { name: d.name }, defaults: { name: d.name, badge: d.badge || null } });
-      await ProgrammeDelegate.findOrCreate({ where: { programmeId, delegateId: del.id }, defaults: { programmeId, delegateId: del.id, routeId: d.routeId || routeId || null } });
+      await ProgrammeDelegate.findOrCreate({ where: { programmeId, delegateId: del.id }, defaults: { programmeId, delegateId: del.id } });
+      await addToRoute(del.id);
       added.push({ delegateId: del.id, name: del.name });
     }
     return added;
   }
   if (delegateIds && Array.isArray(delegateIds)) {
     for (const id of delegateIds) {
-      await ProgrammeDelegate.findOrCreate({ where: { programmeId, delegateId: id }, defaults: { programmeId, delegateId: id, routeId: routeId || null } });
+      await ProgrammeDelegate.findOrCreate({ where: { programmeId, delegateId: id }, defaults: { programmeId, delegateId: id } });
+      await addToRoute(id);
     }
     return delegateIds.map((id) => ({ delegateId: id }));
   }
   if (delegateId) {
-    await ProgrammeDelegate.findOrCreate({ where: { programmeId, delegateId }, defaults: { programmeId, delegateId, routeId: routeId || null } });
+    await ProgrammeDelegate.findOrCreate({ where: { programmeId, delegateId }, defaults: { programmeId, delegateId } });
+    await addToRoute(delegateId);
     return [{ delegateId }];
   }
   if (name) {
     const del = await Delegate.create({ name, badge: badge || null });
-    await ProgrammeDelegate.create({ programmeId, delegateId: del.id, routeId: routeId || null });
+    await ProgrammeDelegate.create({ programmeId, delegateId: del.id });
+    await addToRoute(del.id);
     return [{ delegateId: del.id, name }];
   }
   throw new Error("Provide delegates array, delegateIds, delegateId, or name");
 };
 ProgrammeDelegate.removeFromProgramme = async function (programmeId, delegateId) {
   await AttendanceRecord.destroy({ where: { programmeId, delegateId } });
+  await RouteMember.destroy({ where: { programmeId, delegateId } });
   return (await ProgrammeDelegate.destroy({ where: { programmeId, delegateId } })) > 0;
 };
 
@@ -333,21 +417,42 @@ AttendanceRecord.getAttendance = async function (programmeId) {
   const presentDelegateIds = presentRecords.map((r) => r.delegateId);
   const allPds = await ProgrammeDelegate.findAll({
     where: { programmeId },
+    attributes: {
+      include: [
+        [sequelize.literal(`(
+          SELECT COALESCE(json_agg(json_build_object('id', rm.route_id, 'name', r.name) ORDER BY r.name), '[]'::json)
+          FROM route_members rm
+          JOIN routes r ON r.id = rm.route_id
+          WHERE rm.delegate_id = "ProgrammeDelegate"."delegate_id" AND rm.programme_id = "ProgrammeDelegate"."programme_id"
+        )`), "routes_json"],
+      ],
+    },
     include: [
       { model: Delegate, as: "delegate", attributes: ["id", "name"], required: true },
-      { model: Route, as: "route", attributes: ["id", "name"], required: false },
     ],
   });
   const pdByDelegateId = {};
   for (const pd of allPds) pdByDelegateId[pd.delegateId] = pd;
   const present = presentRecords.filter((rec) => pdByDelegateId[rec.delegateId]).map((rec) => {
     const pd = pdByDelegateId[rec.delegateId];
-    return { delegateId: rec.delegateId, name: pd.delegate.name, routeId: pd.routeId || null, routeName: pd.route?.name || null, method: rec.method, checkedInAt: rec.checkedInAt, notes: rec.notes };
+    const routes = pd.get("routes_json") || [];
+    return {
+      delegateId: rec.delegateId, name: pd.delegate.name,
+      routeId: routes.length > 0 ? routes[0].id : null, routeName: routes.length > 0 ? routes[0].name : null,
+      routeIds: routes.map((rt) => rt.id), routeNames: routes.map((rt) => rt.name),
+      method: rec.method, checkedInAt: rec.checkedInAt, notes: rec.notes,
+    };
   });
   const presentSet = new Set(presentDelegateIds);
-  const missing = allPds.filter((pd) => !presentSet.has(pd.delegateId)).map((pd) => ({
-    delegateId: pd.delegate.id, name: pd.delegate.name, routeId: pd.routeId || null, routeName: pd.route?.name || null, notes: pd.notes || "",
-  }));
+  const missing = allPds.filter((pd) => !presentSet.has(pd.delegateId)).map((pd) => {
+    const routes = pd.get("routes_json") || [];
+    return {
+      delegateId: pd.delegate.id, name: pd.delegate.name,
+      routeId: routes.length > 0 ? routes[0].id : null, routeName: routes.length > 0 ? routes[0].name : null,
+      routeIds: routes.map((rt) => rt.id), routeNames: routes.map((rt) => rt.name),
+      notes: pd.notes || "",
+    };
+  });
   const unidentifiedEvents = await ScanEvent.findAll({ where: { programmeId, status: "unverified" }, attributes: ["id", "scannedAt"], order: [["scanned_at", "DESC"]] });
   return { present, missing, unidentified: unidentifiedEvents.map((s) => ({ scanId: s.id, scannedAt: s.scannedAt })) };
 };
@@ -373,34 +478,41 @@ AttendanceRecord.getSummary = async function (programmeId) {
   const total = await ProgrammeDelegate.count({ where: { programmeId } });
   const checkedIn = await AttendanceRecord.count({ where: { programmeId, status: "present" } });
   const unidentified = await ScanEvent.count({ where: { programmeId, status: "unverified" } });
+  const unidentifiedScans = await ScanEvent.findAll({
+    where: { programmeId, status: "unverified" },
+    attributes: ["id", "scannedAt"],
+    order: [["scanned_at", "DESC"]],
+  });
   const routes = await Route.findAll({
     where: { programmeId },
     attributes: {
       include: [
-        [sequelize.literal(`(SELECT COUNT(*)::int FROM programme_delegates WHERE route_id = "Route".id)`), "total"],
-        [sequelize.literal(`(SELECT COUNT(*)::int FROM attendance_records ar JOIN programme_delegates pd ON pd.delegate_id = ar.delegate_id AND pd.programme_id = ar.programme_id WHERE pd.route_id = "Route".id AND ar.status = 'present')`), "checked_in"],
+        [sequelize.literal(`(SELECT COUNT(*)::int FROM route_members WHERE route_id = "Route".id)`), "total"],
+        [sequelize.literal(`(SELECT COUNT(*)::int FROM attendance_records ar JOIN route_members rm ON rm.delegate_id = ar.delegate_id WHERE rm.route_id = "Route".id AND ar.status = 'present')`), "checked_in"],
+        [sequelize.literal(`(SELECT COUNT(*)::int FROM scan_events WHERE programme_id = "Route"."programme_id" AND status = 'unverified')`), "unidentified"],
       ],
     },
     order: [["name", "ASC"]],
   });
   return {
     total, checkedIn, missing: total - checkedIn, unidentified,
+    unidentifiedScans: unidentifiedScans.map((s) => ({ scanId: s.id, scannedAt: s.scannedAt })),
     byRoute: routes.map((r) => ({
-      routeId: r.id, routeName: r.name, total: Number(r.get("total")), checkedIn: Number(r.get("checked_in")), missing: Number(r.get("total")) - Number(r.get("checked_in")),
+      routeId: r.id, routeName: r.name, total: Number(r.get("total")), checkedIn: Number(r.get("checked_in")), missing: Number(r.get("total")) - Number(r.get("checked_in")), unidentified: Number(r.get("unidentified")),
     })),
   };
 };
 
-// ReadyToDepart
-ReadyToDepart.getStatus = async function (programmeId) {
-  const r = await ReadyToDepart.findOne({ where: { programmeId }, attributes: ["ready", "toggledBy", "toggledAt"] });
+// ReadyToDepart (per-route)
+ReadyToDepart.getStatus = async function (routeId) {
+  const r = await ReadyToDepart.findOne({ where: { routeId }, attributes: ["routeId", "ready", "toggledBy", "toggledAt"] });
   if (!r) return { ready: false, toggledBy: null, toggledAt: null };
-  return { ready: r.ready, toggledBy: r.toggledBy, toggledAt: r.toggledAt };
+  return { routeId: r.routeId, ready: r.ready, toggledBy: r.toggledBy, toggledAt: r.toggledAt };
 };
-ReadyToDepart.setStatus = async function (programmeId, ready) {
-  const [record, created] = await ReadyToDepart.findOrCreate({ where: { programmeId }, defaults: { programmeId, ready, toggledAt: new Date() } });
-  if (!created) await record.update({ ready, toggledAt: new Date() });
-  return { ready: record.ready, toggledBy: record.toggledBy, toggledAt: record.toggledAt };
+ReadyToDepart.setStatus = async function (routeId, programmeId, ready) {
+  const [record] = await ReadyToDepart.findOrCreate({ where: { routeId }, defaults: { routeId, programmeId, ready, toggledAt: new Date() } });
+  if (record.ready !== ready) await record.update({ ready, toggledAt: new Date() });
+  return { routeId: record.routeId, ready: record.ready, toggledBy: record.toggledBy, toggledAt: record.toggledAt };
 };
 
-module.exports = { sequelize, user, messages, attendee, admin, faceEmbeddings, Programme, Route, Delegate, AttendanceRecord, ReadyToDepart, ProgrammeDelegate, Staff, ScanEvent, ChatMessage, OfflineQueue };
+module.exports = { sequelize, user, messages, attendee, admin, faceEmbeddings, Programme, Route, Delegate, AttendanceRecord, ReadyToDepart, ProgrammeDelegate, Staff, ScanEvent, ChatMessage, OfflineQueue, RouteMember };
