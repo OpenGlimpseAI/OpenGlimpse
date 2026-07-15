@@ -11,7 +11,20 @@ import Settings from '@mui/icons-material/Settings';
 import AccountCircle from '@mui/icons-material/AccountCircle';
 import Paper from '@mui/material/Paper';
 
+function getAuthUser() {
+    const raw = localStorage.getItem('authUser');
+    if (!raw) return null;
+    try {
+        return JSON.parse(raw);
+    } catch {
+        return null;
+    }
+}
+
 export default function FixedBottomNavigation() {
+    const currentUser = getAuthUser();
+    const isStaff = currentUser?.role === 'staff';
+
     return(
         <Box>
             <CssBaseline />
@@ -41,14 +54,16 @@ export default function FixedBottomNavigation() {
                         component={Link}
                         to="/camera"
                     />
-                    <BottomNavigationAction
-                        className="bottom-nav-action"
-                        label="Profile"
-                        value="profile"
-                        icon={<AccountCircle />}
-                        component={Link}
-                        to="/profile"
-                    />
+                    {isStaff && (
+                        <BottomNavigationAction
+                            className="bottom-nav-action"
+                            label="Profile"
+                            value="profile"
+                            icon={<AccountCircle />}
+                            component={Link}
+                            to="/profile"
+                        />
+                    )}
                     <BottomNavigationAction
                         className="bottom-nav-action"
                         label="Settings"
