@@ -34,6 +34,12 @@ function delay(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
 
+async function clearDatabase() {
+    console.log('Clearing database...');
+    await sequelize.sync({ force: true });
+    console.log('Database cleared.\n');
+}
+
 async function seed() {
     console.log('Starting seed...\n');
 
@@ -80,6 +86,8 @@ async function seed() {
         const email = `${folder}@test.com`;
         const user = await User.create(folder, null, { email });
         console.log(`  Created user: ${user.id} (${email})`);
+        const user = await User.create(folder, null, { email: `${folder}@test.com` });
+        console.log(`  Created user: ${user.id}`);
 
         const imageData = fs.readFileSync(defaultImage);
         const ext = path.extname(defaultImage).toLowerCase();
