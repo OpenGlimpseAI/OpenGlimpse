@@ -3,6 +3,7 @@ const routes = require('./routes.controller');
 const delegates = require('./delegates.controller');
 const ready = require('./ready.controller');
 const { recognize } = require('./recognize.controller');
+const { lookupBadge } = require('./qr.controller');
 
 function registerProgrammeRoutes(app, io) {
     const attendance = require('./attendance.controller')(io);
@@ -33,6 +34,9 @@ function registerProgrammeRoutes(app, io) {
 
     // Face recognition
     app.post('/programmes/:id/recognize', recognize);
+
+    // QR badge lookup
+    app.post('/programmes/:id/scan-qr', lookupBadge);
 
     // Ready to depart
     app.get('/programmes/:id/ready-to-depart', ready.getStatus);

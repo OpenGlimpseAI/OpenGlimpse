@@ -1,5 +1,6 @@
 const fs = require('fs');
 const path = require('path');
+const crypto = require('crypto');
 const { sequelize, Programme, Delegate, ProgrammeDelegate } = require('../src/server/database/db.cjs');
 const { User, FaceEmbeddings } = require('../src/server/database/dbcrudmethods');
 
@@ -84,10 +85,9 @@ async function seed() {
         }
 
         const email = `${folder}@test.com`;
-        const user = await User.create(folder, null, { email });
+        const passwordHash = crypto.createHash('sha256').update('password').digest('hex');
+        const user = await User.create(folder, null, { email, passwordHash });
         console.log(`  Created user: ${user.id} (${email})`);
-        const user = await User.create(folder, null, { email: `${folder}@test.com` });
-        console.log(`  Created user: ${user.id}`);
 
         const imageData = fs.readFileSync(defaultImage);
         const ext = path.extname(defaultImage).toLowerCase();
