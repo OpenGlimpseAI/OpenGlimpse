@@ -1,6 +1,5 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import PhoneIcon from "@mui/icons-material/Phone";
 import CheckIcon from "@mui/icons-material/Check";
 import SearchIcon from "@mui/icons-material/Search";
 import CloseIcon from "@mui/icons-material/Close";
@@ -26,7 +25,6 @@ function getAuthUser() {
 }
 
 const FILTERS = ["All", "Missing", "Present"];
-const ROUTE_TABS = ["Active", "All"];
 
 export function AdminDashboard() {
     const navigate = useNavigate();
@@ -52,11 +50,14 @@ export function AdminDashboard() {
     const [selectedRoute, setSelectedRoute] = useState(null);
     const [allDelegates, setAllDelegates] = useState([]);
     const [search, setSearch] = useState("");
-    const [routeTab, setRouteTab] = useState("Active");
     const [filter, setFilter] = useState("All");
     const [selected, setSelected] = useState(null);
     const [noteText, setNoteText] = useState("");
     const [tick, setTick] = useState(0);
+    const allDelegatesRef = useRef(allDelegates);
+    allDelegatesRef.current = allDelegates;
+    const routesRef = useRef(routes);
+    routesRef.current = routes;
 
     useEffect(() => {
         getProgrammes()
@@ -108,6 +109,8 @@ export function AdminDashboard() {
     useEffect(() => {
         return onAttendanceUpdated((event) => {
             if (event.programmeId !== programmeId) return;
+            const delegate = allDelegatesRef.current.find((d) => d.id === event.delegateId);
+            const delegateRouteIds = delegate?.routeIds || [];
             setAllDelegates((prev) => prev.map((d) =>
                 d.id === event.delegateId
                     ? { ...d, status: event.status, method: event.method, checkedInAt: event.checkedInAt }
@@ -118,6 +121,16 @@ export function AdminDashboard() {
                 checkedIn: event.status === "present" ? prev.checkedIn + 1 : prev.checkedIn - 1,
                 missing: event.status === "present" ? prev.missing - 1 : prev.missing + 1,
             } : prev);
+            setRoutes((prev) => prev.map((r) =>
+                delegateRouteIds.includes(r.id)
+                    ? { ...r, checkedIn: event.status === "present" ? r.checkedIn + 1 : r.checkedIn - 1 }
+                    : r
+            ));
+            setSelectedRoute((prev) =>
+                prev && delegateRouteIds.includes(prev.id)
+                    ? { ...prev, checkedIn: event.status === "present" ? prev.checkedIn + 1 : prev.checkedIn - 1 }
+                    : prev
+            );
         });
     }, [programmeId]);
 
@@ -265,50 +278,52 @@ export function AdminDashboard() {
             )}
             <header className="dashboard-header">
                 <div className="dashboard-header-inner">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1 min-w-0">
                         {selectedRoute ? (
-                            <div className="flex items-center gap-2 min-w-0">
+                            <div className="flex items-center gap-1.5 min-w-0 flex-1">
                                 <button
                                     className="text-xs text-sky-600 font-semibold hover:text-sky-700 transition-colors shrink-0 whitespace-nowrap"
                                     onClick={() => { setSelectedRoute(null); setSearch(""); setFilter("All"); navigate("/dashboard", { replace: true }); }}
                                 >
                                     &larr; All Routes
                                 </button>
-                                <span className="text-xs text-slate-300">/</span>
+                                <span className="text-xs text-slate-300 shrink-0">/</span>
                                 <span className="text-sm font-medium text-slate-700 truncate">{selectedRoute.name}</span>
                             </div>
                         ) : (
                             <button
-                                className="dashboard-programme-btn"
+                                className="dashboard-programme-btn min-w-0 flex-1"
                                 onClick={() => setShowPicker((p) => !p)}
                             >
-                                <span>{currentProgramme?.name || "Select programme"}</span>
+                                <span className="truncate">{currentProgramme?.name || "Select programme"}</span>
                                 <KeyboardArrowDown
-                                    className={`dashboard-chevron ${showPicker ? "dashboard-chevron-open" : ""}`}
+                                    className={`dashboard-chevron shrink-0 ${showPicker ? "dashboard-chevron-open" : ""}`}
                                 />
                             </button>
                         )}
-                        <button
-                            className="text-slate-400 hover:text-sky-600 transition-colors w-10 h-10 flex items-center justify-center"
-                            onClick={() => navigate("/directory")}
-                            aria-label="Delegate directory"
-                        >
-                            <PeopleAltIcon sx={{ fontSize: 18 }} />
-                        </button>
-                        <button
-                            className="text-slate-400 hover:text-sky-600 transition-colors w-10 h-10 flex items-center justify-center"
-                            onClick={() => navigate(`/summary/${programmeId}`)}
-                            aria-label="View report"
-                        >
-                            <BarChartIcon sx={{ fontSize: 18 }} />
-                        </button>
-                        <button
-                            className="text-slate-400 hover:text-slate-600 transition-colors w-10 h-10 flex items-center justify-center"
-                            onClick={() => navigate("/programmes")}
-                            aria-label="Manage programmes"
-                        >
-                            <SettingsIcon sx={{ fontSize: 18 }} />
-                        </button>
+                        <div className="flex items-center gap-0.5 shrink-0">
+                            <button
+                                className="text-slate-400 hover:text-sky-600 transition-colors w-11 h-11 flex items-center justify-center rounded-xl active:bg-slate-100"
+                                onClick={() => navigate("/directory")}
+                                aria-label="Delegate directory"
+                            >
+                                <PeopleAltIcon sx={{ fontSize: 20 }} />
+                            </button>
+                            <button
+                                className="text-slate-400 hover:text-sky-600 transition-colors w-11 h-11 flex items-center justify-center rounded-xl active:bg-slate-100"
+                                onClick={() => navigate(`/summary/${programmeId}`)}
+                                aria-label="View report"
+                            >
+                                <BarChartIcon sx={{ fontSize: 20 }} />
+                            </button>
+                            <button
+                                className="text-slate-400 hover:text-slate-600 transition-colors w-11 h-11 flex items-center justify-center rounded-xl active:bg-slate-100"
+                                onClick={() => navigate("/programmes")}
+                                aria-label="Manage programmes"
+                            >
+                                <SettingsIcon sx={{ fontSize: 20 }} />
+                            </button>
+                        </div>
                     </div>
                     {currentProgramme && (
                         <p className="dashboard-route">
@@ -364,25 +379,9 @@ export function AdminDashboard() {
 
             {!selectedRoute && (
                 <div className="mx-4 sm:px-6 space-y-2 mb-4">
-                    {/* Route tabs */}
-                    <div className="flex gap-2">
-                        {ROUTE_TABS.map((t) => (
-                            <button
-                                key={t}
-                                className={`rounded-full border px-4 py-1.5 text-xs font-medium transition-all ${
-                                    routeTab === t
-                                        ? "border-sky-500 bg-sky-50 text-sky-700"
-                                        : "border-slate-200 text-slate-600 hover:border-slate-300"
-                                }`}
-                                onClick={() => setRouteTab(t)}
-                            >
-                                {t}
-                            </button>
-                        ))}
-                    </div>
-                    {routes.filter((r) => routeTab === "Active" ? !r.ready : true).length === 0 ? (
+                    {routes.length === 0 ? (
                         <p className="text-sm text-slate-400 text-center pt-4">No routes yet</p>
-                    ) : routes.filter((r) => routeTab === "Active" ? !r.ready : true).map((r) => {
+                    ) : routes.map((r) => {
                     const pct = r.delegateCount > 0 ? Math.round((r.checkedIn / r.delegateCount) * 100) : 0;
                     const isSelected = selectedRoute?.id === r.id;
                     return (
@@ -391,35 +390,25 @@ export function AdminDashboard() {
                             className={`rounded-2xl px-4 py-3 shadow-sm border cursor-pointer transition-colors ${isSelected ? "bg-white border-sky-300" : "bg-white border-slate-100 hover:border-sky-200"}`}
                             onClick={() => handleSelectRoute(r)}
                         >
-                            <div className="flex items-center justify-between mb-2">
-                                <div className="flex items-center gap-2">
-                                    <span className="text-sm font-medium text-slate-800">{r.name}</span>
+                            <div className="flex items-start justify-between gap-2 mb-2">
+                                <div className="flex items-center gap-1.5 min-w-0">
+                                    <span className="text-sm font-medium text-slate-800 truncate">{r.name}</span>
                                     {r.ready ? (
-                                        <span className="text-xs uppercase px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-600">ready</span>
+                                        <span className="text-[10px] uppercase px-1.5 py-0.5 rounded-full bg-emerald-50 text-emerald-600 shrink-0">Ready to depart</span>
                                     ) : isSelected ? (
-                                        <span className="text-xs uppercase px-2 py-0.5 rounded-full bg-sky-100 text-sky-600">active</span>
+                                        <span className="text-[10px] uppercase px-1.5 py-0.5 rounded-full bg-sky-100 text-sky-600 shrink-0">active</span>
                                     ) : (
-                                        <span className="text-xs uppercase px-2 py-0.5 rounded-full bg-amber-50 text-amber-600">pending</span>
+                                        <span className="text-[10px] uppercase px-1.5 py-0.5 rounded-full bg-amber-50 text-amber-600 shrink-0">pending</span>
                                     )}
                                 </div>
-                                {!r.ready && (
-                                    <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
-                                        <button
-                                            className="text-xs text-slate-400 hover:text-emerald-600 transition-colors"
-                                            onClick={() => handleToggleReady(r.id)}
-                                        >
-                                            Ready to depart?
-                                        </button>
-                                    </div>
-                                )}
                             </div>
                             <div className="h-2 rounded-full bg-slate-100 overflow-hidden">
                                 <div className={`h-full rounded-full transition-all duration-500 ${r.ready ? "bg-emerald-500" : "bg-emerald-500"}`} style={{ width: `${pct}%` }} />
                             </div>
-                            <div className="flex justify-between mt-1.5">
-                                <span className="text-xs text-emerald-600">{r.checkedIn} checked in</span>
+                            <div className="flex justify-between mt-1.5 gap-2">
+                                <span className="text-xs text-emerald-600 truncate">{r.checkedIn} checked in</span>
                                 {!r.ready && r.delegateCount - r.checkedIn > 0 && (
-                                    <span className="text-xs text-amber-600" onClick={(e) => e.stopPropagation()}>{r.delegateCount - r.checkedIn} missing</span>
+                                    <span className="text-xs text-amber-600 shrink-0" onClick={(e) => e.stopPropagation()}>{r.delegateCount - r.checkedIn} missing</span>
                                 )}
                             </div>
                         </div>
@@ -441,6 +430,7 @@ export function AdminDashboard() {
                                     value={search}
                                     onChange={(e) => setSearch(e.target.value)}
                                     className="directory-search-input"
+                                    style={{ fontSize: "16px" }}
                                 />
                                 {search && (
                                     <button className="directory-search-clear" onClick={() => setSearch("")}>
@@ -500,9 +490,6 @@ export function AdminDashboard() {
                                                             <CheckIcon sx={{ fontSize: 16 }} />
                                                             Check in
                                                         </button>
-                                                        <button className="directory-call-btn-sm" aria-label={`Call ${d.name}`}>
-                                                            <PhoneIcon sx={{ fontSize: 14 }} />
-                                                        </button>
                                                     </>
                                                 )}
                                             </div>
@@ -560,18 +547,15 @@ export function AdminDashboard() {
                                 {!isPresent && (
                                     <div className="px-4 py-2">
                                         <input
-                                            className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs outline-none focus:border-sky-400"
+                                            className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-xs outline-none focus:border-sky-400"
                                             placeholder="Add a note (e.g. badge missing, verified by photo)"
                                             value={noteText}
                                             onChange={(e) => setNoteText(e.target.value)}
+                                            style={{ fontSize: "16px" }}
                                         />
                                     </div>
                                 )}
                                 <div className="profile-actions">
-                                    <button className="profile-action-btn profile-action-call">
-                                        <PhoneIcon sx={{ fontSize: 18 }} />
-                                        Call
-                                    </button>
                                     {isPresent ? (
                                         <button className="profile-action-btn profile-action-absent" onClick={() => { handleUndo(selected.id); setSelected(null); setNoteText(""); }}>
                                             Mark as Absent

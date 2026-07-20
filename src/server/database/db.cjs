@@ -116,7 +116,7 @@ const RouteMember = sequelize.define("RouteMember", {
 }, {
   tableName: "route_members", timestamps: false,
   indexes: [
-    { unique: true, fields: ["route_id", "delegate_id"] },
+    { unique: true, fields: ["programme_id", "delegate_id"] },
     { fields: ["route_id"] },
     { fields: ["delegate_id"] },
     { fields: ["programme_id"] },
@@ -298,6 +298,8 @@ Route.updateForProgramme = async function (routeId, programmeId, body) {
   if (!(await Route.findOne({ where: { id: routeId, programmeId } }))) return null;
   if (name !== undefined) await Route.update({ name }, { where: { id: routeId } });
   if (addDelegateIds?.length > 0) {
+    // One route per delegate: move to this route, remove from any other
+    await RouteMember.destroy({ where: { programmeId, delegateId: addDelegateIds } });
     await RouteMember.bulkCreate(
       addDelegateIds.map((did) => ({ routeId, programmeId, delegateId: did })),
       { ignoreDuplicates: true }
@@ -379,6 +381,8 @@ ProgrammeDelegate.addDelegates = async function (programmeId, body) {
   const { delegates, delegateIds, delegateId, name, badge, routeId, userIds } = body;
   const addToRoute = async (did) => {
     if (routeId) {
+      // One route per delegate: move, don't duplicate
+      await RouteMember.destroy({ where: { programmeId, delegateId: did } });
       await RouteMember.findOrCreate({ where: { routeId, delegateId: did, programmeId }, defaults: { routeId, delegateId: did, programmeId } });
     }
   };
