@@ -1,97 +1,84 @@
-const WebSocketServer = require('websocket').server;
-const { Messages } = require('../../database/dbcrudmethods')
-const clients = new Set();
+const { Messages } = require('../../database/dbcrudmethods');
+const { parseToken } = require('../auth/authRoutes');
+const { user } = require('../../database/db.cjs');
 
-function sendJson(connection, payload) {
-    connection.sendUTF(JSON.stringify(payload));
-}
-
-function broadcast(payload) {
-    for (const client of clients) {
-        if (client.connected) {
-            sendJson(client, payload);
-        }
-    }
-}
-
-function formatpayload(row){
+function formatpayload(row) {
     return {
         text: row.content ?? row.text,
         timestamp: row.timestamp,
         senderId: row.senderId,
-    }
+    };
 }
 
-function attachChatServer(server) {
-    const socketserver = new WebSocketServer({
-        httpServer: server,
-        autoAcceptConnections: false,
-    });
+function attachChatServer(io) {
+    const chat = io.of('/chat');
 
-    socketserver.on('request', (request) => {
-        const connection = request.accept(null, request.origin);
-        clients.add(connection);
-        (async ()=>{
-            const history = await Messages.read();
-            sendJson(connection, {
-                type:'history',
-                messages: history.map(formatpayload),
-            })
-        })().catch((err)=>{
-            console.error('Chat history could not be loaded', err);
-            sendJson(connection, {
-                type:'error',
-                text:"Chat history could not be found",
-            })
-        })
-        connection.on('message', async (message) => {
-            if (message.type !== 'utf8') {
-                return;
+    chat.use(async (socket, next) => {
+        try {
+            const token = socket.handshake.auth?.token || socket.handshake.query?.token;
+            if (!token) {
+                return next(new Error('Authentication required'));
             }
 
+            const payload = parseToken(token);
+            if (!payload?.id) {
+                return next(new Error('Invalid token'));
+            }
+
+            const currentUser = await user.findByPk(payload.id);
+            if (!currentUser) {
+                return next(new Error('Invalid user'));
+            }
+
+            socket.userId = currentUser.id;
+            next();
+        } catch (err) {
+            next(new Error('Authentication failed'));
+        }
+    });
+
+    chat.on('connection', (socket) => {
+        console.log(`Chat user connected: ${socket.userId}`);
+
+        (async () => {
+            const history = await Messages.read();
+            socket.emit('history', {
+                messages: history.map(formatpayload),
+            });
+        })().catch((err) => {
+            console.error('Chat history could not be loaded', err);
+            socket.emit('error', { text: 'Chat history could not be found' });
+        });
+
+        socket.on('message', async (data) => {
             try {
-                const data = JSON.parse(message.utf8Data);
-                const text = typeof data.text === 'string' ? data.text.trim() : "";
-                const senderId = typeof data.senderId === 'string' ? data.senderId.trim() : "";
+                const text = typeof data?.text === 'string' ? data.text.trim() : '';
 
                 if (!text || text.length > 1000) {
-                    return sendJson(connection, {
-                        type: "error",
-                        text: "invalid message",
-                    });
-                }
-                if (!senderId) {
-                    return sendJson(connection, {
-                        type: "error",
-                        text: "missing sender id",
-                    });
+                    return socket.emit('error', { text: 'invalid message' });
                 }
 
                 const savedMessage = await Messages.create({
                     content: text,
                     timestamp: new Date(),
-                    senderId,
+                    senderId: socket.userId,
                 });
-                broadcast({
-                    type: 'message',
+
+                chat.emit('message', {
                     message: formatpayload(savedMessage.toJSON()),
                 });
             } catch (error) {
                 console.error('Failed to save chat message', error);
-                sendJson(connection, {
-                    type: 'error',
-                    text: 'invalid message format',
-                });
+                socket.emit('error', { text: 'invalid message format' });
             }
         });
 
-        connection.on('close', (rescode, description) => {
-            clients.delete(connection);
-            console.log('websocket closed', rescode, description);
+        socket.on('disconnect', () => {
+            console.log(`Chat user disconnected: ${socket.userId}`);
         });
     });
 
-    return socketserver;
+    return chat;
 }
 
 module.exports = { attachChatServer };

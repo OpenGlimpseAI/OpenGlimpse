@@ -20,7 +20,11 @@ const user = sequelize.define("users", {
   id: { type: DataTypes.UUID, defaultValue: DataTypes.UUIDV4, primaryKey: true, allowNull: false },
   enName: { type: DataTypes.STRING, allowNull: false },
   zhName: { type: DataTypes.STRING, allowNull: true },
-});
+  email: { type: DataTypes.TEXT, allowNull: false, unique: true },
+  passwordHash: { type: DataTypes.TEXT, allowNull: true, field: "password_hash" },
+  photoUrl: { type: DataTypes.TEXT, allowNull: true, field: "photo_url" },
+  role: { type: DataTypes.TEXT, allowNull: true, validate: { isIn: [["staff", "participant"]] } },
+}, { timestamps: true, createdAt: "created_at", updatedAt: false });
 
 const messages = sequelize.define("messages", {
   content: { type: DataTypes.STRING, allowNull: false },
@@ -76,7 +80,7 @@ const AttendanceRecord = sequelize.define("AttendanceRecord", {
   programmeId: { type: DataTypes.UUID, allowNull: false, field: "programme_id" },
   delegateId: { type: DataTypes.UUID, allowNull: false, field: "delegate_id" },
   status: { type: DataTypes.TEXT, allowNull: false, validate: { isIn: [["present", "absent"]] } },
-  method: { type: DataTypes.TEXT, allowNull: false, validate: { isIn: [["auto", "manual"]] } },
+  method: { type: DataTypes.TEXT, allowNull: false, validate: { isIn: [["auto", "manual", "qr"]] } },
   checkedInAt: { type: DataTypes.DATE, defaultValue: DataTypes.NOW, field: "checked_in_at" },
   checkedInBy: { type: DataTypes.UUID, field: "checked_in_by" },
   notes: { type: DataTypes.TEXT, defaultValue: "" },
