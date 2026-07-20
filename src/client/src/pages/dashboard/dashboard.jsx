@@ -15,12 +15,33 @@ import { getProgrammes, getAttendance, getAttendanceSummary, getRoutes, getRoute
 import { joinProgramme, leaveProgramme, onAttendanceUpdated } from "../../services/socket";
 import { timeAgo } from "../../services/utils";
 
+function getAuthUser() {
+    const raw = localStorage.getItem('authUser');
+    if (!raw) return null;
+    try {
+        return JSON.parse(raw);
+    } catch {
+        return null;
+    }
+}
+
 const FILTERS = ["All", "Missing", "Present"];
 const ROUTE_TABS = ["Active", "All"];
 
 export function AdminDashboard() {
     const navigate = useNavigate();
     const { routeId } = useParams();
+    const currentUser = getAuthUser();
+
+    if (!currentUser) {
+        navigate('/login');
+        return null;
+    }
+    if (currentUser.role !== 'staff') {
+        navigate('/');
+        return null;
+    }
+
     const [programmes, setProgrammes] = useState([]);
     const [programmeId, setProgrammeId] = useState(null);
     const [showPicker, setShowPicker] = useState(false);

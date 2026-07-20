@@ -1,5 +1,6 @@
 const fs = require('fs');
 const path = require('path');
+const crypto = require('crypto');
 const { sequelize, Programme, Delegate, ProgrammeDelegate } = require('../src/server/database/db.cjs');
 const { User, FaceEmbeddings } = require('../src/server/database/dbcrudmethods');
 
@@ -35,23 +36,17 @@ function delay(ms) {
 }
 
 async function clearDatabase() {
-    const tables = [
-        'offline_queue', 'chat_messages', 'scan_events', 'programme_delegates',
-        'ready_to_depart', 'attendance_records', 'staff', 'delegates',
-        'routes', 'programmes', 'faceEmbeddings', 'admins', 'attendees',
-        'messages', 'users'
-    ];
     console.log('Clearing database...');
-    for (const table of tables) {
-        await sequelize.query(`DELETE FROM "${table}"`);
-    }
+    await sequelize.sync({ force: true });
     console.log('Database cleared.\n');
 }
 
 async function seed() {
     console.log('Starting seed...\n');
 
-    await clearDatabase();
+    console.log('Syncing database (drop + recreate)...');
+    await sequelize.sync({ force: true });
+    console.log('Database synced.\n');
     await delay(1000);
 
     const folders = fs.readdirSync(TEST_IMAGES_DIR, { withFileTypes: true })
@@ -89,8 +84,10 @@ async function seed() {
             console.log(`  Test images: ${testImages.map(f => path.basename(f)).join(', ')}`);
         }
 
-        const user = await User.create(folder);
-        console.log(`  Created user: ${user.id}`);
+        const email = `${folder}@test.com`;
+        const passwordHash = crypto.createHash('sha256').update('password').digest('hex');
+        const user = await User.create(folder, null, { email, passwordHash });
+        console.log(`  Created user: ${user.id} (${email})`);
 
         const imageData = fs.readFileSync(defaultImage);
         const ext = path.extname(defaultImage).toLowerCase();

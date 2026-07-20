@@ -1,68 +1,78 @@
 import { useEffect, useRef, useState } from 'react';
+import { io } from 'socket.io-client';
 import ChatBubble from "./ChatBubble.jsx";
 import ChatInput from './ChatInput.jsx';
 import WifiRounded from '@mui/icons-material/WifiRounded'
 import WifiOffRoundedIcon from '@mui/icons-material/WifiOffRounded'
-const CHAT_SERVER_URL = import.meta.env.VITE_CHAT_SERVER_URL || 'ws://localhost:3001';
+const CHAT_SERVER_URL = import.meta.env.VITE_CHAT_SERVER_URL || 'http://localhost:3001';
+
+function getAuthUser() {
+    try {
+        return JSON.parse(localStorage.getItem('authUser'));
+    } catch {
+        return null;
+    }
+}
 
 export default function Chat() {
     const socketRef = useRef(null);
-    const clientIdRef = useRef(localStorage.getItem("chatClientId") || crypto.randomUUID());
+    const authUser = useRef(getAuthUser());
+    const clientIdRef = useRef(authUser.current?.id);
     const [messages, setMessages] = useState([]);
     const [messageInput, setMessageInput] = useState('');
     const [isConnected, setIsConnected] = useState(false);
 
     useEffect(() => {
-        localStorage.setItem("chatClientId",clientIdRef.current);
-        const socket = new WebSocket(CHAT_SERVER_URL);
+        const token = authUser.current?.token;
+        if (!token) return;
+
+        const socket = io(`${CHAT_SERVER_URL}/chat`, {
+            auth: { token },
+            transports: ['websocket'],
+        });
         socketRef.current = socket;
 
-        socket.onopen = () => {
+        socket.on('connect', () => {
             console.log('Connected');
             setIsConnected(true);
-        };
+        });
 
-        socket.onmessage = (e) => {
-            const payload = JSON.parse(e.data);
+        socket.on('history', (payload) => {
+            setMessages(payload.messages);
+        });
 
-            if (payload.type === 'history') {
-                setMessages(payload.messages)
-                return;
-            }
-            if (payload.type === 'message') {
-                setMessages((current) => [...current,payload.message]);
-                return;
-            }
-            if (payload.type === 'error') {
-                console.error(payload.text)
-            }
-        };
+        socket.on('message', (payload) => {
+            setMessages((current) => [...current, payload.message]);
+        });
 
-        socket.onclose = () => {
+        socket.on('error', (payload) => {
+            console.error(payload.text);
+        });
+
+        socket.on('disconnect', () => {
             setIsConnected(false);
-        };
+        });
 
         return () => {
-            socket.close();
+            socket.disconnect();
             socketRef.current = null;
         };
     }, []);
 
     const sendmessage = async () => {
         const text = messageInput.trim();
-        const message = {
-            text,
-            timestamp: new Date().toISOString(),
-            senderId: clientIdRef.current,
-        };
 
         if (!text) {
             return;
         }
 
-        if (socketRef.current?.readyState !== WebSocket.OPEN) {
+        if (!socketRef.current?.connected) {
             try {
-                setMessages((current) => [...current, message]);
+                setMessages((current) => [...current, {
+                    text,
+                    timestamp: new Date().toISOString(),
+                    senderId: clientIdRef.current,
+                }]);
             } catch (err) {
                 console.error(err.message);
             } finally {
@@ -73,9 +83,13 @@ export default function Chat() {
         }
 
         try {
-            socketRef.current.send(JSON.stringify(message));
+            socketRef.current.emit('message', { text });
         } catch (error) {
-            setMessages((current) => [...current, message]);
+            setMessages((current) => [...current, {
+                text,
+                timestamp: new Date().toISOString(),
+                senderId: clientIdRef.current,
+            }]);
             console.error(error.message);
         } finally {
             setMessageInput('');
