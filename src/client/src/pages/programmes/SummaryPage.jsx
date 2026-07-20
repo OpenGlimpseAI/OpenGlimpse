@@ -19,22 +19,22 @@ function RouteSection({ route }) {
                 </div>
             </div>
             <div className="p-4 space-y-3">
-                <div className="flex flex-wrap gap-2">
-                    <div className="flex flex-col items-center gap-1 rounded-xl bg-slate-50 px-4 py-3 flex-1 min-w-[60px]">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                    <div className="flex flex-col items-center gap-1 rounded-xl bg-slate-50 px-3 py-2.5">
                         <span className="text-lg font-semibold text-slate-900">{route.total}</span>
-                        <span className="text-xs font-medium text-slate-500">Total</span>
+                        <span className="text-[11px] font-medium text-slate-500">Total</span>
                     </div>
-                    <div className="flex flex-col items-center gap-1 rounded-xl bg-emerald-50 px-4 py-3 flex-1 min-w-[60px]">
+                    <div className="flex flex-col items-center gap-1 rounded-xl bg-emerald-50 px-3 py-2.5">
                         <span className="text-lg font-semibold text-emerald-700">{route.checkedIn}</span>
-                        <span className="text-xs font-medium text-emerald-600">Checked In</span>
+                        <span className="text-[11px] font-medium text-emerald-600">Checked In</span>
                     </div>
-                    <div className="flex flex-col items-center gap-1 rounded-xl bg-amber-50 px-4 py-3 flex-1 min-w-[60px]">
+                    <div className="flex flex-col items-center gap-1 rounded-xl bg-amber-50 px-3 py-2.5">
                         <span className="text-lg font-semibold text-amber-700">{route.missing}</span>
-                        <span className="text-xs font-medium text-amber-600">Missing</span>
+                        <span className="text-[11px] font-medium text-amber-600">Missing</span>
                     </div>
-                    <div className="flex flex-col items-center gap-1 rounded-xl bg-slate-100 px-4 py-3 flex-1 min-w-[60px]">
+                    <div className="flex flex-col items-center gap-1 rounded-xl bg-slate-100 px-3 py-2.5">
                         <span className="text-lg font-semibold text-slate-600">{route.unidentified}</span>
-                        <span className="text-xs font-medium text-slate-500">Unidentified</span>
+                        <span className="text-[11px] font-medium text-slate-500">Unidentified</span>
                     </div>
                 </div>
                 <div className="h-2 rounded-full bg-slate-100 overflow-hidden">
@@ -117,16 +117,16 @@ export default function SummaryPage() {
                         ))}
                     </div>
                 ) : (
-                    <div className="flex flex-wrap gap-3">
-                        <div className="flex flex-col items-center gap-1 rounded-2xl bg-white px-4 py-5 shadow-sm flex-1 min-w-[100px]">
+                    <div className="grid grid-cols-3 gap-3">
+                        <div className="flex flex-col items-center gap-1 rounded-2xl bg-white px-3 py-4 shadow-sm">
                             <span className="text-3xl font-semibold tracking-tight text-slate-900">{summary?.total ?? 0}</span>
                             <span className="text-xs font-medium text-slate-500">Total</span>
                         </div>
-                        <div className="flex flex-col items-center gap-1 rounded-2xl bg-white px-4 py-5 shadow-sm flex-1 min-w-[100px]">
+                        <div className="flex flex-col items-center gap-1 rounded-2xl bg-white px-3 py-4 shadow-sm">
                             <span className="text-3xl font-semibold tracking-tight text-emerald-600">{summary?.checkedIn ?? 0}</span>
                             <span className="text-xs font-medium text-emerald-600">Checked In</span>
                         </div>
-                        <div className="flex flex-col items-center gap-1 rounded-2xl bg-white px-4 py-5 shadow-sm flex-1 min-w-[100px]">
+                        <div className="flex flex-col items-center gap-1 rounded-2xl bg-white px-3 py-4 shadow-sm">
                             <span className="text-3xl font-semibold tracking-tight text-amber-600">{summary?.missing ?? 0}</span>
                             <span className="text-xs font-medium text-amber-600">Missing</span>
                         </div>

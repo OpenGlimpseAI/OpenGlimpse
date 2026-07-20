@@ -1,6 +1,5 @@
 import { useState, useMemo, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import PhoneIcon from "@mui/icons-material/Phone";
 import CheckIcon from "@mui/icons-material/Check";
 import SearchIcon from "@mui/icons-material/Search";
 import CloseIcon from "@mui/icons-material/Close";
@@ -240,28 +239,23 @@ export default function Directory() {
                                         <div className="directory-row-text">
                                             <span className="directory-row-name">{d.name}</span>
                                             <span className={`directory-row-status ${present ? "directory-status-present" : "directory-status-missing"}`}>
-                                                {d.routeNames?.length > 0 ? d.routeNames.join(", ") : "No route"} &middot; {present ? "Checked in" : "Not checked in"}
+                                                {d.routeName || "No route"} &middot; {present ? "Checked in" : "Not checked in"}
                                             </span>
                                         </div>
                                     </div>
                                     <div className="directory-row-actions" onClick={(e) => e.stopPropagation()}>
                                         {assigning?.id === d.id ? (
                                             <div className="flex flex-col gap-1 items-end">
-                                                <div className="flex flex-wrap gap-1 justify-end">
-                                                    {routes.map((r) => {
-                                                        const checked = selectedRouteIds.includes(r.id);
-                                                        return (
-                                                            <label key={r.id} className={`text-xs rounded-lg px-2 py-1 border cursor-pointer transition-colors ${checked ? "bg-sky-50 border-sky-400 text-sky-700" : "border-slate-200 text-slate-600 hover:border-slate-300"}`}>
-                                                                <input type="checkbox" className="mr-1" checked={checked} onChange={() => {
-                                                                    setSelectedRouteIds((prev) =>
-                                                                        checked ? prev.filter((id) => id !== r.id) : [...prev, r.id]
-                                                                    );
-                                                                }} />
-                                                                {r.name}
-                                                            </label>
-                                                        );
-                                                    })}
-                                                </div>
+                                                <select
+                                                    className="text-xs rounded-lg border border-sky-200 px-2 py-1 outline-none focus:border-sky-400"
+                                                    value={selectedRouteIds[0] || ""}
+                                                    onChange={(e) => setSelectedRouteIds(e.target.value ? [e.target.value] : [])}
+                                                >
+                                                    <option value="">— No route —</option>
+                                                    {routes.map((r) => (
+                                                        <option key={r.id} value={r.id}>{r.name}</option>
+                                                    ))}
+                                                </select>
                                                 <div className="flex gap-1 mt-1">
                                                     <button className="text-xs text-sky-600 font-semibold" onClick={() => handleAssignRoute(d.id)}>Save</button>
                                                     <button className="text-xs text-slate-400" onClick={() => setAssigning(null)}>Cancel</button>
@@ -302,8 +296,8 @@ export default function Directory() {
                             </div>
                             <div className="profile-detail-row">
                                 <PersonIcon sx={{ fontSize: 18 }} className="profile-detail-icon" />
-                                <span className="profile-detail-label">Routes</span>
-                                <span className="profile-detail-value">{(selected.routeNames?.length > 0 ? selected.routeNames : ["—"]).join(", ")}</span>
+                                <span className="profile-detail-label">Route</span>
+                                <span className="profile-detail-value">{selected.routeName || "—"}</span>
                             </div>
                             {isPresent && selected.method && (
                                 <div className="profile-detail-row">
@@ -330,10 +324,6 @@ export default function Directory() {
                             )}
                         </div>
                         <div className="profile-actions">
-                            <button className="profile-action-btn profile-action-call">
-                                <PhoneIcon sx={{ fontSize: 18 }} />
-                                Call
-                            </button>
                         </div>
                     </div>
                 </div>

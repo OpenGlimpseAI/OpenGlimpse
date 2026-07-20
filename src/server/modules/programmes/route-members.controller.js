@@ -6,25 +6,27 @@ async function setRouteMembers(req, res) {
     if (!Array.isArray(routeIds)) {
         return res.status(400).json({ error: 'routeIds must be an array' });
     }
+    // One route per delegate: only the first routeId is used
+    if (routeIds.length > 1) {
+        return res.status(400).json({ error: 'Each delegate can only be assigned to one route' });
+    }
     try {
-        // Verify routeIds belong to this programme
-        const validIds = new Set(
-            (await Route.findAll({ where: { programmeId: id }, attributes: ['id'] })).map((r) => r.id)
-        );
-        const toAdd = routeIds.filter((rid) => validIds.has(rid));
-        const toRemove = routeIds.filter((rid) => !validIds.has(rid));
-        if (toRemove.length > 0) {
-            return res.status(400).json({ error: `Invalid routeIds: ${toRemove.join(', ')}` });
+        const targetRouteId = routeIds[0] || null;
+
+        if (targetRouteId) {
+            // Verify routeId belongs to this programme
+            const route = await Route.findOne({ where: { id: targetRouteId, programmeId: id } });
+            if (!route) {
+                return res.status(400).json({ error: `Invalid routeId: ${targetRouteId}` });
+            }
+            // Move delegate to this route (remove from any other)
+            await RouteMember.destroy({ where: { programmeId: id, delegateId } });
+            await RouteMember.create({ routeId: targetRouteId, delegateId, programmeId: id });
+        } else {
+            // Remove from all routes
+            await RouteMember.destroy({ where: { programmeId: id, delegateId } });
         }
 
-        // Replace all route memberships for this delegate
-        await RouteMember.destroy({ where: { programmeId: id, delegateId } });
-        if (toAdd.length > 0) {
-            await RouteMember.bulkCreate(
-                toAdd.map((routeId) => ({ routeId, delegateId, programmeId: id })),
-                { ignoreDuplicates: true }
-            );
-        }
         const routes = await RouteMember.findAll({
             where: { programmeId: id, delegateId },
             include: [{ model: Route, as: 'route', attributes: ['id', 'name'] }],
