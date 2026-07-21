@@ -23,20 +23,34 @@ export const updateProgramme = (id, data) => request('PUT', `/programmes/${id}`,
 export const deleteProgramme = (id) => request('DELETE', `/programmes/${id}`);
 
 // Routes
-export const getRoutes = (id) => request('GET', `/programmes/${id}/routes`);
+export const getRoutes = (id, archived) => {
+  const qs = archived ? "?archived=true" : "";
+  return request('GET', `/programmes/${id}/routes${qs}`);
+};
 export const addRoute = (id, data) => request('POST', `/programmes/${id}/routes`, data);
+export const getRoute = (id, routeId) => request('GET', `/programmes/${id}/routes/${routeId}`);
 export const updateRoute = (id, routeId, data) => request('PUT', `/programmes/${id}/routes/${routeId}`, data);
 export const deleteRoute = (id, routeId) => request('DELETE', `/programmes/${id}/routes/${routeId}`);
+export const archiveRoute = (id, routeId) => request('PUT', `/programmes/${id}/routes/${routeId}/archive`);
+export const restoreRoute = (id, routeId) => request('PUT', `/programmes/${id}/routes/${routeId}/restore`);
 
 // Delegates (within programme)
 export const getDelegates = (id) => request('GET', `/programmes/${id}/delegates`);
 export const addDelegate = (id, data) => request('POST', `/programmes/${id}/delegates`, data);
 export const removeDelegate = (id, delegateId) => request('DELETE', `/programmes/${id}/delegates/${delegateId}`);
 
+// Route members (multi-route)
+export const setDelegateRoutes = (id, delegateId, routeIds) => request('PUT', `/programmes/${id}/delegates/${delegateId}/routes`, { routeIds });
+export const getDelegateRoutes = (id, delegateId) => request('GET', `/programmes/${id}/delegates/${delegateId}/routes`);
+
 // Attendance
 export const getAttendance = (id) => request('GET', `/programmes/${id}/attendance`);
 export const getAttendanceSummary = (id) => request('GET', `/programmes/${id}/attendance/summary`);
 export const markAttendance = (id, delegateId, data) => request('PUT', `/programmes/${id}/attendance/${delegateId}`, data);
+
+// Ready to depart (per-route)
+export const getReadyStatus = (id, routeId) => request('GET', `/programmes/${id}/routes/${routeId}/ready-to-depart`);
+export const toggleReady = (id, routeId, data) => request('PUT', `/programmes/${id}/routes/${routeId}/ready-to-depart`, data);
 
 // Batch attendance
 export const markAttendanceBatch = (id, records) => request('POST', `/programmes/${id}/attendance`, { records });
@@ -48,9 +62,8 @@ export const recognizeFaces = (id, image) => request('POST', `/programmes/${id}/
 export const lookupByBadge = (id, badge) => request('POST', `/programmes/${id}/scan-qr`, { badge });
 export const lookupBadges = (id, badges) => request('POST', `/programmes/${id}/scan-qr`, { badges });
 
-// Ready to depart
-export const getReadyStatus = (id) => request('GET', `/programmes/${id}/ready-to-depart`);
-export const toggleReady = (id, data) => request('PUT', `/programmes/${id}/ready-to-depart`, data);
+// Users
+export const getUsers = () => request('GET', '/users');
 
 // Face
 export const uploadUserFace = (userId, image, token) => requestWithAuth('PATCH', `/api/user/${userId}/face/default`, { image }, token);
