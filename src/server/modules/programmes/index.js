@@ -2,7 +2,6 @@ const programmes = require('./programmes.controller');
 const routes = require('./routes.controller');
 const delegates = require('./delegates.controller');
 const ready = require('./ready.controller');
-const routeMembers = require('./route-members.controller');
 const { recognize } = require('./recognize.controller');
 const { lookupBadge } = require('./qr.controller');
 
@@ -40,9 +39,9 @@ function registerProgrammeRoutes(app, io) {
     app.get('/programmes/:id/routes/:routeId/ready-to-depart', ready.getStatus);
     app.put('/programmes/:id/routes/:routeId/ready-to-depart', ready.toggleStatus);
 
-    // Route members (multi-route assignment)
-    app.put('/programmes/:id/delegates/:delegateId/routes', routeMembers.setRouteMembers);
-    app.get('/programmes/:id/delegates/:delegateId/routes', routeMembers.getRouteMembers);
+    // Route members (per-delegate route assignment)
+    app.put('/programmes/:id/delegates/:delegateId/routes', delegates.setRouteMembers);
+    app.get('/programmes/:id/delegates/:delegateId/routes', delegates.getRouteMembers);
 
     // Face recognition
     app.post('/programmes/:id/recognize', recognize);
