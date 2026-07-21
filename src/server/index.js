@@ -14,21 +14,16 @@ const { attachFaceServer } = require('./modules/facial_recog/facialrecogserver.j
 
 const app = express();
 const server = http.createServer(app);
-const allowedOrigin = process.env.CLIENT_URL || 'http://localhost:5173';
+const allowedOrigin = process.env.CLIENT_URL || /^https?:\/\/localhost:\d+$/;
 const io = new Server(server, {
-    cors: { origin: [allowedOrigin, 'https://localhost:5173'], methods: ['GET', 'POST', 'PUT', 'DELETE'] },
+    cors: { origin: allowedOrigin, methods: ['GET', 'POST', 'PUT', 'DELETE'] },
 });
 const port = process.env.PORT || 3001;
 
 app.use(express.json({ limit: '10mb' }));
 
 app.use((req, res, next) => {
-    const origin = req.headers.origin;
-    if (origin && (origin.includes('localhost:5173') || origin.includes('127.0.0.1:5173'))) {
-        res.header('Access-Control-Allow-Origin', origin);
-    } else if (origin === allowedOrigin) {
-        res.header('Access-Control-Allow-Origin', allowedOrigin);
-    }
+    res.header('Access-Control-Allow-Origin', process.env.CLIENT_URL || '*');
     res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
     res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
     if (req.method === 'OPTIONS') return res.sendStatus(204);
@@ -49,6 +44,16 @@ io.on('connection', (socket) => {
 
 registerProgrammeRoutes(app, io);
 app.use('/api/auth', authRoutes);
+// Users
+app.get('/users', async (req, res) => {
+    try {
+        const { user } = require('./database/db.cjs');
+        const users = await user.findAll({ attributes: ['id', 'enName', 'zhName'], order: [['enName', 'ASC']] });
+        res.json(users);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
 
 app.get('/', (req, res) => {
     res.send('server is running');
@@ -63,6 +68,29 @@ async function start() {
     try {
         await sequelize.sync({ alter: true });
         console.log('Database synced');
+
+        // Seed route_members from existing programme_delegates route_id column if present
+        const db = require('./database/db.cjs');
+        const { ProgrammeDelegate, RouteMember, Sequelize } = db;
+        const count = await RouteMember.count();
+        if (count === 0) {
+            try {
+                const [results] = await db.sequelize.query(`SELECT id, programme_id, delegate_id, route_id FROM programme_delegates WHERE route_id IS NOT NULL LIMIT 1`);
+                if (results.length > 0) {
+                    const all = await db.sequelize.query(`SELECT id, programme_id, delegate_id, route_id FROM programme_delegates WHERE route_id IS NOT NULL`);
+                    const rows = all[0] || [];
+                    if (rows.length > 0) {
+                        await RouteMember.bulkCreate(
+                            rows.map((r) => ({ routeId: r.route_id, delegateId: r.delegate_id, programmeId: r.programme_id })),
+                            { ignoreDuplicates: true }
+                        );
+                        console.log(`Seeded ${rows.length} route_members from legacy data`);
+                    }
+                }
+            } catch (e) {
+                console.log('No legacy route_id column found, skipping seed');
+            }
+        }
 
         const existingStaff = await user.findOne({ where: { role: 'staff' } });
         if (!existingStaff) {

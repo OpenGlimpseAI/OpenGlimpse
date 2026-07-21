@@ -37,6 +37,7 @@ export default function App() {
         <Route path="/chat" element={<Chat/>} />
         <Route path="/camera" element={<CameraPage />} />
         <Route path="/dashboard" element={<AdminDashboard />} />
+        <Route path="/dashboard/routes/:routeId" element={<AdminDashboard />} />
         <Route path="/directory" element={<Directory />} />
         <Route path="/programmes" element={<ProgrammePage />} />
         <Route path="/summary/:id" element={<SummaryPage />} />
