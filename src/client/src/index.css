@@ -211,6 +211,15 @@ body {
   @apply text-5xl font-semibold tracking-tight text-slate-900;
 }
 
+@media (max-width: 374px) {
+  .dashboard-counter-value {
+    @apply text-4xl;
+  }
+  .dashboard-counter-card {
+    @apply px-4 py-4;
+  }
+}
+
 .dashboard-counter-label {
   @apply text-sm font-medium text-slate-500;
 }
@@ -257,14 +266,6 @@ body {
   @apply text-sm font-medium text-slate-800;
 }
 
-.dashboard-call-btn {
-  @apply flex h-11 w-11 items-center justify-center rounded-full border border-amber-200 bg-amber-50 text-amber-600 transition-colors;
-}
-
-.dashboard-call-btn:hover {
-  @apply bg-amber-100 border-amber-300;
-}
-
 /* Badges */
 .dashboard-badge {
   @apply rounded-full px-2.5 py-0.5 text-[11px] font-medium;
@@ -280,17 +281,15 @@ body {
 
 /* Ready toggle */
 .dashboard-ready-shell {
-  @apply fixed bottom-16 left-0 right-0 px-4 sm:px-6;
+  @apply fixed bottom-16 left-0 right-0 px-4 sm:px-6 z-30;
 }
-
 .dashboard-ready-btn {
   @apply flex w-full items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-slate-200 bg-white/90 py-4 text-sm font-semibold text-slate-500 shadow-sm backdrop-blur transition-all;
+  min-height: 56px;
 }
-
 .dashboard-ready-btn:hover {
   @apply border-sky-300 text-sky-600;
 }
-
 .dashboard-ready-btn-on {
   @apply border-emerald-300 bg-emerald-50/90 text-emerald-700;
 }
@@ -506,7 +505,13 @@ body {
 }
 
 .directory-action-btn {
-  @apply flex items-center gap-1 rounded-full px-3 py-1.5 text-xs font-semibold transition-colors;
+  @apply flex items-center gap-1 rounded-full px-3 py-2 text-xs font-semibold transition-colors;
+}
+
+@media (max-width: 374px) {
+  .directory-action-btn {
+    @apply px-2.5 py-1.5;
+  }
 }
 
 .directory-action-check {
@@ -515,10 +520,6 @@ body {
 
 .directory-action-undo {
   @apply bg-slate-100 text-slate-500 hover:bg-slate-200;
-}
-
-.directory-call-btn-sm {
-  @apply flex h-10 w-10 items-center justify-center rounded-full border border-amber-200 bg-amber-50 text-amber-600 transition-colors hover:bg-amber-100;
 }
 
 .directory-row-clickable {
@@ -601,11 +602,7 @@ body {
 }
 
 .profile-action-btn {
-  @apply flex flex-1 items-center justify-center gap-2 rounded-2xl py-3 text-sm font-semibold transition-colors;
-}
-
-.profile-action-call {
-  @apply border border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100;
+  @apply flex flex-1 items-center justify-center gap-2 rounded-2xl py-3.5 text-sm font-semibold transition-colors;
 }
 
 .profile-action-present {
