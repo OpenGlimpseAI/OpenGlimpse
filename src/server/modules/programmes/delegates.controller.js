@@ -1,4 +1,4 @@
-const { ProgrammeDelegate, Programme, Delegate, user } = require('./models');
+const { ProgrammeDelegate, Programme, Delegate, user, RouteMember, Route } = require('./models');
 
 async function listDelegates(req, res) {
     const { id } = req.params;
@@ -55,4 +55,60 @@ async function updateDelegate(req, res) {
     }
 }
 
-module.exports = { listDelegates, addDelegates, removeDelegate, updateDelegate };
+// Route membership (per-delegate route assignment)
+
+async function setRouteMembers(req, res) {
+    const { id, delegateId } = req.params;
+    const { routeIds } = req.body;
+    if (!Array.isArray(routeIds)) {
+        return res.status(400).json({ error: 'routeIds must be an array' });
+    }
+    if (routeIds.length > 1) {
+        return res.status(400).json({ error: 'Each delegate can only be assigned to one route' });
+    }
+    try {
+        const targetRouteId = routeIds[0] || null;
+
+        if (targetRouteId) {
+            const route = await Route.findOne({ where: { id: targetRouteId, programmeId: id } });
+            if (!route) {
+                return res.status(400).json({ error: `Invalid routeId: ${targetRouteId}` });
+            }
+            await RouteMember.destroy({ where: { programmeId: id, delegateId } });
+            await RouteMember.create({ routeId: targetRouteId, delegateId, programmeId: id });
+        } else {
+            await RouteMember.destroy({ where: { programmeId: id, delegateId } });
+        }
+
+        const routes = await RouteMember.findAll({
+            where: { programmeId: id, delegateId },
+            include: [{ model: Route, as: 'route', attributes: ['id', 'name'] }],
+        });
+        res.json({
+            delegateId,
+            routeIds: routes.map((rm) => rm.routeId),
+            routeNames: routes.map((rm) => rm.route?.name).filter(Boolean),
+        });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+}
+
+async function getRouteMembers(req, res) {
+    const { id, delegateId } = req.params;
+    try {
+        const routes = await RouteMember.findAll({
+            where: { programmeId: id, delegateId },
+            include: [{ model: Route, as: 'route', attributes: ['id', 'name'] }],
+        });
+        res.json({
+            delegateId,
+            routeIds: routes.map((rm) => rm.routeId),
+            routeNames: routes.map((rm) => rm.route?.name).filter(Boolean),
+        });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+}
+
+module.exports = { listDelegates, addDelegates, removeDelegate, updateDelegate, setRouteMembers, getRouteMembers };
