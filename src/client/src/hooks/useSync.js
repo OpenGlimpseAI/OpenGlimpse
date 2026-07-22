@@ -10,6 +10,8 @@ export function useSync() {
       syncing.current = true;
       try {
         await changeHandler();
+        //send sync status based on successful sync
+        window.dispatchEvent(new CustomEvent('sync:done'));
       } catch {
       } finally {
         syncing.current = false;
