@@ -54,7 +54,19 @@ export default function FixedBottomNavigation() {
                             className="bottom-nav-action"
                             label="Camera"
                             value="camera"
-                            icon={<CameraAlt />}
+                            icon={
+                                <Box sx={{
+                                    bgcolor: '#3b82f6',
+                                    borderRadius: '50%',
+                                    width: 44,
+                                    height: 44,
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                }}>
+                                    <CameraAlt sx={{ fontSize: 26, color: '#fff' }} />
+                                </Box>
+                            }
                             component={Link}
                             to="/camera"
                         />
@@ -74,7 +86,19 @@ export default function FixedBottomNavigation() {
                             className="bottom-nav-action"
                             label="Badge"
                             value="badge"
-                            icon={<QrCode />}
+                            icon={
+                                <Box sx={{
+                                    bgcolor: '#3b82f6',
+                                    borderRadius: '50%',
+                                    width: 44,
+                                    height: 44,
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                }}>
+                                    <QrCode sx={{ fontSize: 26, color: '#fff' }} />
+                                </Box>
+                            }
                             component={Link}
                             to="/badge"
                         />
