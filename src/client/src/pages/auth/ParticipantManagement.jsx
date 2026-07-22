@@ -143,23 +143,27 @@ export default function ParticipantManagement() {
       setError('Face image is required — use URL, file upload, or camera');
       return;
     }
-
+//upload face image if offline
     try {
-      const newUser = await createUserAccount(form, currentUser.token);
-
-      setUploadingFace(true);
-      try {
-        await uploadUserFace(newUser.id, faceImageBase64, currentUser.token);
-      } catch (faceErr) {
-        setError('Account created but face upload failed: ' + (faceErr.message || ''));
-        setForm(emptyForm);
-        clearFace();
-        fetchAccounts();
-        return;
+      const payload = { ...form };
+      if (!navigator.onLine) {
+        payload.faceImage = faceImageBase64;
       }
-      setUploadingFace(false);
-
-      setStatus('Account created successfully with face registration');
+      const newUser = await createUserAccount(payload, currentUser.token);
+//online condition
+      if (navigator.onLine) {
+        setUploadingFace(true);
+        try {
+          await uploadUserFace(newUser.id, faceImageBase64, currentUser.token);
+        } catch (faceErr) {
+          setError('Account created but face upload failed: ' + (faceErr.message || ''));
+        }
+        setUploadingFace(false);
+      }
+//response messages based on face upload status
+      setStatus(navigator.onLine
+        ? 'Account created successfully with face registration'
+        : 'Account queued. face registration will complete when connection is restored');
       setForm(emptyForm);
       clearFace();
       fetchAccounts();

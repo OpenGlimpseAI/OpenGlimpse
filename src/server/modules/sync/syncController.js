@@ -23,23 +23,33 @@ const HANDLERS = [
   { pattern: 'PUT /programmes/:id/delegates/:delegateId/routes', exec: setDelegateRoutes },
   { pattern: 'PUT /programmes/:id/attendance/:delegateId', exec: (p, body) => AttendanceRecord.markAttendance(p.id, p.delegateId, body, null) },
   { pattern: 'PUT /programmes/:id/routes/:routeId/ready-to-depart', exec: (p, body) => ReadyToDepart.setStatus(p.routeId, p.id, body.ready) },
-  //handle auth endpoints
-  //post auth endpoint
   { pattern: 'POST /api/auth', exec: async (p, body, token) => {
     const caller = await validateToken(token, true);
-    const { name, email, password, role } = body;
+    const { name, email, password, role, faceImage } = body;
     if (!name || !email || !password) throw new Error('Name, email and password required');
     const normalizedEmail = email.trim().toLowerCase();
     const existing = await user.findOne({ where: { email: normalizedEmail } });
     if (existing) throw new Error('Email already in use');
-    await user.create({
+    const created = await user.create({
       enName: name.trim(),
       email: normalizedEmail,
       passwordHash: crypto.createHash('sha256').update(password).digest('hex'),
       role: role === 'staff' ? 'staff' : 'participant',
     });
-  }
-  },
+    //upload faceimage if it exists in payload
+    if (faceImage) {
+      try {
+        const { FaceEmbeddings } = require('../../database/dbcrudmethods');
+        await FaceEmbeddings.createFromImage(
+          created.id,
+          Buffer.from(faceImage, 'base64'),
+          'primary'
+        );
+      } catch (faceErr) {
+        console.error('Sync face upload for user', created.id, 'failed:', faceErr.message);
+      }
+    }
+  }},
   //patch auth endpoint
   { pattern: 'PATCH /api/auth', exec: async (p, body, token) => {
     const caller = await validateToken(token);
