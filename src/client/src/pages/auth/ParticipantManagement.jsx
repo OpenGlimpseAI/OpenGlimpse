@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getAllUsers, createUserAccount, updateUserProfile, deleteUserAccount, uploadUserFace } from '../../services/api.js';
+import { useConnectivity } from '../../hooks/useConnectivity';
 
 function getAuthUser() {
   const raw = localStorage.getItem('authUser');
@@ -17,6 +18,7 @@ const emptyForm = { name: '', email: '', password: '', role: 'participant' };
 export default function ParticipantManagement() {
   const navigate = useNavigate();
   const currentUser = getAuthUser();
+  const { isOnline } = useConnectivity();
 
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
@@ -43,8 +45,9 @@ export default function ParticipantManagement() {
   }
 
   useEffect(() => {
+    //refetch accounts when online status changes
     fetchAccounts();
-  }, []);
+  }, [isOnline]);
 
   const fetchAccounts = async () => {
     try {

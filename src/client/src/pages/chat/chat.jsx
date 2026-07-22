@@ -147,6 +147,7 @@ export default function Chat() {
                             onChange={setMessageInput}
                             onSend={sendmessage}
                             disabled={!isOnline}
+                            placeholder={isOnline ? 'Type your message...' : 'Chat unavailable while offline'}
                         />
                     </div>
                 </div>
