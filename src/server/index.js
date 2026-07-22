@@ -11,6 +11,7 @@ require("dotenv").config({
     path: path.resolve(__dirname, "../../.env"),
 });
 const { attachFaceServer } = require('./modules/facial_recog/facialrecogserver.js');
+const registerSyncRoutes = require('./modules/sync/syncRoutes');
 
 const app = express();
 const server = http.createServer(app);
@@ -44,6 +45,8 @@ io.on('connection', (socket) => {
 
 registerProgrammeRoutes(app, io);
 app.use('/api/auth', authRoutes);
+//attach syncRoutes and handlers to app
+registerSyncRoutes(app);
 // Users
 app.get('/users', async (req, res) => {
     try {
@@ -127,4 +130,3 @@ async function start() {
 }
 
 start();
-
