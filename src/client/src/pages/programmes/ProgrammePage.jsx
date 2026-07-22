@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
+import { useConnectivity } from "../../hooks/useConnectivity";
 import AddIcon from "@mui/icons-material/Add";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
@@ -303,12 +304,27 @@ export default function ProgrammePage() {
 
     const [manageRoute, setManageRoute] = useState(null);
 
+    const { isOnline } = useConnectivity();
+
     const loadProgrammes = () => {
         setLoading(true);
         getProgrammes().then((data) => setProgrammes(data || [])).catch((e) => setError(e.message)).finally(() => setLoading(false));
     };
 
     useEffect(() => { loadProgrammes(); }, []);
+
+    useEffect(() => {
+        loadProgrammes();
+    }, [isOnline]);
+
+    useEffect(() => {
+        const onSyncDone = () => {
+            loadProgrammes();
+            if (expandedId) loadDelegates(expandedId);
+        };
+        window.addEventListener('sync:done', onSyncDone);
+        return () => window.removeEventListener('sync:done', onSyncDone);
+    }, [expandedId]);
 
     const loadDelegates = async (id) => {
         setDelegatesLoading(true);

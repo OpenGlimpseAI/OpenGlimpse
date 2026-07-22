@@ -43,11 +43,16 @@ export default function ParticipantManagement() {
     navigate('/profile');
     return null;
   }
-
+//fetch accounts from server when online
   useEffect(() => {
-    //refetch accounts when online status changes
     fetchAccounts();
   }, [isOnline]);
+//fetch accounts on sync done
+  useEffect(() => {
+    const onSyncDone = () => fetchAccounts();
+    window.addEventListener('sync:done', onSyncDone);
+    return () => window.removeEventListener('sync:done', onSyncDone);
+  }, []);
 
   const fetchAccounts = async () => {
     try {
