@@ -7,6 +7,7 @@ export default function ChatInput({
     onChange,
     onSend,
     disabled = false,
+    placeholder = 'Type your message...',
 }) {
     return (
         <form
@@ -19,7 +20,7 @@ export default function ChatInput({
             <div className="chat-input-box">
                 <textarea
                     className="chat-input-field"
-                    placeholder="Type your message..."
+                    placeholder={placeholder}
                     rows={1}
                     value={value}
                     onChange={(e) => onChange(e.target.value)}
