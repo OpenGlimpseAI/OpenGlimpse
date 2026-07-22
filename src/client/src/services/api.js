@@ -1,19 +1,89 @@
 const API_BASE = import.meta.env.VITE_API_URL || '';
 
+import { db } from '../db/localDB';
+
+const SYNC_ROUTES = ['/programmes', '/delegates'];
+
+//check if url path requires syncing
+function isSynced(path) {
+  return SYNC_ROUTES.some(p => path.startsWith(p));
+}
+
+//handle requests from client
 async function request(method, path, body) {
-    const opts = { method, headers: { 'Content-Type': 'application/json' } };
-    if (body !== undefined) opts.body = JSON.stringify(body);
-    const res = await fetch(`${API_BASE}${path}`, opts);
-    if (res.status === 204) return null;
-    const text = await res.text();
-    if (!text) {
-        if (!res.ok) throw new Error(`Request failed (${res.status})`);
+  const opts = {
+    method,
+    headers: { 'Content-Type': 'application/json' }
+  };
+  if (body !== undefined) {
+    opts.body = JSON.stringify(body);
+  }
+//client action if online
+  if (navigator.onLine) {
+    try {
+      const res = await fetch(`${API_BASE}${path}`, opts);
+      if (res.status === 204) {
         return null;
+      }
+      const text = await res.text();
+      if (!text) {
+        if (!res.ok) {
+          throw new Error(`Request failed (${res.status})`);
+        }
+        return null;
+      }
+      let data;
+      try {
+        data = JSON.parse(text);
+      } catch {
+        data = null;
+      }
+      if (!res.ok) {
+        throw new Error(data?.error || `Request failed (${res.status})`);
+      }
+      if (method === 'GET' && data !== null && isSynced(path)) {
+        await db.requestCache.put({
+          path: path.split('?')[0],
+          data
+        });
+      }
+      return data;
+      //if client is offline
+    } catch (err) {
+      //(unlikely case here) if sync path does not exist(ie does not support offline sync)
+      if (!isSynced(path)) {
+        throw err;
+      }
     }
-    let data;
-    try { data = JSON.parse(text); } catch { data = null; }
-    if (!res.ok) throw new Error(data?.error || `Request failed (${res.status})`);
-    return data;
+  }
+//check if cached data exists
+  if (!isSynced(path)) {
+    throw new Error('Network required');
+  }
+//handle get requests
+  if (method === 'GET') {
+    const cached = await db.requestCache.get(path.split('?')[0]);
+    if (!cached) {
+      throw new Error('Not available offline');
+    }
+    return cached.data;
+  }
+//write changes to offline db
+  const pc = await db.pendingChanges.get('current') || {
+    id: 'current',
+    ops: [],
+    timestamp: 0
+  };
+  pc.ops.push({ method, path, body: body || null });
+  pc.timestamp = Date.now();
+  await db.pendingChanges.put(pc);
+
+  if (method === 'DELETE') {
+    return null;
+  }
+  return body
+    ? { ...body, id: body.id || 'pending' }
+    : { id: 'pending' };
 }
 
 // Programmes

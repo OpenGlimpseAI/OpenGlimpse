@@ -4,6 +4,7 @@ import ChatBubble from "./ChatBubble.jsx";
 import ChatInput from './ChatInput.jsx';
 import WifiRounded from '@mui/icons-material/WifiRounded'
 import WifiOffRoundedIcon from '@mui/icons-material/WifiOffRounded'
+import { useConnectivity } from '../../hooks/useConnectivity';
 const CHAT_SERVER_URL = import.meta.env.VITE_CHAT_SERVER_URL || '';
 
 function getAuthUser() {
@@ -15,6 +16,7 @@ function getAuthUser() {
 }
 
 export default function Chat() {
+    const { isOnline } = useConnectivity();
     const socketRef = useRef(null);
     const authUser = useRef(getAuthUser());
     const clientIdRef = useRef(authUser.current?.id);
@@ -144,6 +146,7 @@ export default function Chat() {
                             value={messageInput}
                             onChange={setMessageInput}
                             onSend={sendmessage}
+                            disabled={!isOnline}
                         />
                     </div>
                 </div>

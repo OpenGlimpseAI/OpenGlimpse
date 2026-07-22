@@ -14,11 +14,16 @@ import Login from "./pages/auth/Login.jsx";
 import StaffProfile from "./pages/auth/StaffProfile.jsx";
 import ParticipantManagement from "./pages/auth/ParticipantManagement.jsx";
 
+import { useSync } from './hooks/useSync';
+import ConnectivityIndicator from './components/shared/ConnectivityIndicator';
+
 function isSignedIn() {
   return Boolean(localStorage.getItem('authUser'));
 }
 
 export default function App() {
+  useSync();
+
   const location = useLocation();
   const [signedIn, setSignedIn] = useState(() => isSignedIn());
 
@@ -28,6 +33,7 @@ export default function App() {
 
   return (
       <>
+      <ConnectivityIndicator />
       {signedIn && <BottomNav />}
       <Routes>
         <Route path="/" element={signedIn ? <StaffProfile /> : <Onboarding />} />
