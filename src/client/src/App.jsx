@@ -11,11 +11,23 @@ import ProgrammePage from "./pages/programmes/ProgrammePage.jsx";
 import SummaryPage from "./pages/programmes/SummaryPage.jsx";
 import Onboarding from "./pages/auth/Onboarding.jsx";
 import Login from "./pages/auth/Login.jsx";
-import StaffProfile from "./pages/auth/StaffProfile.jsx";
-import ParticipantManagement from "./pages/auth/ParticipantManagement.jsx";
+import ProfilePage from "./pages/auth/ProfilePage.jsx";
+import StaffLandingPage from "./pages/staff/StaffLandingPage.jsx";
+
+function getAuthUser() {
+  const raw = localStorage.getItem('authUser');
+  if (!raw) return null;
+  try { return JSON.parse(raw); } catch { return null; }
+}
 
 function isSignedIn() {
   return Boolean(localStorage.getItem('authUser'));
+}
+
+function LandingPage() {
+  const user = getAuthUser();
+  if (!user) return <Onboarding />;
+  return user.role === 'staff' ? <StaffLandingPage /> : <BadgePage />;
 }
 
 export default function App() {
@@ -30,10 +42,10 @@ export default function App() {
       <>
       {signedIn && <BottomNav />}
       <Routes>
-        <Route path="/" element={signedIn ? <StaffProfile /> : <Onboarding />} />
+        <Route path="/" element={<LandingPage />} />
         <Route path="/onboarding" element={<Onboarding />} />
         <Route path="/login" element={<Login />} />
-        <Route path="/profile" element={<ParticipantManagement />} />
+        <Route path="/profile" element={<ProfilePage />} />
         <Route path="/chat" element={<Chat/>} />
         <Route path="/camera" element={<CameraPage />} />
         <Route path="/dashboard" element={<AdminDashboard />} />
