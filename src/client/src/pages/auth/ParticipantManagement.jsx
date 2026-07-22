@@ -151,7 +151,6 @@ export default function ParticipantManagement() {
       setError('Face image is required — use URL, file upload, or camera');
       return;
     }
-//upload face image if offline
     try {
       const payload = { ...form };
       if (!navigator.onLine) {
@@ -167,14 +166,16 @@ export default function ParticipantManagement() {
           setError('Account created but face upload failed: ' + (faceErr.message || ''));
         }
         setUploadingFace(false);
+        //update accounts when offline and after adding
+        setStatus('Account created successfully with face registration');
+        fetchAccounts();
+      } else {
+        //add pending account when offline
+        setStatus('Account queued. face registration will complete when connection is restored');
+        setAccounts(prev => [...prev, { ...newUser, id: 'pending-' + Date.now() }]);
       }
-//response messages based on face upload status
-      setStatus(navigator.onLine
-        ? 'Account created successfully with face registration'
-        : 'Account queued. face registration will complete when connection is restored');
       setForm(emptyForm);
       clearFace();
-      fetchAccounts();
     } catch (err) {
       setError(err.message || 'Create account failed');
     }
@@ -208,7 +209,16 @@ export default function ParticipantManagement() {
       setSelected(null);
       setForm(emptyForm);
       clearFace();
-      fetchAccounts();
+      //handle accounts list when offline vs online
+      if (navigator.onLine) {
+        fetchAccounts();
+      } else {
+        setAccounts(prev => prev.map(a =>
+          a.id === (payload.targetId || selected.id)
+            ? { ...a, name: form.name, email: form.email, role: form.role }
+            : a
+        ));
+      }
     } catch (err) {
       setError(err.message || 'Update failed');
     }
@@ -227,7 +237,11 @@ export default function ParticipantManagement() {
         setSelected(null);
         setForm(emptyForm);
       }
-      fetchAccounts();
+      if (navigator.onLine) {
+        fetchAccounts();
+      } else {
+        setAccounts(prev => prev.filter(a => a.id !== accountId));
+      }
     } catch (err) {
       setError(err.message || 'Delete failed');
     }
