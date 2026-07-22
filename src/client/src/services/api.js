@@ -2,19 +2,26 @@ const API_BASE = import.meta.env.VITE_API_URL || '';
 
 import { db } from '../db/localDB';
 
-const SYNC_ROUTES = ['/programmes', '/delegates'];
+const SYNC_PREFIXES = ['/programmes', '/delegates', '/api/auth'];
+//prevents auth login from being queued for sync
+const NEVER_QUEUE = ['/api/auth/login'];
 
-//check if url path requires syncing
 function isSynced(path) {
-  return SYNC_ROUTES.some(p => path.startsWith(p));
+  //check if path is in NEVER_QUEUE
+  if (NEVER_QUEUE.some(p => path.startsWith(p))) return false;
+  return SYNC_PREFIXES.some(p => path.startsWith(p));
 }
 
 //handle requests from client
-async function request(method, path, body) {
+async function request(method, path, body, token) {
   const opts = {
     method,
     headers: { 'Content-Type': 'application/json' }
   };
+  //check for token
+  if (token) {
+    opts.headers.Authorization = `Bearer ${token}`;
+  }
   if (body !== undefined) {
     opts.body = JSON.stringify(body);
   }
@@ -74,7 +81,8 @@ async function request(method, path, body) {
     ops: [],
     timestamp: 0
   };
-  pc.ops.push({ method, path, body: body || null });
+  //push token if available
+  pc.ops.push({ method, path, body: body || null, token: token || null });
   pc.timestamp = Date.now();
   await db.pendingChanges.put(pc);
 
@@ -144,22 +152,7 @@ export const updateUserProfile = (data, token) => requestWithAuth('PATCH', '/api
 export const deleteUserAccount = (data, token) => requestWithAuth('DELETE', '/api/auth', data, token);
 export const getAllUsers = (token) => requestWithAuth('GET', '/api/auth/all', undefined, token);
 export const createUserAccount = (data, token) => requestWithAuth('POST', '/api/auth', data, token);
-
+//add token to auth request
 async function requestWithAuth(method, path, body, token) {
-    const opts = {
-        method,
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-    };
-    if (body !== undefined) opts.body = JSON.stringify(body);
-    const res = await fetch(`${API_BASE}${path}`, opts);
-    if (res.status === 204) return null;
-    const text = await res.text();
-    if (!text) {
-        if (!res.ok) throw new Error(`Request failed (${res.status})`);
-        return null;
-    }
-    let data;
-    try { data = JSON.parse(text); } catch { data = null; }
-    if (!res.ok) throw new Error(data?.error || `Request failed (${res.status})`);
-    return data;
+  return request(method, path, body, token);
 }
