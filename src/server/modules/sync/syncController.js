@@ -1,8 +1,11 @@
+const crypto = require('crypto');
 const db = require('../../database/db.cjs');
-//get table definitions
+const { parseToken } = require('../auth/authRoutes');
+
 const {
   Programme, Route, Delegate, AttendanceRecord,
-  ReadyToDepart, ProgrammeDelegate, RouteMember
+  ReadyToDepart, ProgrammeDelegate, RouteMember,
+  faceEmbeddings, user
 } = db;
 //list with pattern and execution functions for each route
 const HANDLERS = [
@@ -20,7 +23,52 @@ const HANDLERS = [
   { pattern: 'PUT /programmes/:id/delegates/:delegateId/routes', exec: setDelegateRoutes },
   { pattern: 'PUT /programmes/:id/attendance/:delegateId', exec: (p, body) => AttendanceRecord.markAttendance(p.id, p.delegateId, body, null) },
   { pattern: 'PUT /programmes/:id/routes/:routeId/ready-to-depart', exec: (p, body) => ReadyToDepart.setStatus(p.routeId, p.id, body.ready) },
+  //handle auth endpoints
+  //post auth endpoint
+  { pattern: 'POST /api/auth', exec: async (p, body, token) => {
+    const caller = await validateToken(token, true);
+    const { name, email, password, role } = body;
+    if (!name || !email || !password) throw new Error('Name, email and password required');
+    const normalizedEmail = email.trim().toLowerCase();
+    const existing = await user.findOne({ where: { email: normalizedEmail } });
+    if (existing) throw new Error('Email already in use');
+    await user.create({
+      enName: name.trim(),
+      email: normalizedEmail,
+      passwordHash: crypto.createHash('sha256').update(password).digest('hex'),
+      role: role === 'staff' ? 'staff' : 'participant',
+    });
+  }
+  },
+  //patch auth endpoint
+  { pattern: 'PATCH /api/auth', exec: async (p, body, token) => {
+    const caller = await validateToken(token);
+    const { targetId, name, email, password, role } = body;
+    const isStaff = caller.role === 'staff';
+    const target = targetId ? await user.findByPk(targetId) : caller;
+    if (!target) throw new Error('Account not found');
+    if (targetId && !isStaff && targetId !== caller.id) throw new Error('Cannot update other accounts');
+    if (role && !isStaff) throw new Error('Cannot change role');
+    if (name !== undefined) target.enName = name.trim() || target.enName;
+    if (email !== undefined) target.email = email.trim().toLowerCase() || target.email;
+    if (password) target.passwordHash = crypto.createHash('sha256').update(password).digest('hex');
+    if (role !== undefined && isStaff) target.role = role === 'staff' ? 'staff' : 'participant';
+    await target.save();
+  }
+  },
+  //delete auth endpoint
+  { pattern: 'DELETE /api/auth', exec: async (p, body, token) => {
+    const caller = await validateToken(token);
+    const { targetId } = body || {};
+    const isStaff = caller.role === 'staff';
+    const deleteId = targetId && isStaff ? targetId : caller.id;
+    const target = await user.findByPk(deleteId);
+    if (!target) throw new Error('Account not found');
+    await faceEmbeddings.destroy({ where: { userId: deleteId } });
+    await target.destroy();
+  }},
 ];
+
 //need this method as the route it handles does not map directly to a single sequelize method
 async function setDelegateRoutes(params, body) {
   const { id, delegateId } = params;
@@ -32,6 +80,18 @@ async function setDelegateRoutes(params, body) {
     await RouteMember.create({ routeId: targetRouteId, delegateId, programmeId: id });
   }
 }
+
+//validate token if incoming request has token
+async function validateToken(token, requireStaff = false) {
+  if (!token) throw new Error('Auth required');
+  const payload = parseToken(token);
+  if (!payload?.id) throw new Error('Invalid token');
+  const record = await user.findByPk(payload.id);
+  if (!record) throw new Error('Invalid user token');
+  if (requireStaff && record.role !== 'staff') throw new Error('Staff access required');
+  return record;
+}
+
 //extracts url params based on HANDLERS
 function matchRoute(method, path) {
   const clean = path.split('?')[0];
@@ -57,7 +117,7 @@ function matchRoute(method, path) {
   return null;
 }
 //applies matchroute to the request and handles batch attendance
-async function applyOp(method, path, body) {
+async function applyOp(method, path, body, token) {
   if (method === 'POST' && path.endsWith('/attendance')) {
     const records = body?.records;
     if (Array.isArray(records)) {
@@ -70,7 +130,7 @@ async function applyOp(method, path, body) {
 
   const route = matchRoute(method, path);
   if (!route) return;
-  await route.exec(route.params, body);
+  await route.exec(route.params, body, token);
 }
 
 exports.handleSync = async (req, res) => {
@@ -79,7 +139,7 @@ exports.handleSync = async (req, res) => {
     if (Array.isArray(ops)) {
       for (const op of ops) {
         try {
-          await applyOp(op.method, op.path, op.body);
+          await applyOp(op.method, op.path, op.body, op.token);
         } catch (err) {
           console.error(`Sync op failed: ${op.method} ${op.path}`, err.message);
         }
