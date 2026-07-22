@@ -4,7 +4,7 @@ import ChatBubble from "./ChatBubble.jsx";
 import ChatInput from './ChatInput.jsx';
 import WifiRounded from '@mui/icons-material/WifiRounded'
 import WifiOffRoundedIcon from '@mui/icons-material/WifiOffRounded'
-const CHAT_SERVER_URL = import.meta.env.VITE_CHAT_SERVER_URL || 'http://localhost:3001';
+const CHAT_SERVER_URL = import.meta.env.VITE_CHAT_SERVER_URL || '';
 
 function getAuthUser() {
     try {

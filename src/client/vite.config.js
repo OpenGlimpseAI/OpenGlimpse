@@ -17,7 +17,12 @@ export default defineConfig({
     https: true,
     proxy: {
       '/api': 'http://localhost:3001',
-      '/programmes': 'http://localhost:3001',      '/users': 'http://localhost:3001',
+      '/programmes': 'http://localhost:3001',
+      '/users': 'http://localhost:3001',
+      '/socket.io': {
+        target: 'http://localhost:3001',
+        ws: true,
+      },
     },
   },
 })
