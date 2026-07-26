@@ -118,7 +118,34 @@ P1 = must-have MVP; P2 = high value, build after P1; P3 = nice-to-have.
 - Photos pre-registered by admin before the programme; staff updates own photo on first login
 - Chat messages: retained for programme history; can be archived per admin policy
 
-### 4.4 Hardware (for Demo & Production)
+### 4.4 Offline Sync Engine
+
+#### Architecture
+- **Client:** Dexie.js (IndexedDB) with `requestCache` and `pendingChanges` tables
+- **Interception layer:** `services/api.js` `request()` caches GET responses; offline reads serve from cache, offline writes queue `{ method, path, body, token }` to `pendingChanges`
+- **Auth endpoints:** `/api/auth` in `SYNC_PREFIXES`; login excluded via `NEVER_QUEUE`; token carried in ops for auth writes
+- **Sync trigger:** `hooks/useSync.js` calls `sync/changeHandler()` on mount, `online` event, and tab `focus`; dispatches `sync:done` custom event after successful sync
+- **Server:** `POST /sync` registered in `index.js` via `registerSyncRoutes(app)`; handled by `modules/sync/syncController.js` which replays ops against Sequelize models; auth ops validated via `parseToken()` + DB lookup
+- **Vite proxy:** `/sync` added to `vite.config.js` proxy table so `changeHandler` fetch reaches Express (was root cause of silent sync failure)
+- **Synced entity types:** programme, route, delegate, attendance, readyToDepart, auth (prefixed `/programmes`, `/delegates`, or `/api/auth`)
+- **Not synced:** login (`/api/auth/login`), face recognition, QR scanning, chat, users (`/users`)
+
+#### Client-side data flow
+- `request()` in `api.js` checks `navigator.onLine`:
+  - **Online:** fetch from server; cache GET responses in `requestCache` for synced paths
+  - **Offline:** GET reads from `requestCache`; POST/PUT/DELETE pushes to `pendingChanges` and returns optimistic result (`{ ...body, id: 'pending' }`)
+- **Components show optimistic data immediately via `setAccounts` (local state)** — `handleCreate`, `handleUpdate`, `handleDelete` in `ParticipantManagement.jsx` skip the stale cache and directly update state when offline
+- **Offline-disabled UIs:** CameraPage capture/confirm buttons disabled; ChatInput shows "unavailable" placeholder; face upload skipped in ParticipantManagement
+
+#### Sync lifecycle
+1. **Queue:** offline writes accumulate in `pendingChanges` (IndexedDB, persists across sessions)
+2. **Trigger:** `useSync.js` fires `changeHandler()` on mount, `online` event, or tab `focus` (with ref guard to prevent concurrent runs)
+3. **Send:** `changeHandler()` does `POST /sync` with `{ ops, timestamp }`; on 200 OK, deletes `pendingChanges` and dispatches `sync:done`
+4. **Server processing:** `syncController.js` `HANDLERS` map dispatches each op by `method + path` pattern; auth ops include `validateToken()` checks
+5. **UI refresh:** components listen for `sync:done` via `window.addEventListener('sync:done', ...)` and `sync:done` event to re-fetch fresh data: `ParticipantManagement.jsx`, `ProgrammePage.jsx`, `directory.jsx`
+6. **Connectivity indicator:** `useConnectivity.js` polls `pendingChanges` every 3s **and** listens for `sync:done` to instantly update `pendingCount`; camera & chat disabled when offline
+
+### 4.5 Hardware (for Demo & Production)
 - Development: laptop webcam acceptable with printed QR codes and mock data
 - Final demo: mobile phone (Android/iOS) for live facial recognition, camera-based QR scanning
 - QR badges: printed QR codes embedded in delegate badge lanyard
