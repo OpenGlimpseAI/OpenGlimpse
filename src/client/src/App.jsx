@@ -11,11 +11,17 @@ import ProgrammePage from "./pages/programmes/ProgrammePage.jsx";
 import SummaryPage from "./pages/programmes/SummaryPage.jsx";
 import Onboarding from "./pages/auth/Onboarding.jsx";
 import Login from "./pages/auth/Login.jsx";
-import StaffProfile from "./pages/auth/StaffProfile.jsx";
-import ParticipantManagement from "./pages/auth/ParticipantManagement.jsx";
+import ProfilePage from "./pages/auth/ProfilePage.jsx";
+import StaffLandingPage from "./pages/staff/StaffLandingPage.jsx";
 
 import { useSync } from './hooks/useSync';
 import ConnectivityIndicator from './components/shared/ConnectivityIndicator';
+
+function getAuthUser() {
+  const raw = localStorage.getItem('authUser');
+  if (!raw) return null;
+  try { return JSON.parse(raw); } catch { return null; }
+}
 
 function isSignedIn() {
   return Boolean(localStorage.getItem('authUser'));
