@@ -7,7 +7,6 @@ import BottomNavigationAction from '@mui/material/BottomNavigationAction';
 import ChatIcon from '@mui/icons-material/Chat';
 import DashboardIcon from '@mui/icons-material/Dashboard';
 import CameraAlt from '@mui/icons-material/CameraAlt';
-import Settings from '@mui/icons-material/Settings';
 import AccountCircle from '@mui/icons-material/AccountCircle';
 import QrCode from '@mui/icons-material/QrCode';
 import Paper from '@mui/material/Paper';
@@ -71,16 +70,6 @@ export default function FixedBottomNavigation() {
                             to="/camera"
                         />
                     )}
-                    {isStaff && (
-                        <BottomNavigationAction
-                            className="bottom-nav-action"
-                            label="Profile"
-                            value="profile"
-                            icon={<AccountCircle />}
-                            component={Link}
-                            to="/profile"
-                        />
-                    )}
                     {!isStaff && (
                         <BottomNavigationAction
                             className="bottom-nav-action"
@@ -105,11 +94,11 @@ export default function FixedBottomNavigation() {
                     )}
                     <BottomNavigationAction
                         className="bottom-nav-action"
-                        label="Settings"
-                        value="settings"
-                        icon={<Settings />}
+                        label="Profile"
+                        value="profile"
+                        icon={<AccountCircle />}
                         component={Link}
-                        to="/"
+                        to="/profile"
                     />
                 </BottomNavigation>
             </Paper>

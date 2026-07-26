@@ -21,6 +21,12 @@ function isSignedIn() {
   return Boolean(localStorage.getItem('authUser'));
 }
 
+function LandingPage() {
+  const user = getAuthUser();
+  if (!user) return <Onboarding />;
+  return user.role === 'staff' ? <StaffLandingPage /> : <BadgePage />;
+}
+
 export default function App() {
   useSync();
 
@@ -36,10 +42,10 @@ export default function App() {
       <ConnectivityIndicator />
       {signedIn && <BottomNav />}
       <Routes>
-        <Route path="/" element={signedIn ? <StaffProfile /> : <Onboarding />} />
+        <Route path="/" element={<LandingPage />} />
         <Route path="/onboarding" element={<Onboarding />} />
         <Route path="/login" element={<Login />} />
-        <Route path="/profile" element={<ParticipantManagement />} />
+        <Route path="/profile" element={<ProfilePage />} />
         <Route path="/chat" element={<Chat/>} />
         <Route path="/camera" element={<CameraPage />} />
         <Route path="/dashboard" element={<AdminDashboard />} />

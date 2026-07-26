@@ -4,7 +4,6 @@ import { useConnectivity } from "../../hooks/useConnectivity";
 import AddIcon from "@mui/icons-material/Add";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
-import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import PersonAddIcon from "@mui/icons-material/PersonAdd";
 import RemoveCircleOutlineRoundedIcon from "@mui/icons-material/RemoveCircleOutlineRounded";
 import PeopleIcon from "@mui/icons-material/People";
@@ -274,10 +273,6 @@ export default function ProgrammePage() {
         navigate('/login');
         return null;
     }
-    if (currentUser.role !== 'staff') {
-        navigate('/');
-        return null;
-    }
 
     const [programmes, setProgrammes] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -447,15 +442,12 @@ export default function ProgrammePage() {
     return (
         <main className="directory-page">
             <header className="directory-header">
-                <div className="flex items-center gap-3">
-                    <button className="text-slate-500 hover:text-slate-700 transition-colors" onClick={() => navigate("/dashboard")}>
-                        <ArrowBackIcon sx={{ fontSize: 20 }} />
+                <h1 className="directory-title">Programmes</h1>
+                {currentUser.role === 'staff' && (
+                    <button className="bg-sky-600 text-white rounded-xl px-4 py-1.5 text-xs font-semibold flex items-center gap-1 hover:bg-sky-700 transition-colors" onClick={openCreate}>
+                        <AddIcon sx={{ fontSize: 14 }} /> New
                     </button>
-                    <h1 className="directory-title">Manage Programmes</h1>
-                </div>
-                <button className="bg-sky-600 text-white rounded-xl px-4 py-1.5 text-xs font-semibold flex items-center gap-1 hover:bg-sky-700 transition-colors" onClick={openCreate}>
-                    <AddIcon sx={{ fontSize: 14 }} /> New
-                </button>
+                )}
             </header>
 
             {error && (
