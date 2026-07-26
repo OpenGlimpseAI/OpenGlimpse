@@ -209,7 +209,7 @@ export default function ParticipantManagement() {
       setSelected(null);
       setForm(emptyForm);
       clearFace();
-      //handle accounts list when offline vs online
+      //handle accounts list when offline
       if (navigator.onLine) {
         fetchAccounts();
       } else {
