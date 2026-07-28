@@ -5,7 +5,7 @@ import SearchIcon from "@mui/icons-material/Search";
 import CloseIcon from "@mui/icons-material/Close";
 import KeyboardArrowDown from "@mui/icons-material/KeyboardArrowDown";
 import GroupsIcon from "@mui/icons-material/Groups";
-import SettingsIcon from "@mui/icons-material/Settings";
+import AddIcon from "@mui/icons-material/Add";
 import BarChartIcon from "@mui/icons-material/BarChart";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import PeopleAltIcon from "@mui/icons-material/PeopleAlt";
@@ -321,7 +321,7 @@ export function AdminDashboard() {
                                 onClick={() => navigate(`/programmes/${programmeId}/routes`)}
                                 aria-label="Manage routes"
                             >
-                                <SettingsIcon sx={{ fontSize: 20 }} />
+                                <AddIcon sx={{ fontSize: 24 }} />
                             </button>
                         </div>
                     </div>
