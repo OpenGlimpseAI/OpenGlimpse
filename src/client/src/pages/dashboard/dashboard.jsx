@@ -311,15 +311,15 @@ export function AdminDashboard() {
                             </button>
                             <button
                                 className="text-slate-400 hover:text-sky-600 transition-colors w-11 h-11 flex items-center justify-center rounded-xl active:bg-slate-100"
-                                onClick={() => navigate(`/summary/${programmeId}`)}
+                                onClick={() => navigate(`/programmes/${programmeId}/summary`)}
                                 aria-label="View report"
                             >
                                 <BarChartIcon sx={{ fontSize: 20 }} />
                             </button>
                             <button
                                 className="text-slate-400 hover:text-slate-600 transition-colors w-11 h-11 flex items-center justify-center rounded-xl active:bg-slate-100"
-                                onClick={() => navigate("/programmes")}
-                                aria-label="Manage programmes"
+                                onClick={() => navigate(`/programmes/${programmeId}/routes`)}
+                                aria-label="Manage routes"
                             >
                                 <SettingsIcon sx={{ fontSize: 20 }} />
                             </button>
