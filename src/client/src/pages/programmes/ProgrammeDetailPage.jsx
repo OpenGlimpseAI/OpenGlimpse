@@ -3,6 +3,7 @@ import { useNavigate, useParams, useLocation } from "react-router-dom";
 import Tabs from "@mui/material/Tabs";
 import Tab from "@mui/material/Tab";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
+import AddIcon from "@mui/icons-material/Add";
 import { getProgrammes } from "../../services/api";
 import RoutesTab from "./RoutesTab";
 import DelegatesTab from "./DelegatesTab";
@@ -102,6 +103,9 @@ export default function ProgrammeDetailPage() {
             <p className="text-xs text-slate-500">{programme.startDate} – {programme.endDate}</p>
           </div>
         </div>
+        <button className="bg-sky-600 text-white rounded-xl px-4 py-1.5 text-xs font-semibold flex items-center gap-1 hover:bg-sky-700 transition-colors" onClick={() => navigate("/programmes")}>
+          <AddIcon sx={{ fontSize: 14 }} /> New Programme
+        </button>
       </header>
 
       <div className="px-4 pt-2 sm:px-6">
