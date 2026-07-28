@@ -117,7 +117,7 @@ export default function ProgrammeDetailPage() {
         </Tabs>
       </div>
 
-      <div className="px-4 sm:px-6 pb-6 pt-3">
+      <div className="px-4 sm:px-6 pb-6 pt-6">
         {tabIndex === 0 && <RoutesTab programmeId={id} />}
         {tabIndex === 1 && <SummaryTab programmeId={id} />}
       </div>
