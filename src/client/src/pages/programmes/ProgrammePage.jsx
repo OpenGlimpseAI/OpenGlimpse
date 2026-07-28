@@ -118,7 +118,12 @@ export default function ProgrammePage() {
                 {loading ? (
                     <p className="text-center text-slate-400 pt-8">Loading...</p>
                 ) : !programmes || programmes.length === 0 ? (
-                    <p className="text-center text-slate-400 pt-8">No programmes. Create one to get started.</p>
+                    <div className="text-center pt-8 space-y-4">
+                        <p className="text-sm text-slate-400">No programmes. Create one to get started.</p>
+                        <button className="bg-sky-600 text-white rounded-xl px-6 py-2.5 text-sm font-semibold hover:bg-sky-700 transition-colors" onClick={openCreate}>
+                            Create Programme
+                        </button>
+                    </div>
                 ) : (
                     programmes.map((p) => (
                         <div key={p.id} className="rounded-2xl bg-white shadow-sm border border-slate-100 overflow-hidden">
