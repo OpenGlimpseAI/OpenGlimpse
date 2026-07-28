@@ -348,7 +348,7 @@ export function AdminDashboard() {
                 )}
             </header>
 
-            <div className="px-4 sm:px-6 space-y-3 pb-3">
+            <div className="px-4 sm:px-6 space-y-3 pb-3 pt-2">
                 {selectedRoute && (
                     <div className="flex items-center justify-between bg-white rounded-2xl border border-slate-100 px-4 py-3 shadow-sm w-full">
                         <div className="flex items-center gap-2">
