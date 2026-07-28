@@ -54,7 +54,7 @@ export default function ProgrammeDetailPage() {
     return (
       <main className="directory-page">
         <header className="directory-header">
-          <button className="text-slate-500 hover:text-slate-700 transition-colors" onClick={() => navigate("/programmes")}>
+          <button className="text-slate-500 hover:text-slate-700 transition-colors" onClick={() => navigate("/dashboard")}>
             <ArrowBackIcon sx={{ fontSize: 20 }} />
           </button>
           <h1 className="directory-title">Loading...</h1>
@@ -68,7 +68,7 @@ export default function ProgrammeDetailPage() {
     return (
       <main className="directory-page">
         <header className="directory-header">
-          <button className="text-slate-500 hover:text-slate-700 transition-colors" onClick={() => navigate("/programmes")}>
+          <button className="text-slate-500 hover:text-slate-700 transition-colors" onClick={() => navigate("/dashboard")}>
             <ArrowBackIcon sx={{ fontSize: 20 }} />
           </button>
           <h1 className="directory-title text-red-500">{error}</h1>
@@ -82,7 +82,7 @@ export default function ProgrammeDetailPage() {
     return (
       <main className="directory-page">
         <header className="directory-header">
-          <button className="text-slate-500 hover:text-slate-700 transition-colors" onClick={() => navigate("/programmes")}>
+          <button className="text-slate-500 hover:text-slate-700 transition-colors" onClick={() => navigate("/dashboard")}>
             <ArrowBackIcon sx={{ fontSize: 20 }} />
           </button>
           <h1 className="directory-title text-red-500">Programme not found</h1>
@@ -95,7 +95,7 @@ export default function ProgrammeDetailPage() {
     <main className="directory-page">
       <header className="directory-header">
         <div className="flex items-center gap-3">
-          <button className="text-slate-500 hover:text-slate-700 transition-colors" onClick={() => navigate("/programmes")}>
+          <button className="text-slate-500 hover:text-slate-700 transition-colors" onClick={() => navigate("/dashboard")}>
             <ArrowBackIcon sx={{ fontSize: 20 }} />
           </button>
           <div>
