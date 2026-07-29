@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import AddIcon from "@mui/icons-material/Add";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
+import CloseIcon from "@mui/icons-material/Close";
 import { getProgrammes, createProgramme, updateProgramme, deleteProgramme } from "../../services/api";
 
 export default function ManageProgrammeTab({ programmeId }) {
@@ -11,11 +12,13 @@ export default function ManageProgrammeTab({ programmeId }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  const [showForm, setShowForm] = useState(false);
-  const [editing, setEditing] = useState(null);
-  const [formName, setFormName] = useState("");
-  const [formStart, setFormStart] = useState("");
-  const [formEnd, setFormEnd] = useState("");
+  // Modal state
+  const [modalMode, setModalMode] = useState(null); // 'create' | 'edit'
+  const [modalProgramme, setModalProgramme] = useState(null);
+  const [modalName, setModalName] = useState("");
+  const [modalStart, setModalStart] = useState("");
+  const [modalEnd, setModalEnd] = useState("");
+  const [saving, setSaving] = useState(false);
 
   const loadProgrammes = () => {
     setLoading(true);
@@ -25,25 +28,35 @@ export default function ManageProgrammeTab({ programmeId }) {
   useEffect(() => { loadProgrammes(); }, []);
 
   const openCreate = () => {
-    setEditing(null);
-    setFormName(""); setFormStart(""); setFormEnd("");
-    setShowForm(true);
+    setModalMode("create");
+    setModalProgramme(null);
+    setModalName("");
+    setModalStart("");
+    setModalEnd("");
   };
 
   const openEdit = (p) => {
-    setEditing(p.id);
-    setFormName(p.name); setFormStart(p.startDate); setFormEnd(p.endDate);
-    setShowForm(true);
+    setModalMode("edit");
+    setModalProgramme(p);
+    setModalName(p.name);
+    setModalStart(p.startDate);
+    setModalEnd(p.endDate);
   };
 
-  const handleSave = async () => {
-    if (!formName.trim() || !formStart || !formEnd) return;
+  const handleModalSave = async () => {
+    if (!modalName.trim() || !modalStart || !modalEnd) return;
+    setSaving(true);
     try {
-      if (editing) await updateProgramme(editing, { name: formName, startDate: formStart, endDate: formEnd });
-      else await createProgramme({ name: formName, startDate: formStart, endDate: formEnd });
-      setShowForm(false);
+      if (modalMode === "edit" && modalProgramme) {
+        await updateProgramme(modalProgramme.id, { name: modalName, startDate: modalStart, endDate: modalEnd });
+      } else {
+        await createProgramme({ name: modalName, startDate: modalStart, endDate: modalEnd });
+      }
+      setModalMode(null);
+      setModalProgramme(null);
       loadProgrammes();
     } catch (e) { setError(e.message); }
+    finally { setSaving(false); }
   };
 
   const handleDelete = async (id) => {
@@ -70,17 +83,27 @@ export default function ManageProgrammeTab({ programmeId }) {
         </div>
       )}
 
-      {showForm && (
-        <div className="rounded-2xl bg-white p-4 shadow-sm border border-slate-100 space-y-3">
-          <h2 className="text-sm font-semibold text-slate-700">{editing ? "Edit Programme" : "New Programme"}</h2>
-          <input className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-sky-400" placeholder="Programme name" value={formName} onChange={(e) => setFormName(e.target.value)} style={{ fontSize: "16px" }} />
-          <div className="flex flex-col sm:flex-row gap-3">
-            <input type="date" className="flex-1 rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-sky-400" value={formStart} onChange={(e) => setFormStart(e.target.value)} style={{ fontSize: "16px" }} />
-            <input type="date" className="flex-1 rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-sky-400" value={formEnd} onChange={(e) => setFormEnd(e.target.value)} style={{ fontSize: "16px" }} />
-          </div>
-          <div className="flex gap-2 pt-1">
-            <button className="flex-1 rounded-xl bg-sky-600 text-white py-2 text-sm font-semibold hover:bg-sky-700 transition-colors" onClick={handleSave}>{editing ? "Save" : "Create"}</button>
-            <button className="flex-1 rounded-xl bg-slate-100 text-slate-600 py-2 text-sm font-semibold hover:bg-slate-200 transition-colors" onClick={() => setShowForm(false)}>Cancel</button>
+      {/* Modal for create/edit */}
+      {modalMode && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40" onClick={() => setModalMode(null)}>
+          <div className="bg-white w-full sm:max-w-sm sm:rounded-2xl rounded-t-2xl p-5 space-y-4" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between">
+              <h2 className="text-sm font-semibold text-slate-800">{modalMode === "edit" ? "Edit Programme" : "New Programme"}</h2>
+              <button className="text-slate-400 hover:text-slate-600" onClick={() => setModalMode(null)}>
+                <CloseIcon sx={{ fontSize: 18 }} />
+              </button>
+            </div>
+            <input className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-sky-400" placeholder="Programme name" value={modalName} onChange={(e) => setModalName(e.target.value)} style={{ fontSize: "16px" }} />
+            <div className="flex flex-col sm:flex-row gap-3">
+              <input type="date" className="flex-1 rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-sky-400" value={modalStart} onChange={(e) => setModalStart(e.target.value)} style={{ fontSize: "16px" }} />
+              <input type="date" className="flex-1 rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-sky-400" value={modalEnd} onChange={(e) => setModalEnd(e.target.value)} style={{ fontSize: "16px" }} />
+            </div>
+            <div className="flex gap-2 pt-1">
+              <button className="flex-1 rounded-xl bg-sky-600 text-white py-2.5 text-sm font-semibold hover:bg-sky-700 transition-colors disabled:opacity-50" onClick={handleModalSave} disabled={saving}>
+                {saving ? "Saving..." : modalMode === "edit" ? "Save" : "Create"}
+              </button>
+              <button className="flex-1 rounded-xl bg-slate-100 text-slate-600 py-2.5 text-sm font-semibold hover:bg-slate-200 transition-colors" onClick={() => setModalMode(null)}>Cancel</button>
+            </div>
           </div>
         </div>
       )}
