@@ -134,6 +134,8 @@ export default function ProgrammeDetailPage() {
           onChange={handleTabChange}
           textColor="primary"
           indicatorColor="primary"
+          variant="scrollable"
+          scrollButtons="auto"
         >
           {TABS.map((t) => <Tab key={t.key} label={t.label} />)}
         </Tabs>

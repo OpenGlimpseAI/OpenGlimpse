@@ -4,7 +4,10 @@ import AddIcon from "@mui/icons-material/Add";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
+import CloseIcon from "@mui/icons-material/Close";
 import { getProgrammes, createProgramme, updateProgramme, deleteProgramme } from "../../services/api";
+import Toast from "../../components/shared/Toast";
+import ConfirmModal from "../../components/shared/ConfirmModal";
 
 function getAuthUser() {
     const raw = localStorage.getItem('authUser');
@@ -32,12 +35,18 @@ export default function ProgrammePage() {
     const [programmes, setProgrammes] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
+    const [toast, setToast] = useState(null);
 
-    const [showForm, setShowForm] = useState(false);
-    const [editing, setEditing] = useState(null);
-    const [formName, setFormName] = useState("");
-    const [formStart, setFormStart] = useState("");
-    const [formEnd, setFormEnd] = useState("");
+    // Modal state
+    const [modalMode, setModalMode] = useState(null); // 'create' | 'edit'
+    const [modalProgramme, setModalProgramme] = useState(null);
+    const [modalName, setModalName] = useState("");
+    const [modalStart, setModalStart] = useState("");
+    const [modalEnd, setModalEnd] = useState("");
+    const [saving, setSaving] = useState(false);
+
+    // Delete confirm
+    const [deleteTarget, setDeleteTarget] = useState(null);
 
     const loadProgrammes = () => {
         setLoading(true);
@@ -47,32 +56,42 @@ export default function ProgrammePage() {
     useEffect(() => { loadProgrammes(); }, []);
 
     const openCreate = () => {
-        setEditing(null);
-        setFormName(""); setFormStart(""); setFormEnd("");
-        setShowForm(true);
+        setModalMode("create");
+        setModalProgramme(null);
+        setModalName(""); setModalStart(""); setModalEnd("");
     };
 
     const openEdit = (p) => {
-        setEditing(p.id);
-        setFormName(p.name); setFormStart(p.startDate); setFormEnd(p.endDate);
-        setShowForm(true);
+        setModalMode("edit");
+        setModalProgramme(p);
+        setModalName(p.name); setModalStart(p.startDate); setModalEnd(p.endDate);
     };
 
-    const handleSave = async () => {
-        if (!formName.trim() || !formStart || !formEnd) return;
+    const handleModalSave = async () => {
+        if (!modalName.trim() || !modalStart || !modalEnd) return;
+        setSaving(true);
         try {
-            if (editing) await updateProgramme(editing, { name: formName, startDate: formStart, endDate: formEnd });
-            else await createProgramme({ name: formName, startDate: formStart, endDate: formEnd });
-            setShowForm(false);
+            if (modalMode === "edit" && modalProgramme) {
+                await updateProgramme(modalProgramme.id, { name: modalName, startDate: modalStart, endDate: modalEnd });
+                setToast("Programme updated");
+            } else {
+                await createProgramme({ name: modalName, startDate: modalStart, endDate: modalEnd });
+                setToast("Programme created");
+            }
+            setModalMode(null);
+            setModalProgramme(null);
             loadProgrammes();
         } catch (e) { setError(e.message); }
+        finally { setSaving(false); }
     };
 
-    const handleDelete = async (id) => {
-        if (!confirm("Delete this programme? This cannot be undone.")) return;
+    const handleDelete = async () => {
+        if (!deleteTarget) return;
         try {
-            await deleteProgramme(id);
+            await deleteProgramme(deleteTarget);
+            setDeleteTarget(null);
             loadProgrammes();
+            setToast("Programme deleted");
         } catch (e) { setError(e.message); }
     };
 
@@ -97,21 +116,39 @@ export default function ProgrammePage() {
                 </div>
             )}
 
-            {showForm && (
-                <div className="px-4 pb-4 sm:px-6">
-                    <div className="rounded-2xl bg-white p-4 shadow-sm border border-slate-100 space-y-3">
-                        <h2 className="text-sm font-semibold text-slate-700">{editing ? "Edit Programme" : "New Programme"}</h2>
-                        <input className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-sky-400" placeholder="Programme name" value={formName} onChange={(e) => setFormName(e.target.value)} style={{ fontSize: "16px" }} />
+            {/* Modal */}
+            {modalMode && (
+                <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40" onClick={() => setModalMode(null)}>
+                    <div className="bg-white w-full sm:max-w-sm sm:rounded-2xl rounded-t-2xl p-5 space-y-4" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex items-center justify-between">
+                            <h2 className="text-sm font-semibold text-slate-800">{modalMode === "edit" ? "Edit Programme" : "New Programme"}</h2>
+                            <button className="text-slate-400 hover:text-slate-600" onClick={() => setModalMode(null)}>
+                                <CloseIcon sx={{ fontSize: 18 }} />
+                            </button>
+                        </div>
+                        <input className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-sky-400" placeholder="Programme name" value={modalName} onChange={(e) => setModalName(e.target.value)} style={{ fontSize: "16px" }} />
                         <div className="flex flex-col sm:flex-row gap-3">
-                            <input type="date" className="flex-1 rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-sky-400" value={formStart} onChange={(e) => setFormStart(e.target.value)} style={{ fontSize: "16px" }} />
-                            <input type="date" className="flex-1 rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-sky-400" value={formEnd} onChange={(e) => setFormEnd(e.target.value)} style={{ fontSize: "16px" }} />
+                            <input type="date" className="flex-1 rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-sky-400" value={modalStart} onChange={(e) => setModalStart(e.target.value)} style={{ fontSize: "16px" }} />
+                            <input type="date" className="flex-1 rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-sky-400" value={modalEnd} onChange={(e) => setModalEnd(e.target.value)} style={{ fontSize: "16px" }} />
                         </div>
                         <div className="flex gap-2 pt-1">
-                            <button className="flex-1 rounded-xl bg-sky-600 text-white py-2 text-sm font-semibold hover:bg-sky-700 transition-colors" onClick={handleSave}>{editing ? "Save" : "Create"}</button>
-                            <button className="flex-1 rounded-xl bg-slate-100 text-slate-600 py-2 text-sm font-semibold hover:bg-slate-200 transition-colors" onClick={() => setShowForm(false)}>Cancel</button>
+                            <button className="flex-1 rounded-xl bg-sky-600 text-white py-2.5 text-sm font-semibold hover:bg-sky-700 transition-colors disabled:opacity-50" onClick={handleModalSave} disabled={saving}>
+                                {saving ? "Saving..." : modalMode === "edit" ? "Save" : "Create"}
+                            </button>
+                            <button className="flex-1 rounded-xl bg-slate-100 text-slate-600 py-2.5 text-sm font-semibold hover:bg-slate-200 transition-colors" onClick={() => setModalMode(null)}>Cancel</button>
                         </div>
                     </div>
                 </div>
+            )}
+
+            {/* Delete confirm */}
+            {deleteTarget && (
+                <ConfirmModal
+                    title="Delete Programme"
+                    message="This cannot be undone. All routes and delegate assignments will be removed."
+                    onConfirm={handleDelete}
+                    onCancel={() => setDeleteTarget(null)}
+                />
             )}
 
             <div className="flex-1 px-4 pb-6 sm:px-6 space-y-2">
@@ -135,13 +172,15 @@ export default function ProgrammePage() {
                                 <div className="flex items-center gap-1.5 shrink-0" onClick={(e) => e.stopPropagation()}>
                                     <span className="text-[11px] text-slate-400 whitespace-nowrap">{p.checkedIn}/{p.totalDelegates}</span>
                                     <button className="text-slate-400 hover:text-sky-600 transition-colors w-9 h-9 flex items-center justify-center rounded-lg active:bg-slate-100" onClick={() => openEdit(p)}><EditIcon sx={{ fontSize: 16 }} /></button>
-                                    <button className="text-slate-400 hover:text-red-600 transition-colors w-9 h-9 flex items-center justify-center rounded-lg active:bg-slate-100" onClick={() => handleDelete(p.id)}><DeleteIcon sx={{ fontSize: 16 }} /></button>
+                                    <button className="text-slate-400 hover:text-red-600 transition-colors w-9 h-9 flex items-center justify-center rounded-lg active:bg-slate-100" onClick={() => setDeleteTarget(p.id)}><DeleteIcon sx={{ fontSize: 16 }} /></button>
                                 </div>
                             </div>
                         </div>
                     ))
                 )}
             </div>
+
+            {toast && <Toast message={toast} onClose={() => setToast(null)} />}
         </main>
     );
 }
