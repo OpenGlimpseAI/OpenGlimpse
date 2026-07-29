@@ -4,7 +4,9 @@ import Tabs from "@mui/material/Tabs";
 import Tab from "@mui/material/Tab";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import AddIcon from "@mui/icons-material/Add";
-import { getProgrammes } from "../../services/api";
+import EditIcon from "@mui/icons-material/Edit";
+import DeleteIcon from "@mui/icons-material/Delete";
+import { getProgrammes, updateProgramme, deleteProgramme } from "../../services/api";
 import RoutesTab from "./RoutesTab";
 import SummaryTab from "./SummaryTab";
 
@@ -20,6 +22,10 @@ export default function ProgrammeDetailPage() {
   const [programme, setProgramme] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [showEditForm, setShowEditForm] = useState(false);
+  const [editName, setEditName] = useState("");
+  const [editStart, setEditStart] = useState("");
+  const [editEnd, setEditEnd] = useState("");
 
   const activeTab = location.pathname.split("/").pop();
   const tabIndex = TABS.findIndex((t) => t.key === activeTab);
@@ -45,6 +51,30 @@ export default function ProgrammeDetailPage() {
 
   const handleTabChange = (_, idx) => {
     navigate(`/programmes/${id}/${TABS[idx].key}`);
+  };
+
+  const handleEdit = () => {
+    setEditName(programme.name);
+    setEditStart(programme.startDate);
+    setEditEnd(programme.endDate);
+    setShowEditForm(true);
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editName.trim() || !editStart || !editEnd) return;
+    try {
+      await updateProgramme(id, { name: editName, startDate: editStart, endDate: editEnd });
+      setShowEditForm(false);
+      setProgramme((prev) => ({ ...prev, name: editName, startDate: editStart, endDate: editEnd }));
+    } catch (e) { setError(e.message); }
+  };
+
+  const handleDelete = async () => {
+    if (!confirm("Delete this programme? This cannot be undone.")) return;
+    try {
+      await deleteProgramme(id);
+      navigate("/dashboard");
+    } catch (e) { setError(e.message); }
   };
 
   // Loading state
@@ -101,10 +131,35 @@ export default function ProgrammeDetailPage() {
             <p className="text-xs text-slate-500">{programme.startDate} – {programme.endDate}</p>
           </div>
         </div>
-        <button className="bg-sky-600 text-white rounded-xl px-4 py-1.5 text-xs font-semibold flex items-center gap-1 hover:bg-sky-700 transition-colors" onClick={() => navigate("/programmes")}>
-          <AddIcon sx={{ fontSize: 14 }} /> New Programme
-        </button>
+        <div className="flex items-center gap-1 shrink-0">
+          <button className="text-slate-400 hover:text-sky-600 transition-colors w-9 h-9 flex items-center justify-center rounded-lg active:bg-slate-100" onClick={handleEdit} title="Edit programme">
+            <EditIcon sx={{ fontSize: 16 }} />
+          </button>
+          <button className="text-slate-400 hover:text-red-600 transition-colors w-9 h-9 flex items-center justify-center rounded-lg active:bg-slate-100" onClick={handleDelete} title="Delete programme">
+            <DeleteIcon sx={{ fontSize: 16 }} />
+          </button>
+          <button className="bg-sky-600 text-white rounded-xl px-4 py-1.5 text-xs font-semibold flex items-center gap-1 hover:bg-sky-700 transition-colors" onClick={() => navigate("/programmes")}>
+            <AddIcon sx={{ fontSize: 14 }} /> New
+          </button>
+        </div>
       </header>
+
+      {showEditForm && (
+        <div className="px-4 pb-4 sm:px-6">
+          <div className="rounded-2xl bg-white p-4 shadow-sm border border-slate-100 space-y-3">
+            <h2 className="text-sm font-semibold text-slate-700">Edit Programme</h2>
+            <input className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-sky-400" placeholder="Programme name" value={editName} onChange={(e) => setEditName(e.target.value)} style={{ fontSize: "16px" }} />
+            <div className="flex flex-col sm:flex-row gap-3">
+              <input type="date" className="flex-1 rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-sky-400" value={editStart} onChange={(e) => setEditStart(e.target.value)} style={{ fontSize: "16px" }} />
+              <input type="date" className="flex-1 rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-sky-400" value={editEnd} onChange={(e) => setEditEnd(e.target.value)} style={{ fontSize: "16px" }} />
+            </div>
+            <div className="flex gap-2 pt-1">
+              <button className="flex-1 rounded-xl bg-sky-600 text-white py-2 text-sm font-semibold hover:bg-sky-700 transition-colors" onClick={handleSaveEdit}>Save</button>
+              <button className="flex-1 rounded-xl bg-slate-100 text-slate-600 py-2 text-sm font-semibold hover:bg-slate-200 transition-colors" onClick={() => setShowEditForm(false)}>Cancel</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="px-4 pt-2 sm:px-6">
         <Tabs
