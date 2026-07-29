@@ -2,7 +2,7 @@ const API_BASE = import.meta.env.VITE_API_URL || '';
 
 import { db } from '../db/localDB';
 //routes to sync
-const SYNC_PREFIXES = ['/programmes', '/delegates', '/api/auth', '/api/user'];
+const SYNC_PREFIXES = ['/programmes', '/delegates', '/api/auth', '/api/user', '/users'];
 //prevents auth login from being queued for sync
 const NEVER_QUEUE = ['/api/auth/login'];
 
