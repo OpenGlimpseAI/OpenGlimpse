@@ -54,6 +54,7 @@ export default function ProgrammeDetailPage() {
   };
 
   const handleEdit = () => {
+    if (!programme) return;
     setEditName(programme.name);
     setEditStart(programme.startDate);
     setEditEnd(programme.endDate);
@@ -61,7 +62,7 @@ export default function ProgrammeDetailPage() {
   };
 
   const handleSaveEdit = async () => {
-    if (!editName.trim() || !editStart || !editEnd) return;
+    if (!editName.trim() || !editStart || !editEnd || !programme) return;
     try {
       await updateProgramme(id, { name: editName, startDate: editStart, endDate: editEnd });
       setShowEditForm(false);
@@ -131,17 +132,6 @@ export default function ProgrammeDetailPage() {
             <p className="text-xs text-slate-500">{programme.startDate} – {programme.endDate}</p>
           </div>
         </div>
-        <div className="flex items-center gap-1 shrink-0">
-          <button className="text-slate-400 hover:text-sky-600 transition-colors w-9 h-9 flex items-center justify-center rounded-lg active:bg-slate-100" onClick={handleEdit} title="Edit programme">
-            <EditIcon sx={{ fontSize: 16 }} />
-          </button>
-          <button className="text-slate-400 hover:text-red-600 transition-colors w-9 h-9 flex items-center justify-center rounded-lg active:bg-slate-100" onClick={handleDelete} title="Delete programme">
-            <DeleteIcon sx={{ fontSize: 16 }} />
-          </button>
-          <button className="bg-sky-600 text-white rounded-xl px-4 py-1.5 text-xs font-semibold flex items-center gap-1 hover:bg-sky-700 transition-colors" onClick={() => navigate("/programmes")}>
-            <AddIcon sx={{ fontSize: 14 }} /> New
-          </button>
-        </div>
       </header>
 
       {showEditForm && (
@@ -173,6 +163,22 @@ export default function ProgrammeDetailPage() {
       </div>
 
       <div className="px-4 sm:px-6 pb-6 pt-6">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-0.5">
+            <span className="text-xs font-semibold text-slate-500">Manage Programme</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <button className="text-slate-400 hover:text-sky-600 transition-colors w-7 h-7 flex items-center justify-center rounded-lg active:bg-slate-100" onClick={handleEdit} title="Edit programme">
+              <EditIcon sx={{ fontSize: 14 }} />
+            </button>
+            <button className="text-slate-400 hover:text-red-600 transition-colors w-7 h-7 flex items-center justify-center rounded-lg active:bg-slate-100" onClick={handleDelete} title="Delete programme">
+              <DeleteIcon sx={{ fontSize: 14 }} />
+            </button>
+            <button className="bg-sky-600 text-white rounded-lg px-3 py-1 text-xs font-semibold flex items-center gap-1 hover:bg-sky-700 transition-colors" onClick={() => navigate("/programmes")}>
+              <AddIcon sx={{ fontSize: 12 }} /> New
+            </button>
+          </div>
+        </div>
         {tabIndex === 0 && <RoutesTab programmeId={id} />}
         {tabIndex === 1 && <SummaryTab programmeId={id} />}
       </div>
