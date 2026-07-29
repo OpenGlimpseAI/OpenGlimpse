@@ -3,6 +3,7 @@ import { useNavigate, useParams, useLocation } from "react-router-dom";
 import Tabs from "@mui/material/Tabs";
 import Tab from "@mui/material/Tab";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
+import KeyboardArrowDown from "@mui/icons-material/KeyboardArrowDown";
 import { getProgrammes } from "../../services/api";
 import RoutesTab from "./RoutesTab";
 import SummaryTab from "./SummaryTab";
@@ -20,20 +21,26 @@ export default function ProgrammeDetailPage() {
   const [programme, setProgramme] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [programmes, setProgrammes] = useState([]);
+  const [allLoading, setAllLoading] = useState(true);
+  const [showPicker, setShowPicker] = useState(false);
 
   const activeTab = location.pathname.split("/").pop();
   const tabIndex = TABS.findIndex((t) => t.key === activeTab);
 
   useEffect(() => {
     if (!id) return;
+    setAllLoading(true);
     setLoading(true);
     getProgrammes()
       .then((list) => {
-        const p = list.find((x) => x.id === id);
+        const data = list || [];
+        setProgrammes(data);
+        const p = data.find((x) => x.id === id);
         setProgramme(p);
       })
       .catch((e) => setError(e.message))
-      .finally(() => setLoading(false));
+      .finally(() => { setLoading(false); setAllLoading(false); });
   }, [id]);
 
   useEffect(() => {
@@ -96,9 +103,30 @@ export default function ProgrammeDetailPage() {
           <button className="text-slate-500 hover:text-slate-700 transition-colors" onClick={() => navigate("/dashboard")}>
             <ArrowBackIcon sx={{ fontSize: 20 }} />
           </button>
-          <div>
-            <h1 className="directory-title">{programme.name}</h1>
-            <p className="text-xs text-slate-500">{programme.startDate} – {programme.endDate}</p>
+          <div className="relative min-w-0 flex-1">
+            <button
+              className="flex items-center gap-1.5 text-left"
+              onClick={() => setShowPicker((p) => !p)}
+            >
+              <div className="min-w-0">
+                <h1 className="directory-title truncate">{programme.name}</h1>
+                <p className="text-xs text-slate-500">{programme.startDate} – {programme.endDate}</p>
+              </div>
+              <KeyboardArrowDown sx={{ fontSize: 18, color: "#94a3b8" }} />
+            </button>
+            {showPicker && (
+              <div className="absolute top-full left-0 right-0 mt-1 z-50 bg-white rounded-xl shadow-lg border border-slate-100 max-h-60 overflow-y-auto">
+                {programmes.map((p) => (
+                  <button
+                    key={p.id}
+                    className={`w-full text-left px-4 py-2.5 text-sm hover:bg-slate-50 transition-colors ${p.id === id ? "bg-sky-50 font-semibold text-sky-700" : "text-slate-700"}`}
+                    onClick={() => { navigate(`/programmes/${p.id}/routes`); setShowPicker(false); }}
+                  >
+                    <span className="truncate block">{p.name}</span>
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       </header>
