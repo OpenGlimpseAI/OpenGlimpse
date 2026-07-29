@@ -7,6 +7,7 @@ import KeyboardArrowDown from "@mui/icons-material/KeyboardArrowDown";
 import { getProgrammes } from "../../services/api";
 import RoutesTab from "./RoutesTab";
 import SummaryTab from "./SummaryTab";
+import ManageProgrammeTab from "./ManageProgrammeTab";
 
 const TABS = [
   { key: "routes", label: "Routes" },
@@ -50,11 +51,7 @@ export default function ProgrammeDetailPage() {
   }, [loading, programme, tabIndex, id, navigate]);
 
   const handleTabChange = (_, idx) => {
-    if (idx === 2) {
-      navigate("/programmes");
-    } else {
-      navigate(`/programmes/${id}/${TABS[idx].key}`);
-    }
+    navigate(`/programmes/${id}/${TABS[idx].key}`);
   };
 
   if (loading) {
@@ -133,7 +130,7 @@ export default function ProgrammeDetailPage() {
 
       <div className="px-4 pt-2 sm:px-6">
         <Tabs
-          value={tabIndex >= 0 && tabIndex < 2 ? tabIndex : false}
+          value={tabIndex >= 0 ? tabIndex : 0}
           onChange={handleTabChange}
           textColor="primary"
           indicatorColor="primary"
@@ -145,6 +142,7 @@ export default function ProgrammeDetailPage() {
       <div className="px-4 sm:px-6 pb-6 pt-6">
         {tabIndex === 0 && <RoutesTab programmeId={id} />}
         {tabIndex === 1 && <SummaryTab programmeId={id} />}
+        {tabIndex === 2 && <ManageProgrammeTab programmeId={id} />}
       </div>
     </main>
   );
