@@ -4,6 +4,8 @@ import DeleteIcon from "@mui/icons-material/Delete";
 import PeopleIcon from "@mui/icons-material/People";
 import { getRoutes, addRoute, updateRoute, deleteRoute, getDelegates } from "../../services/api";
 import RouteManageModal from "./RouteManageModal";
+import Toast from "../../components/shared/Toast";
+import ConfirmModal from "../../components/shared/ConfirmModal";
 
 export default function RoutesTab({ programmeId }) {
   const [routes, setRoutes] = useState([]);
@@ -14,6 +16,8 @@ export default function RoutesTab({ programmeId }) {
   const [editingRouteName, setEditingRouteName] = useState("");
   const [delegates, setDelegates] = useState([]);
   const [manageRoute, setManageRoute] = useState(null);
+  const [toast, setToast] = useState(null);
+  const [deleteTarget, setDeleteTarget] = useState(null);
 
   const loadRoutes = () => {
     setLoading(true);
@@ -41,6 +45,7 @@ export default function RoutesTab({ programmeId }) {
       await addRoute(programmeId, { name: newRouteName.trim() });
       setNewRouteName("");
       loadRoutes();
+      setToast("Route added");
     } catch (e) { setError(e.message); }
   };
 
@@ -53,11 +58,13 @@ export default function RoutesTab({ programmeId }) {
     } catch (e) { setError(e.message); }
   };
 
-  const handleDeleteRoute = async (routeId) => {
-    if (!confirm("Delete this route? Delegates will keep their other routes.")) return;
+  const handleDeleteRoute = async () => {
+    if (!deleteTarget) return;
     try {
-      await deleteRoute(programmeId, routeId);
+      await deleteRoute(programmeId, deleteTarget);
+      setDeleteTarget(null);
       loadRoutes();
+      setToast("Route deleted");
     } catch (e) { setError(e.message); }
   };
 
@@ -70,7 +77,7 @@ export default function RoutesTab({ programmeId }) {
         </div>
       )}
 
-      {/* Add route form — always visible */}
+      {/* Add route form */}
       <form className="flex items-center gap-2" onSubmit={handleAddRoute}>
         <input
           className="flex-1 rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none focus:border-sky-400"
@@ -87,7 +94,15 @@ export default function RoutesTab({ programmeId }) {
         </button>
       </form>
 
-      {/* Route list */}
+      {deleteTarget && (
+        <ConfirmModal
+          title="Delete Route"
+          message="Delete this route? Delegates will keep their other routes."
+          onConfirm={handleDeleteRoute}
+          onCancel={() => setDeleteTarget(null)}
+        />
+      )}
+
       {loading ? (
         <p className="text-sm text-slate-400 text-center py-4">Loading routes...</p>
       ) : routes.length === 0 ? (
@@ -131,7 +146,7 @@ export default function RoutesTab({ programmeId }) {
                     </button>
                     <button
                       className="text-slate-400 hover:text-red-600 w-9 h-9 flex items-center justify-center rounded-lg"
-                      onClick={() => handleDeleteRoute(r.id)}
+                      onClick={() => setDeleteTarget(r.id)}
                     >
                       <DeleteIcon sx={{ fontSize: 14 }} />
                     </button>
@@ -152,6 +167,8 @@ export default function RoutesTab({ programmeId }) {
           onSaved={loadRoutes}
         />
       )}
+
+      {toast && <Toast message={toast} onClose={() => setToast(null)} />}
     </div>
   );
 }
