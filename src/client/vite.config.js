@@ -19,6 +19,7 @@ export default defineConfig({
       '/api': 'http://localhost:3001',
       '/sync': 'http://localhost:3001',
       '/programmes': 'http://localhost:3001',
+      '/delegates': 'http://localhost:3001',
       '/users': 'http://localhost:3001',
       '/socket.io': {
         target: 'http://localhost:3001',

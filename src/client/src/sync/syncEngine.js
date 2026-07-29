@@ -6,9 +6,16 @@ export async function changeHandler() {
   const pc = await db.pendingChanges.get('current');
   if (!pc || pc.ops.length === 0) return;
 
+  const raw = localStorage.getItem('authUser');
+  const authUser = raw ? JSON.parse(raw) : null;
+  const headers = { 'Content-Type': 'application/json' };
+  if (authUser?.token) {
+    headers['Authorization'] = `Bearer ${authUser.token}`;
+  }
+
   const res = await fetch(`${API_BASE}/sync`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers,
     body: JSON.stringify({ ops: pc.ops, timestamp: pc.timestamp })
   });
 

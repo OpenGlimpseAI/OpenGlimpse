@@ -146,9 +146,15 @@ async function applyOp(method, path, body, token) {
 exports.handleSync = async (req, res) => {
   try {
     const { ops } = req.body;
+    const caller = req.user;
     if (Array.isArray(ops)) {
       for (const op of ops) {
         try {
+          const isAuthOp = op.path.startsWith('/api/auth');
+          if (!isAuthOp && caller.role !== 'staff') {
+            console.error(`Sync op denied (not staff): ${op.method} ${op.path}`);
+            continue;
+          }
           await applyOp(op.method, op.path, op.body, op.token);
         } catch (err) {
           console.error(`Sync op failed: ${op.method} ${op.path}`, err.message);

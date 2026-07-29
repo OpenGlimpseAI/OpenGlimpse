@@ -69,32 +69,14 @@ export default function Chat() {
         }
 
         if (!socketRef.current?.connected) {
-            try {
-                setMessages((current) => [...current, {
-                    text,
-                    timestamp: new Date().toISOString(),
-                    senderId: clientIdRef.current,
-                }]);
-            } catch (err) {
-                console.error(err.message);
-            } finally {
-                setMessageInput('');
-            }
-
             return;
         }
 
         try {
             socketRef.current.emit('message', { text });
-        } catch (error) {
-            setMessages((current) => [...current, {
-                text,
-                timestamp: new Date().toISOString(),
-                senderId: clientIdRef.current,
-            }]);
-            console.error(error.message);
-        } finally {
             setMessageInput('');
+        } catch (error) {
+            console.error(error.message);
         }
     };
 
