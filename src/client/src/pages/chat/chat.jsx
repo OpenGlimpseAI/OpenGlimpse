@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { io } from 'socket.io-client';
 import ChatBubble from "./ChatBubble.jsx";
 import ChatInput from './ChatInput.jsx';
@@ -16,13 +17,25 @@ function getAuthUser() {
 }
 
 export default function Chat() {
+    const navigate = useNavigate();
     const { isOnline } = useConnectivity();
+    const redirectedRef = useRef(false);
     const socketRef = useRef(null);
     const authUser = useRef(getAuthUser());
     const clientIdRef = useRef(authUser.current?.id);
     const [messages, setMessages] = useState([]);
     const [messageInput, setMessageInput] = useState('');
     const [isConnected, setIsConnected] = useState(false);
+
+    useEffect(() => {
+        if (!isOnline && !redirectedRef.current) {
+            redirectedRef.current = true;
+            navigate('/profile');
+        }
+        if (isOnline) {
+            redirectedRef.current = false;
+        }
+    }, [isOnline, navigate]);
 
     useEffect(() => {
         const token = authUser.current?.token;
