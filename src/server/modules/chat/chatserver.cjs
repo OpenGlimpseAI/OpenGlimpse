@@ -2,11 +2,12 @@ const { Messages } = require('../../database/dbcrudmethods');
 const { parseToken } = require('../auth/authRoutes');
 const { user } = require('../../database/db.cjs');
 
-function formatpayload(row) {
+function formatpayload(row, senderRole) {
     return {
         text: row.content ?? row.text,
         timestamp: row.timestamp,
         senderId: row.senderId,
+        senderRole: senderRole || null,
     };
 }
 
@@ -31,6 +32,7 @@ function attachChatServer(io) {
             }
 
             socket.userId = currentUser.id;
+            socket.userRole = currentUser.role;
             next();
         } catch (err) {
             next(new Error('Authentication failed'));
@@ -42,8 +44,11 @@ function attachChatServer(io) {
 
         (async () => {
             const history = await Messages.read();
+            const senderIds = [...new Set(history.map((m) => m.senderId))];
+            const senders = await user.findAll({ where: { id: senderIds }, attributes: ['id', 'role'] });
+            const roleById = Object.fromEntries(senders.map((u) => [u.id, u.role]));
             socket.emit('history', {
-                messages: history.map(formatpayload),
+                messages: history.map((m) => formatpayload(m, roleById[m.senderId])),
             });
         })().catch((err) => {
             console.error('Chat history could not be loaded', err);
@@ -65,7 +70,7 @@ function attachChatServer(io) {
                 });
 
                 chat.emit('message', {
-                    message: formatpayload(savedMessage.toJSON()),
+                    message: formatpayload(savedMessage.toJSON(), socket.userRole),
                 });
             } catch (error) {
                 console.error('Failed to save chat message', error);
