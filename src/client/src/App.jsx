@@ -14,6 +14,9 @@ import Login from "./pages/auth/Login.jsx";
 import ProfilePage from "./pages/auth/ProfilePage.jsx";
 import StaffLandingPage from "./pages/staff/StaffLandingPage.jsx";
 
+import { useSync } from './hooks/useSync';
+import ConnectivityIndicator from './components/shared/ConnectivityIndicator';
+
 function getAuthUser() {
   const raw = localStorage.getItem('authUser');
   if (!raw) return null;
@@ -31,6 +34,8 @@ function LandingPage() {
 }
 
 export default function App() {
+  useSync();
+
   const location = useLocation();
   const [signedIn, setSignedIn] = useState(() => isSignedIn());
 
@@ -40,6 +45,7 @@ export default function App() {
 
   return (
       <>
+      <ConnectivityIndicator />
       {signedIn && <BottomNav />}
       <Routes>
         <Route path="/" element={<LandingPage />} />

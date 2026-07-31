@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { updateUserProfile, deleteUserAccount, getAllUsers, createUserAccount, uploadUserFace } from '../../services/api.js';
+import { useConnectivity } from '../../hooks/useConnectivity';
 
 function getAuthUser() {
   const raw = localStorage.getItem('authUser');
@@ -145,6 +146,8 @@ function ParticipantSection({ currentUser }) {
   const canvasRef = useRef(null);
   const streamRef = useRef(null);
 
+  const { isOnline } = useConnectivity();
+
   const [accounts, setAccounts] = useState([]);
   const [selected, setSelected] = useState(null);
   const [form, setForm] = useState(emptyForm);
@@ -158,6 +161,12 @@ function ParticipantSection({ currentUser }) {
 
   useEffect(() => {
     fetchAccounts();
+  }, [isOnline]);
+
+  useEffect(() => {
+    const onSyncDone = () => fetchAccounts();
+    window.addEventListener('sync:done', onSyncDone);
+    return () => window.removeEventListener('sync:done', onSyncDone);
   }, []);
 
   const fetchAccounts = async () => {
@@ -259,24 +268,28 @@ function ParticipantSection({ currentUser }) {
     }
 
     try {
-      const newUser = await createUserAccount(form, currentUser.token);
-
-      setUploadingFace(true);
-      try {
-        await uploadUserFace(newUser.id, faceImageBase64, currentUser.token);
-      } catch (faceErr) {
-        setError('Account created but face upload failed: ' + (faceErr.message || ''));
-        setForm(emptyForm);
-        clearFace();
-        fetchAccounts();
-        return;
+      const payload = { ...form };
+      if (!navigator.onLine) {
+        payload.faceImage = faceImageBase64;
       }
-      setUploadingFace(false);
-
-      setStatus('Account created successfully with face registration');
+      const newUser = await createUserAccount(payload, currentUser.token);
+      //use online status to determine whether to upload face
+      if (navigator.onLine) {
+        setUploadingFace(true);
+        try {
+          await uploadUserFace(newUser.id, faceImageBase64, currentUser.token);
+        } catch (faceErr) {
+          setError('Account created but face upload failed: ' + (faceErr.message || ''));
+        }
+        setUploadingFace(false);
+        setStatus('Account created successfully with face registration');
+        fetchAccounts();
+      } else {
+        setStatus('Account queued. face registration will complete when connection is restored');
+        setAccounts(prev => [...prev, { ...newUser, id: 'pending-' + Date.now() }]);
+      }
       setForm(emptyForm);
       clearFace();
-      fetchAccounts();
     } catch (err) {
       setError(err.message || 'Create account failed');
     }
@@ -310,7 +323,16 @@ function ParticipantSection({ currentUser }) {
       setSelected(null);
       setForm(emptyForm);
       clearFace();
-      fetchAccounts();
+      //obtain account list based on connectivity
+      if (navigator.onLine) {
+        fetchAccounts();
+      } else {
+        setAccounts(prev => prev.map(a =>
+          a.id === (payload.targetId || selected.id)
+            ? { ...a, name: form.name, email: form.email, role: form.role }
+            : a
+        ));
+      }
     } catch (err) {
       setError(err.message || 'Update failed');
     }
@@ -329,7 +351,11 @@ function ParticipantSection({ currentUser }) {
         setSelected(null);
         setForm(emptyForm);
       }
-      fetchAccounts();
+      if (navigator.onLine) {
+        fetchAccounts();
+      } else {
+        setAccounts(prev => prev.filter(a => a.id !== accountId));
+      }
     } catch (err) {
       setError(err.message || 'Delete failed');
     }

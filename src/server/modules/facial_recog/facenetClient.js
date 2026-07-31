@@ -7,7 +7,10 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 const PYTHON_SERVER_DIR = join(__dirname, '..', '..', 'python_server');
-const PYTHON_PATH = join(__dirname, '..', '..', '..', '..', '.venv', 'Scripts', 'python.exe');
+const VENV_DIR = join(__dirname, '..', '..', '..', '..', '.venv');
+const PYTHON_PATH_WIN = join(VENV_DIR, 'Scripts', 'python.exe');
+const PYTHON_PATH_UNIX = join(VENV_DIR, 'bin', 'python3');
+const PYTHON_PATH = process.platform === 'win32' ? PYTHON_PATH_WIN : PYTHON_PATH_UNIX;
 const SERVER_URL = 'http://127.0.0.1:8000';
 
 let serverProcess = null;

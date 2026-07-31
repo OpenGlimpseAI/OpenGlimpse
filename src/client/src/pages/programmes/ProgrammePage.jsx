@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
+import { useConnectivity } from "../../hooks/useConnectivity";
 import AddIcon from "@mui/icons-material/Add";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
@@ -298,12 +299,27 @@ export default function ProgrammePage() {
 
     const [manageRoute, setManageRoute] = useState(null);
 
+    const { isOnline } = useConnectivity();
+
     const loadProgrammes = () => {
         setLoading(true);
         getProgrammes().then((data) => setProgrammes(data || [])).catch((e) => setError(e.message)).finally(() => setLoading(false));
     };
 
     useEffect(() => { loadProgrammes(); }, []);
+
+    useEffect(() => {
+        loadProgrammes();
+    }, [isOnline]);
+
+    useEffect(() => {
+        const onSyncDone = () => {
+            loadProgrammes();
+            if (expandedId) loadDelegates(expandedId);
+        };
+        window.addEventListener('sync:done', onSyncDone);
+        return () => window.removeEventListener('sync:done', onSyncDone);
+    }, [expandedId]);
 
     const loadDelegates = async (id) => {
         setDelegatesLoading(true);
@@ -332,10 +348,21 @@ export default function ProgrammePage() {
     const handleSave = async () => {
         if (!formName.trim() || !formStart || !formEnd) return;
         try {
-            if (editing) await updateProgramme(editing, { name: formName, startDate: formStart, endDate: formEnd });
-            else await createProgramme({ name: formName, startDate: formStart, endDate: formEnd });
+            if (editing) {
+                await updateProgramme(editing, { name: formName, startDate: formStart, endDate: formEnd });
+                if (!navigator.onLine) {
+                    setProgrammes(prev => prev.map(p =>
+                        p.id === editing ? { ...p, name: formName, startDate: formStart, endDate: formEnd } : p
+                    ));
+                }
+            } else {
+                const created = await createProgramme({ name: formName, startDate: formStart, endDate: formEnd });
+                if (!navigator.onLine) {
+                    setProgrammes(prev => [...prev, { ...created, id: 'pending-' + Date.now() }]);
+                }
+            }
             setShowForm(false);
-            loadProgrammes();
+            if (navigator.onLine) loadProgrammes();
         } catch (e) { setError(e.message); }
     };
 
@@ -344,7 +371,11 @@ export default function ProgrammePage() {
         try {
             await deleteProgramme(id);
             if (expandedId === id) { setExpandedId(null); setRoutes([]); }
-            loadProgrammes();
+            if (navigator.onLine) {
+                loadProgrammes();
+            } else {
+                setProgrammes(prev => prev.filter(p => p.id !== id));
+            }
         } catch (e) { setError(e.message); }
     };
 
@@ -369,7 +400,11 @@ export default function ProgrammePage() {
         try {
             await addRoute(expandedId, { name: newRouteName.trim() });
             setNewRouteName("");
-            setRoutes(await getRoutes(expandedId));
+            if (navigator.onLine) {
+                setRoutes(await getRoutes(expandedId));
+            } else {
+                setRoutes(prev => [...prev, { id: 'pending-' + Date.now(), name: newRouteName.trim(), delegateCount: 0, checkedIn: 0, ready: false }]);
+            }
         } catch (e) { setError(e.message); }
     };
 
@@ -378,7 +413,11 @@ export default function ProgrammePage() {
         try {
             await updateRoute(expandedId, routeId, { name: editingRouteName.trim() });
             setEditingRouteId(null);
-            setRoutes(await getRoutes(expandedId));
+            if (navigator.onLine) {
+                setRoutes(await getRoutes(expandedId));
+            } else {
+                setRoutes(prev => prev.map(r => r.id === routeId ? { ...r, name: editingRouteName.trim() } : r));
+            }
         } catch (e) { setError(e.message); }
     };
 
@@ -386,7 +425,11 @@ export default function ProgrammePage() {
         if (!confirm("Delete this route? Delegates will keep their other routes.")) return;
         try {
             await deleteRoute(expandedId, routeId);
-            setRoutes(await getRoutes(expandedId));
+            if (navigator.onLine) {
+                setRoutes(await getRoutes(expandedId));
+            } else {
+                setRoutes(prev => prev.filter(r => r.id !== routeId));
+            }
         } catch (e) { setError(e.message); }
     };
 
@@ -395,7 +438,28 @@ export default function ProgrammePage() {
         try {
             await addDelegate(expandedId, { userIds, routeId: routeId || undefined });
             setShowAddDelegate(false);
-            loadDelegates(expandedId);
+            if (navigator.onLine) {
+                loadDelegates(expandedId);
+            } else {
+                const addedUsers = allUsers.filter(u => userIds.includes(u.id));
+                setDelegates(prev => [
+                    ...prev,
+                    ...addedUsers.map(u => ({
+                        id: 'pending-' + Date.now() + '-' + u.id,
+                        name: u.enName,
+                        badge: null,
+                        userId: u.id,
+                        routeId: routeId || null,
+                        routeName: routeId ? (routes.find(r => r.id === routeId)?.name || null) : null,
+                        routeIds: routeId ? [routeId] : [],
+                        routeNames: routeId ? [(routes.find(r => r.id === routeId)?.name || null)].filter(Boolean) : [],
+                        status: 'absent',
+                        method: null,
+                        checkedInAt: null,
+                        notes: '',
+                    }))
+                ]);
+            }
         } catch (e) { setError(e.message); }
     };
 
@@ -403,7 +467,11 @@ export default function ProgrammePage() {
         if (!confirm("Remove this delegate from the programme?")) return;
         try {
             await removeDelegate(expandedId, delegateId);
-            loadDelegates(expandedId);
+            if (navigator.onLine) {
+                loadDelegates(expandedId);
+            } else {
+                setDelegates(prev => prev.filter(d => d.id !== delegateId));
+            }
         } catch (e) { setError(e.message); }
     };
 

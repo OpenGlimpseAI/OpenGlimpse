@@ -13,6 +13,7 @@ import HowToRegIcon from "@mui/icons-material/HowToReg";
 import { getProgrammes, getAttendance, getAttendanceSummary, getRoutes, getRoute, getDelegates, markAttendance, toggleReady } from "../../services/api";
 import { joinProgramme, leaveProgramme, onAttendanceUpdated } from "../../services/socket";
 import { timeAgo } from "../../services/utils";
+import { useConnectivity } from "../../hooks/useConnectivity";
 
 function getAuthUser() {
     const raw = localStorage.getItem('authUser');
@@ -54,6 +55,7 @@ export function AdminDashboard() {
     const [selected, setSelected] = useState(null);
     const [noteText, setNoteText] = useState("");
     const [tick, setTick] = useState(0);
+    const { isOnline } = useConnectivity();
     const allDelegatesRef = useRef(allDelegates);
     allDelegatesRef.current = allDelegates;
     const routesRef = useRef(routes);
@@ -135,6 +137,18 @@ export function AdminDashboard() {
     }, [programmeId]);
 
     useEffect(() => {
+        const onSyncDone = () => {
+            if (programmeId) {
+                loadData(programmeId);
+                getRoutes(programmeId).then(setRoutes).catch(() => {});
+                getDelegates(programmeId).then(setAllDelegates).catch(() => {});
+            }
+        };
+        window.addEventListener('sync:done', onSyncDone);
+        return () => window.removeEventListener('sync:done', onSyncDone);
+    }, [programmeId, loadData]);
+
+    useEffect(() => {
         const id = setInterval(() => setTick((t) => t + 1), 10000);
         return () => clearInterval(id);
     }, []);
@@ -182,6 +196,22 @@ export function AdminDashboard() {
         try {
             await markAttendance(programmeId, id, { status: "present", method: "manual", notes });
             setNoteText("");
+            if (!navigator.onLine) {
+                const delegate = allDelegatesRef.current.find(d => d.id === id);
+                const delegateRouteIds = delegate?.routeIds || [];
+                setAllDelegates(prev => prev.map(d =>
+                    d.id === id ? { ...d, status: "present", method: "manual", checkedInAt: new Date().toISOString() } : d
+                ));
+                setSummary(prev => prev ? { ...prev, checkedIn: prev.checkedIn + 1, missing: prev.missing - 1 } : prev);
+                setRoutes(prev => prev.map(r =>
+                    delegateRouteIds.includes(r.id) ? { ...r, checkedIn: r.checkedIn + 1 } : r
+                ));
+                setSelectedRoute(prev =>
+                    prev && delegateRouteIds.includes(prev.id)
+                        ? { ...prev, checkedIn: prev.checkedIn + 1 }
+                        : prev
+                );
+            }
         } catch (e) {
             setError(e.message);
         }
@@ -194,6 +224,22 @@ export function AdminDashboard() {
             setError(e.message);
         }
         setNoteText("");
+        if (!navigator.onLine) {
+            const delegate = allDelegatesRef.current.find(d => d.id === id);
+            const delegateRouteIds = delegate?.routeIds || [];
+            setAllDelegates(prev => prev.map(d =>
+                d.id === id ? { ...d, status: "absent", method: null, checkedInAt: null } : d
+            ));
+            setSummary(prev => prev ? { ...prev, checkedIn: prev.checkedIn - 1, missing: prev.missing + 1 } : prev);
+            setRoutes(prev => prev.map(r =>
+                delegateRouteIds.includes(r.id) ? { ...r, checkedIn: r.checkedIn - 1 } : r
+            ));
+            setSelectedRoute(prev =>
+                prev && delegateRouteIds.includes(prev.id)
+                    ? { ...prev, checkedIn: prev.checkedIn - 1 }
+                    : prev
+            );
+        }
     };
 
     const currentProgramme = programmes.find((p) => p.id === programmeId);
