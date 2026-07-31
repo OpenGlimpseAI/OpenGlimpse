@@ -11,6 +11,7 @@ require("dotenv").config({
     path: path.resolve(__dirname, "../../.env"),
 });
 const { attachFaceServer } = require('./modules/facial_recog/facialrecogserver.js');
+const registerSyncRoutes = require('./modules/sync/syncRoutes');
 
 const app = express();
 const server = http.createServer(app);
@@ -21,6 +22,32 @@ const io = new Server(server, {
 const port = process.env.PORT || 3001;
 
 app.use(express.json({ limit: '10mb' }));
+
+// In-memory rate limiter for sensitive endpoints
+const rateLimitStore = {};
+const RATE_LIMIT_WINDOW = 60000;
+setInterval(() => {
+  const now = Date.now();
+  for (const ip in rateLimitStore) {
+    rateLimitStore[ip] = rateLimitStore[ip].filter(t => now - t < RATE_LIMIT_WINDOW);
+    if (rateLimitStore[ip].length === 0) delete rateLimitStore[ip];
+  }
+}, 300000);
+
+app.use((req, res, next) => {
+  if ((req.path === '/sync' || req.path === '/api/auth/login') && req.method !== 'OPTIONS') {
+    const ip = req.ip;
+    const now = Date.now();
+    if (!rateLimitStore[ip]) rateLimitStore[ip] = [];
+    const windowLimit = req.path === '/api/auth/login' ? 10 : 60;
+    rateLimitStore[ip] = rateLimitStore[ip].filter(t => now - t < RATE_LIMIT_WINDOW);
+    if (rateLimitStore[ip].length >= windowLimit) {
+      return res.status(429).json({ error: 'Too many requests. Please try again later.' });
+    }
+    rateLimitStore[ip].push(now);
+  }
+  next();
+});
 
 app.use((req, res, next) => {
     res.header('Access-Control-Allow-Origin', process.env.CLIENT_URL || '*');
@@ -44,6 +71,8 @@ io.on('connection', (socket) => {
 
 registerProgrammeRoutes(app, io);
 app.use('/api/auth', authRoutes);
+//attach syncRoutes and handlers to app
+registerSyncRoutes(app);
 // Users
 app.get('/users', async (req, res) => {
     try {
@@ -127,4 +156,3 @@ async function start() {
 }
 
 start();
-

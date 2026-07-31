@@ -21,6 +21,22 @@ export default function Directory() {
     const [showPicker, setShowPicker] = useState(false);
     const [allDelegates, setAllDelegates] = useState([]);
     const [routes, setRoutes] = useState([]);
+
+    const refreshData = () => {
+        if (!programmeId) return;
+        Promise.all([
+            getDelegates(programmeId),
+            getRoutes(programmeId),
+        ])
+            .then(([d, r]) => { setAllDelegates(d); setRoutes(r); })
+            .catch(() => {});
+    };
+
+    useEffect(() => {
+        const onSyncDone = () => refreshData();
+        window.addEventListener('sync:done', onSyncDone);
+        return () => window.removeEventListener('sync:done', onSyncDone);
+    }, [programmeId]);
     const [search, setSearch] = useState("");
     const [filter, setFilter] = useState("All");
     const [selected, setSelected] = useState(null);
@@ -78,12 +94,22 @@ export default function Directory() {
             await setDelegateRoutes(programmeId, delegateId, validIds);
             setAssigning(null);
             setSelectedRouteIds([]);
-            const [delegates, routeList] = await Promise.all([
-                getDelegates(programmeId),
-                getRoutes(programmeId),
-            ]);
-            setAllDelegates(delegates);
-            setRoutes(routeList);
+            if (navigator.onLine) {
+                const [delegates, routeList] = await Promise.all([
+                    getDelegates(programmeId),
+                    getRoutes(programmeId),
+                ]);
+                setAllDelegates(delegates);
+                setRoutes(routeList);
+            } else {
+                const newRouteId = validIds[0] || null;
+                const newRouteName = newRouteId ? (routes.find(r => r.id === newRouteId)?.name || null) : null;
+                setAllDelegates(prev => prev.map(d =>
+                    d.id === delegateId
+                        ? { ...d, routeId: newRouteId, routeName: newRouteName, routeIds: validIds, routeNames: validIds.map(id => routes.find(r => r.id === id)?.name).filter(Boolean) }
+                        : d
+                ));
+            }
         } catch (e) {
             // ignore
         }

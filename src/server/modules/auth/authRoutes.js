@@ -1,6 +1,6 @@
 const express = require('express');
 const crypto = require('crypto');
-const { user } = require('../../database/db.cjs');
+const { user, faceEmbeddings } = require('../../database/db.cjs');
 
 const router = express.Router();
 
@@ -173,6 +173,7 @@ router.delete('/', authMiddleware, async (req, res) => {
             return res.status(404).json({ error: 'Account not found' });
         }
 
+        await faceEmbeddings.destroy({ where: { userId: deleteId } });
         await target.destroy();
         return res.status(204).send();
     } catch (err) {

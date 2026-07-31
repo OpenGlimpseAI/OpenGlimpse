@@ -1,10 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { io } from 'socket.io-client';
 import ChatBubble from "./ChatBubble.jsx";
 import ChatInput from './ChatInput.jsx';
 import WifiRounded from '@mui/icons-material/WifiRounded'
 import WifiOffRoundedIcon from '@mui/icons-material/WifiOffRounded'
-const CHAT_SERVER_URL = import.meta.env.VITE_CHAT_SERVER_URL || 'http://localhost:3001';
+import { useConnectivity } from '../../hooks/useConnectivity';
+const CHAT_SERVER_URL = import.meta.env.VITE_CHAT_SERVER_URL || '';
 
 function getAuthUser() {
     try {
@@ -15,12 +17,25 @@ function getAuthUser() {
 }
 
 export default function Chat() {
+    const navigate = useNavigate();
+    const { isOnline } = useConnectivity();
+    const redirectedRef = useRef(false);
     const socketRef = useRef(null);
     const authUser = useRef(getAuthUser());
     const clientIdRef = useRef(authUser.current?.id);
     const [messages, setMessages] = useState([]);
     const [messageInput, setMessageInput] = useState('');
     const [isConnected, setIsConnected] = useState(false);
+
+    useEffect(() => {
+        if (!isOnline && !redirectedRef.current) {
+            redirectedRef.current = true;
+            navigate('/profile');
+        }
+        if (isOnline) {
+            redirectedRef.current = false;
+        }
+    }, [isOnline, navigate]);
 
     useEffect(() => {
         const token = authUser.current?.token;
@@ -67,32 +82,14 @@ export default function Chat() {
         }
 
         if (!socketRef.current?.connected) {
-            try {
-                setMessages((current) => [...current, {
-                    text,
-                    timestamp: new Date().toISOString(),
-                    senderId: clientIdRef.current,
-                }]);
-            } catch (err) {
-                console.error(err.message);
-            } finally {
-                setMessageInput('');
-            }
-
             return;
         }
 
         try {
             socketRef.current.emit('message', { text });
-        } catch (error) {
-            setMessages((current) => [...current, {
-                text,
-                timestamp: new Date().toISOString(),
-                senderId: clientIdRef.current,
-            }]);
-            console.error(error.message);
-        } finally {
             setMessageInput('');
+        } catch (error) {
+            console.error(error.message);
         }
     };
 
@@ -144,6 +141,8 @@ export default function Chat() {
                             value={messageInput}
                             onChange={setMessageInput}
                             onSend={sendmessage}
+                            disabled={!isOnline}
+                            placeholder={isOnline ? 'Type your message...' : 'Chat unavailable while offline'}
                         />
                     </div>
                 </div>

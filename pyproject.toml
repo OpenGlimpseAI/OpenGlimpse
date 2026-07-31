@@ -3,4 +3,12 @@ name = "openglimpse"
 version = "0.1.0"
 description = "Add your description here"
 requires-python = ">=3.13"
-dependencies = []
+dependencies = [
+    "deepface>=0.0.100",
+    "fastapi>=0.139.2",
+    "numpy>=2.5.1",
+    "opencv-python==4.13.0.92",
+    "python-multipart>=0.0.32",
+    "tf-keras>=2.21.0",
+    "uvicorn>=0.51.0",
+]

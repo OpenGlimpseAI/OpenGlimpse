@@ -5,6 +5,7 @@ import CheckIcon from '@mui/icons-material/Check';
 import UndoIcon from '@mui/icons-material/Undo';
 import { getProgrammes, recognizeFaces, markAttendanceBatch, lookupByBadge } from '../../services/api';
 import QrScanner from '../../components/qr_scanner/QrScanner';
+import { useConnectivity } from '../../hooks/useConnectivity';
 
 const MODEL_URL = 'https://cdn.jsdelivr.net/gh/justadudewhohacks/face-api.js@0.22.2/weights/';
 const DETECTION_FRAME_SKIP = 8;
@@ -39,6 +40,8 @@ export default function CameraPage() {
     const cancelledRef = useRef(false);
     const frameCountRef = useRef(0);
     const scanKeyRef = useRef(0);
+
+    const { isOnline } = useConnectivity();
 
     const [programmes, setProgrammes] = useState([]);
     const [programmeId, setProgrammeId] = useState(null);
@@ -439,17 +442,18 @@ export default function CameraPage() {
                     </div>
 
                     <div className="flex gap-2 px-4 pt-3 pb-6 justify-center">
-                        {mode === 'facial' && (
+              {mode === 'facial' && (
+                //render button based on connectivity
                             <button
                                 className={`rounded-xl px-6 py-2.5 text-sm font-semibold transition-colors ${
-                                    programmeId
+                                    programmeId && isOnline
                                         ? 'bg-sky-600 text-white hover:bg-sky-700'
                                         : 'bg-slate-200 text-slate-400 cursor-not-allowed'
                                 }`}
-                                disabled={!programmeId}
+                                disabled={!programmeId || !isOnline}
                                 onClick={handleCapture}
                             >
-                                Capture & Recognize
+                                {isOnline ? 'Capture & Recognize' : 'Unavailable while offline'}
                             </button>
                         )}
                         <button
@@ -547,14 +551,15 @@ export default function CameraPage() {
                                 <div className="flex gap-2">
                                     <button
                                         className={`flex-1 rounded-xl py-2.5 text-sm font-semibold transition-colors ${
-                                            selected.size === 0
+                                            selected.size === 0 || !isOnline
                                                 ? 'bg-slate-200 text-slate-400 cursor-not-allowed'
                                                 : 'bg-sky-600 text-white hover:bg-sky-700'
-                                        }`}
-                                        disabled={selected.size === 0 || confirming}
+                              }`}
+                            //isonline used to render button based on connectivity
+                                        disabled={selected.size === 0 || confirming || !isOnline}
                                         onClick={handleConfirm}
                                     >
-                                        {confirming ? 'Marking...' : `Confirm (${selected.size})`}
+                                        {confirming ? 'Marking...' : !isOnline ? 'Unavailable while offline' : `Confirm (${selected.size})`}
                                     </button>
                                     <button
                                         className="bg-slate-100 text-slate-600 rounded-xl px-4 py-2.5 text-sm font-semibold hover:bg-slate-200 transition-colors"

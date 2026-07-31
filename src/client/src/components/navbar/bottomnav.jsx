@@ -4,12 +4,14 @@ import Box from '@mui/material/Box';
 import CssBaseline from '@mui/material/CssBaseline';
 import BottomNavigation from '@mui/material/BottomNavigation';
 import BottomNavigationAction from '@mui/material/BottomNavigationAction';
+import Badge from '@mui/material/Badge';
 import ChatIcon from '@mui/icons-material/Chat';
 import DashboardIcon from '@mui/icons-material/Dashboard';
 import CameraAlt from '@mui/icons-material/CameraAlt';
 import AccountCircle from '@mui/icons-material/AccountCircle';
 import QrCode from '@mui/icons-material/QrCode';
 import Paper from '@mui/material/Paper';
+import { useConnectivity } from '../../hooks/useConnectivity';
 
 function getAuthUser() {
     const raw = localStorage.getItem('authUser');
@@ -24,6 +26,7 @@ function getAuthUser() {
 export default function FixedBottomNavigation() {
     const currentUser = getAuthUser();
     const isStaff = currentUser?.role === 'staff';
+    const { isOnline } = useConnectivity();
 
     return(
         <Box>
@@ -32,9 +35,13 @@ export default function FixedBottomNavigation() {
                 <BottomNavigation className="bottom-nav-content">
                     <BottomNavigationAction
                         className="bottom-nav-action"
-                        label="Chat"
+                        label={isOnline ? "Chat" : "Chat (offline)"}
                         value="chat"
-                        icon={<ChatIcon />}
+                        icon={
+                            <Badge color="error" variant="dot" invisible={isOnline}>
+                                <ChatIcon sx={{ opacity: isOnline ? 1 : 0.4 }} />
+                            </Badge>
+                        }
                         component={Link}
                         to="/chat"
                     />
@@ -53,7 +60,7 @@ export default function FixedBottomNavigation() {
                             className="bottom-nav-action"
                             label="Camera"
                             value="camera"
-                            icon={<CameraAlt />}
+                            icon={<CameraAlt/>}
                             component={Link}
                             to="/camera"
                         />
@@ -63,7 +70,8 @@ export default function FixedBottomNavigation() {
                             className="bottom-nav-action"
                             label="Badge"
                             value="badge"
-                            icon={<QrCode />}
+                            icon={
+                                <QrCode />}
                             component={Link}
                             to="/badge"
                         />
