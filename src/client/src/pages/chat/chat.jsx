@@ -128,6 +128,7 @@ export default function Chat() {
                                         key={`${message.timestamp}-${i}`}
                                         message={message}
                                         isOwn={message.senderId === clientIdRef.current}
+                                        isAdmin={message.senderRole === 'staff'}
                                     />
                                 ))}
                             </div>

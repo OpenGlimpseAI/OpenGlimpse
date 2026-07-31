@@ -133,6 +133,10 @@ body {
   @apply rounded-bl-md border border-slate-200 bg-white text-slate-800;
 }
 
+.chat-bubble-admin {
+  @apply border-amber-300 bg-amber-50 text-slate-900 ring-1 ring-amber-300;
+}
+
 .chat-bubble-text {
   @apply whitespace-pre-wrap break-words;
 }
@@ -147,6 +151,10 @@ body {
 
 .chat-bubble-time-other {
   @apply text-slate-400;
+}
+
+.chat-bubble-time-admin {
+  @apply text-amber-700;
 }
 
 /* Dashboard */
