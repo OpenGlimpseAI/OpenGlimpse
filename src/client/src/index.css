@@ -110,7 +110,7 @@ body {
 
 /* Chat bubble */
 .chat-bubble-row {
-  @apply flex w-full;
+  @apply flex w-full items-start gap-2;
 }
 
 .chat-bubble-row-own {
@@ -196,6 +196,10 @@ body {
 
 .chat-reaction-mine {
   @apply border-sky-400 bg-sky-50 text-sky-700;
+}
+
+.chat-avatar {
+  @apply flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-sky-100 text-sky-700 text-sm font-semibold;
 }
 
 /* Dashboard */
