@@ -2,13 +2,14 @@ const { Messages, Reactions } = require('../../database/dbcrudmethods');
 const { parseToken } = require('../auth/authRoutes');
 const { user } = require('../../database/db.cjs');
 
-function formatpayload(row, senderRole, reactions = []) {
+function formatpayload(row, senderRole, reactions = [], senderName = null) {
     return {
         id: row.id,
         text: row.content ?? row.text,
         timestamp: row.timestamp,
         senderId: row.senderId,
         senderRole: senderRole || null,
+        senderName: senderName || null,
         reactions,
     };
 }
@@ -54,6 +55,7 @@ function attachChatServer(io) {
 
             socket.userId = currentUser.id;
             socket.userRole = currentUser.role;
+            socket.userName = currentUser.enName;
             next();
         } catch (err) {
             next(new Error('Authentication failed'));
@@ -66,11 +68,12 @@ function attachChatServer(io) {
         (async () => {
             const history = await Messages.read();
             const senderIds = [...new Set(history.map((m) => m.senderId))];
-            const senders = await user.findAll({ where: { id: senderIds }, attributes: ['id', 'role'] });
+            const senders = await user.findAll({ where: { id: senderIds }, attributes: ['id', 'role', 'enName'] });
             const roleById = Object.fromEntries(senders.map((u) => [u.id, u.role]));
+            const nameById = Object.fromEntries(senders.map((u) => [u.id, u.enName]));
             const reactions = await reactionsForMessages(history.map((m) => m.id));
             socket.emit('history', {
-                messages: history.map((m) => formatpayload(m, roleById[m.senderId], reactions[m.id] || [])),
+                messages: history.map((m) => formatpayload(m, roleById[m.senderId], reactions[m.id] || [], nameById[m.senderId] || null)),
             });
         })().catch((err) => {
             console.error('Chat history could not be loaded', err);
@@ -92,7 +95,7 @@ function attachChatServer(io) {
                 });
 
                 chat.emit('message', {
-                    message: formatpayload(savedMessage.toJSON(), socket.userRole),
+                    message: formatpayload(savedMessage.toJSON(), socket.userRole, [], socket.userName),
                 });
             } catch (error) {
                 console.error('Failed to save chat message', error);

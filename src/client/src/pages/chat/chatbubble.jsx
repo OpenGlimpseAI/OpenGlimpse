@@ -4,6 +4,14 @@ import ReactionBar from './ReactionBar.jsx';
 const LONG_PRESS_DELAY = 400;
 const MOVE_TOLERANCE = 10;
 
+function Avatar({ name }) {
+    return (
+        <div className="chat-avatar">
+            {name?.charAt(0) || '?'}
+        </div>
+    );
+}
+
 export default function ChatBubble({ message, isOwn, isAdmin, onReact, currentUserId }) {
     const [showBar, setShowBar] = useState(false);
     const longPressRef = useRef(null);
@@ -62,6 +70,7 @@ export default function ChatBubble({ message, isOwn, isAdmin, onReact, currentUs
             onPointerLeave={cancelLongPress}
             onPointerMove={handlePointerMove}
         >
+            {!isOwn && <Avatar name={message.senderName} />}
             <div className="chat-bubble-container">
                 {showBar && <ReactionBar onReact={handleReact} />}
                 <div
@@ -94,6 +103,7 @@ export default function ChatBubble({ message, isOwn, isAdmin, onReact, currentUs
                     </div>
                 )}
             </div>
+            {isOwn && <Avatar name={message.senderName} />}
         </div>
     );
 }
