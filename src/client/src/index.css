@@ -122,7 +122,7 @@ body {
 }
 
 .chat-bubble {
-  @apply max-w-[78%] rounded-2xl px-4 py-2 text-sm leading-6 shadow-sm;
+  @apply rounded-2xl px-4 py-2 text-sm leading-6 shadow-sm;
 }
 
 .chat-bubble-own {
@@ -155,6 +155,47 @@ body {
 
 .chat-bubble-time-admin {
   @apply text-amber-700;
+}
+
+/* Chat reactions */
+.chat-bubble-container {
+  @apply relative flex w-fit max-w-[78%] flex-col;
+}
+
+.chat-reaction-bar {
+  @apply absolute -top-9 z-10 flex items-center gap-0.5 rounded-full border border-slate-200 bg-white px-1.5 py-1 shadow-lg;
+}
+
+.chat-bubble-row-own .chat-reaction-bar {
+  @apply right-0;
+}
+
+.chat-bubble-row-other .chat-reaction-bar {
+  @apply left-0;
+}
+
+.chat-reaction-option {
+  @apply h-8 w-8 cursor-pointer rounded-full text-xl leading-none transition-transform duration-150 hover:scale-125;
+}
+
+.chat-reaction-option:hover {
+  @apply bg-slate-100;
+}
+
+.chat-reactions {
+  @apply mt-1 flex flex-wrap gap-1;
+}
+
+.chat-bubble-row-own .chat-reactions {
+  @apply justify-end;
+}
+
+.chat-reaction {
+  @apply flex cursor-pointer items-center gap-1 rounded-full border border-slate-200 bg-white px-2 py-0.5 text-xs font-medium text-slate-600 shadow-sm transition-colors;
+}
+
+.chat-reaction-mine {
+  @apply border-sky-400 bg-sky-50 text-sky-700;
 }
 
 /* Dashboard */
