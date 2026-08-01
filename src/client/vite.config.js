@@ -17,7 +17,15 @@ export default defineConfig({
     https: true,
     proxy: {
       '/api': 'http://localhost:3001',
-      '/programmes': 'http://localhost:3001',      '/users': 'http://localhost:3001',
+      '/programmes': {
+        target: 'http://localhost:3001',
+        bypass: (req) => {
+          if (req.headers.accept && req.headers.accept.includes('text/html')) {
+            return '/index.html';
+          }
+        },
+      },
+      '/users': 'http://localhost:3001',
     },
   },
 })
