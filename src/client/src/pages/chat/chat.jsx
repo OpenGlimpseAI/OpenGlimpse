@@ -60,6 +60,14 @@ export default function Chat() {
             setMessages((current) => [...current, payload.message]);
         });
 
+        socket.on('reaction:update', (payload) => {
+            setMessages((current) =>
+                current.map((m) =>
+                    m.id === payload.messageId ? { ...m, reactions: payload.reactions } : m
+                )
+            );
+        });
+
         socket.on('error', (payload) => {
             console.error(payload.text);
         });
@@ -91,6 +99,11 @@ export default function Chat() {
         } catch (error) {
             console.error(error.message);
         }
+    };
+
+    const reactToMessage = (messageId, emoji) => {
+        if (!socketRef.current?.connected) return;
+        socketRef.current.emit('react', { messageId, emoji });
     };
 
     return (
@@ -129,6 +142,8 @@ export default function Chat() {
                                         message={message}
                                         isOwn={message.senderId === clientIdRef.current}
                                         isAdmin={message.senderRole === 'staff'}
+                                        onReact={reactToMessage}
+                                        currentUserId={clientIdRef.current}
                                     />
                                 ))}
                             </div>

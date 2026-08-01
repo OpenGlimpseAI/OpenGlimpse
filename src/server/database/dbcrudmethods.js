@@ -1,5 +1,5 @@
 const crypto = require('crypto');
-const { user, messages, faceEmbeddings } = require('./db.cjs')
+const { user, messages, faceEmbeddings, MessageReaction } = require('./db.cjs')
 
 class Model {
     static async create() {
@@ -178,4 +178,29 @@ class Messages extends Model {
     }
 }
 
-module.exports = { Model, User, FaceEmbeddings, Messages };
+class Reactions extends Model {
+    static async create({ messageId, userId, emoji }) {
+        const record = await MessageReaction.create({ messageId, userId, emoji });
+        return record.toJSON();
+    }
+
+    static async findOne({ messageId, userId }) {
+        return await MessageReaction.findOne({ where: { messageId, userId } });
+    }
+
+    static async update(record, emoji) {
+        return await record.update({ emoji });
+    }
+
+    static async destroy({ messageId, userId }) {
+        return await MessageReaction.destroy({ where: { messageId, userId } });
+    }
+
+    static async readByMessageIds(messageIds) {
+        if (messageIds.length === 0) return [];
+        const records = await MessageReaction.findAll({ where: { messageId: messageIds } });
+        return records.map((r) => r.toJSON());
+    }
+}
+
+module.exports = { Model, User, FaceEmbeddings, Messages, Reactions };

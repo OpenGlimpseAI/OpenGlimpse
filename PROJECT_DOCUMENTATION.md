@@ -105,7 +105,7 @@ P1 = must-have MVP; P2 = high value, build after P1; P3 = nice-to-have.
 
 ### 4.2 Backend
 - Node.js REST API (Express.js) for programmes, routes, attendance, user management, and chat
-- Real-time sync: WebSockets (Socket.io) for instant multi-device attendance updates and in-app chat
+- Real-time sync: WebSockets (Socket.io) for instant multi-device attendance updates, in-app chat, and message reactions
 - Database: PostgreSQL — stores programmes, participants, facial embeddings (vectors), scan events, chat messages, user accounts
 - Offline queue processing: backend receives offline scans, validates embeddings, and merges with live data without duplication
 - Auth: staff login via JWT; delegate identity verified by facial embedding similarity
@@ -117,6 +117,7 @@ P1 = must-have MVP; P2 = high value, build after P1; P3 = nice-to-have.
 - Staff data: account credentials, facial photo for login verification, permission levels
 - Photos pre-registered by admin before the programme; staff updates own photo on first login
 - Chat messages: retained for programme history; can be archived per admin policy
+- Message reactions: one reaction per user per message (WhatsApp-style emoji); stored in `message_reactions` keyed on `(message_id, user_id)`; synced live over the `/chat` socket namespace via the `react` event and `reaction:update` broadcasts
 
 ### 4.4 Offline Sync Engine
 
