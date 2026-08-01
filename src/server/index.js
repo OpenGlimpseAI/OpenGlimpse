@@ -44,7 +44,6 @@ io.on('connection', (socket) => {
 
 registerProgrammeRoutes(app, io);
 app.use('/api/auth', authRoutes);
-
 // Users
 app.get('/users', async (req, res) => {
     try {
