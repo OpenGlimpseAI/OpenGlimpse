@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { useConnectivity } from "../../hooks/useConnectivity";
 import AddIcon from "@mui/icons-material/Add";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
@@ -48,12 +49,26 @@ export default function ProgrammePage() {
     // Delete confirm
     const [deleteTarget, setDeleteTarget] = useState(null);
 
+    const { isOnline } = useConnectivity();
+
     const loadProgrammes = () => {
         setLoading(true);
         getProgrammes().then((data) => setProgrammes(data || [])).catch((e) => setError(e.message)).finally(() => setLoading(false));
     };
 
     useEffect(() => { loadProgrammes(); }, []);
+
+    // Reload programme list when back online
+    useEffect(() => {
+        if (isOnline) loadProgrammes();
+    }, [isOnline]);
+
+    // Reload programme list after offline sync completes
+    useEffect(() => {
+        const onSyncDone = () => loadProgrammes();
+        window.addEventListener('sync:done', onSyncDone);
+        return () => window.removeEventListener('sync:done', onSyncDone);
+    }, []);
 
     const openCreate = () => {
         setModalMode("create");
@@ -73,14 +88,22 @@ export default function ProgrammePage() {
         try {
             if (modalMode === "edit" && modalProgramme) {
                 await updateProgramme(modalProgramme.id, { name: modalName, startDate: modalStart, endDate: modalEnd });
+                if (!navigator.onLine) {
+                    setProgrammes(prev => prev.map(p =>
+                        p.id === modalProgramme.id ? { ...p, name: modalName, startDate: modalStart, endDate: modalEnd } : p
+                    ));
+                }
                 setToast("Programme updated");
             } else {
-                await createProgramme({ name: modalName, startDate: modalStart, endDate: modalEnd });
+                const created = await createProgramme({ name: modalName, startDate: modalStart, endDate: modalEnd });
+                if (!navigator.onLine) {
+                    setProgrammes(prev => [...prev, { ...created, id: 'pending-' + Date.now() }]);
+                }
                 setToast("Programme created");
             }
             setModalMode(null);
             setModalProgramme(null);
-            loadProgrammes();
+            if (navigator.onLine) loadProgrammes();
         } catch (e) { setError(e.message); }
         finally { setSaving(false); }
     };
@@ -90,7 +113,11 @@ export default function ProgrammePage() {
         try {
             await deleteProgramme(deleteTarget);
             setDeleteTarget(null);
-            loadProgrammes();
+            if (navigator.onLine) {
+                loadProgrammes();
+            } else {
+                setProgrammes(prev => prev.filter(p => p.id !== deleteTarget));
+            }
             setToast("Programme deleted");
         } catch (e) { setError(e.message); }
     };

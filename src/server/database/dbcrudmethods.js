@@ -55,6 +55,7 @@ class User extends Model {
     }
 
     async delete() {
+        await faceEmbeddings.destroy({ where: { userId: this.id } });
         return await user.destroy({ where: { id: this.id } })
     }
 }
