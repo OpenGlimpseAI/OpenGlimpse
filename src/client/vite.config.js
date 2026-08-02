@@ -17,6 +17,7 @@ export default defineConfig({
     https: true,
     proxy: {
       '/api': 'http://localhost:3001',
+      '/sync': 'http://localhost:3001',
       '/programmes': {
         target: 'http://localhost:3001',
         bypass: (req) => {
@@ -25,7 +26,12 @@ export default defineConfig({
           }
         },
       },
+      '/delegates': 'http://localhost:3001',
       '/users': 'http://localhost:3001',
+      '/socket.io': {
+        target: 'http://localhost:3001',
+        ws: true,
+      },
     },
   },
 })
