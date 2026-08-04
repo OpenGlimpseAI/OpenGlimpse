@@ -6,7 +6,9 @@ import ChatInput from './ChatInput.jsx';
 import WifiRounded from '@mui/icons-material/WifiRounded'
 import WifiOffRoundedIcon from '@mui/icons-material/WifiOffRounded'
 import { useConnectivity } from '../../hooks/useConnectivity';
+import { getProgrammes } from '../../services/api';
 const CHAT_SERVER_URL = import.meta.env.VITE_CHAT_SERVER_URL || '';
+const CHATBOT_TRIGGER = import.meta.env.VITE_CHATBOT_TRIGGER || '@assistant';
 
 function getAuthUser() {
     try {
@@ -26,6 +28,10 @@ export default function Chat() {
     const [messages, setMessages] = useState([]);
     const [messageInput, setMessageInput] = useState('');
     const [isConnected, setIsConnected] = useState(false);
+    const [programmes, setProgrammes] = useState([]);
+    const [programmeId, setProgrammeId] = useState(null);
+    const [isBotTyping, setIsBotTyping] = useState(false);
+    const [chatbotConfig, setChatbotConfig] = useState(null);
 
     useEffect(() => {
         if (!isOnline && !redirectedRef.current) {
@@ -36,6 +42,21 @@ export default function Chat() {
             redirectedRef.current = false;
         }
     }, [isOnline, navigate]);
+
+    useEffect(() => {
+        getProgrammes()
+            .then((list) => {
+                setProgrammes(list);
+                if (list.length === 1) setProgrammeId(list[0].id);
+            })
+            .catch(() => {});
+    }, []);
+
+    useEffect(() => {
+        if (socketRef.current?.connected && programmeId) {
+            socketRef.current.emit('chat:join', programmeId);
+        }
+    }, [programmeId, isConnected]);
 
     useEffect(() => {
         const token = authUser.current?.token;
@@ -62,6 +83,18 @@ export default function Chat() {
 
         socket.on('error', (payload) => {
             console.error(payload.text);
+        });
+
+        socket.on('chatbot:typing', () => {
+            setIsBotTyping(true);
+        });
+
+        socket.on('chatbot:stop', () => {
+            setIsBotTyping(false);
+        });
+
+        socket.on('chatbot:config', (config) => {
+            setChatbotConfig(config);
         });
 
         socket.on('disconnect', () => {
@@ -93,12 +126,25 @@ export default function Chat() {
         }
     };
 
+    const currentProgramme = programmes.find(p => p.id === programmeId);
+
     return (
         <main className="chat-page">
             <header className="chat-header">
-                <div>
+                <div className="flex items-center gap-3">
                     <h1 className="chat-title">Event Chat</h1>
-
+                    <div className="relative">
+                        <select
+                            value={programmeId || ''}
+                            onChange={(e) => setProgrammeId(e.target.value || null)}
+                            className="text-sm border border-slate-300 rounded-lg px-2 py-1 bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-sky-400"
+                        >
+                            <option value="">Select programme</option>
+                            {programmes.map(p => (
+                                <option key={p.id} value={p.id}>{p.name}</option>
+                            ))}
+                        </select>
+                    </div>
                 </div>
                 {!isConnected && (
                     <div className="chat-offline-pill">
@@ -128,6 +174,7 @@ export default function Chat() {
                                         key={`${message.timestamp}-${i}`}
                                         message={message}
                                         isOwn={message.senderId === clientIdRef.current}
+                                        isBot={chatbotConfig && message.senderId === chatbotConfig.userId}
                                     />
                                 ))}
                             </div>
@@ -136,6 +183,11 @@ export default function Chat() {
                 </div>
 
                 <div className="chat-composer-shell">
+                    {isBotTyping && (
+                        <div className="px-4 py-2 text-sm text-slate-500 italic">
+                            AI Assistant is typing...
+                        </div>
+                    )}
                     <div className="chat-content">
                         <ChatInput
                             value={messageInput}
