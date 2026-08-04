@@ -108,6 +108,31 @@ body {
   @apply !bg-slate-200 !text-slate-400;
 }
 
+/* Mention autocomplete */
+.chat-input-box-relative {
+  @apply relative;
+}
+
+.chat-mention-dropdown {
+  @apply absolute bottom-full left-0 right-0 mb-1 max-h-48 overflow-y-auto rounded-lg border border-slate-200 bg-white shadow-lg z-50;
+}
+
+.chat-mention-item {
+  @apply flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-slate-50 cursor-pointer;
+}
+
+.chat-mention-item-selected {
+  @apply bg-sky-50;
+}
+
+.chat-mention-trigger {
+  @apply font-medium text-sky-600;
+}
+
+.chat-mention-desc {
+  @apply text-slate-500 text-xs;
+}
+
 /* Chat bubble */
 .chat-bubble-row {
   @apply flex w-full;

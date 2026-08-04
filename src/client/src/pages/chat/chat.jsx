@@ -6,7 +6,7 @@ import ChatInput from './ChatInput.jsx';
 import WifiRounded from '@mui/icons-material/WifiRounded'
 import WifiOffRoundedIcon from '@mui/icons-material/WifiOffRounded'
 import { useConnectivity } from '../../hooks/useConnectivity';
-import { getProgrammes } from '../../services/api';
+import { getProgrammes, getUsers } from '../../services/api';
 const CHAT_SERVER_URL = import.meta.env.VITE_CHAT_SERVER_URL || '';
 const CHATBOT_TRIGGER = import.meta.env.VITE_CHATBOT_TRIGGER || '@assistant';
 
@@ -32,6 +32,7 @@ export default function Chat() {
     const [programmeId, setProgrammeId] = useState(null);
     const [isBotTyping, setIsBotTyping] = useState(false);
     const [chatbotConfig, setChatbotConfig] = useState(null);
+    const [staffList, setStaffList] = useState([]);
 
     useEffect(() => {
         if (!isOnline && !redirectedRef.current) {
@@ -49,6 +50,12 @@ export default function Chat() {
                 setProgrammes(list);
                 if (list.length === 1) setProgrammeId(list[0].id);
             })
+            .catch(() => {});
+    }, []);
+
+    useEffect(() => {
+        getUsers()
+            .then((list) => setStaffList(list))
             .catch(() => {});
     }, []);
 
@@ -195,6 +202,7 @@ export default function Chat() {
                             onSend={sendmessage}
                             disabled={!isOnline}
                             placeholder={isOnline ? 'Type your message...' : 'Chat unavailable while offline'}
+                            staffList={staffList}
                         />
                     </div>
                 </div>

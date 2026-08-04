@@ -45,6 +45,10 @@ async function buildProgrammeContext(programmeId) {
 }
 
 async function getChatbotResponse(userMessage, programmeContext, chatbotUserId, senderId) {
+    const sender = await user.findByPk(senderId, { attributes: ['enName', 'email', 'role'] });
+    const senderName = sender?.enName || 'Unknown User';
+    const senderRole = sender?.role || 'staff';
+
     const history = await messages.findAll({
         where: { senderId: [chatbotUserId, senderId] },
         order: [['timestamp', 'DESC']],
@@ -56,11 +60,14 @@ async function getChatbotResponse(userMessage, programmeContext, chatbotUserId, 
         content: m.content,
     }));
 
-    const systemPrompt = `You are an AI assistant for the SCCCI delegation attendance system. You have access to the following programme data:
+    const systemPrompt = `You are an AI assistant for OpenGlimpse, you should be friendly and helpful. 
+    You have access to the following programme data:
 
 ${programmeContext}
 
-Answer questions accurately based on this data. Be concise. If the question is unrelated to the programme, answer helpfully but note you have programme-specific knowledge available.`;
+The person asking you questions is: ${senderName} (Role: ${senderRole}).
+
+Answer questions accurately based on this data. Be concise. Address the user by name when appropriate. If the question is unrelated to the programme, answer helpfully but note you have programme-specific knowledge available.`;
 
     const groqMessages = [
         { role: 'system', content: systemPrompt },
