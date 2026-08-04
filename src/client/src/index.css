@@ -60,11 +60,19 @@ body {
 }
 
 .chat-scroll {
-  @apply flex-1 overflow-y-auto px-3 py-5 sm:px-5 lg:px-6;
+  @apply relative flex-1 overflow-y-auto px-3 py-5 sm:px-5 lg:px-6;
 }
 
 .chat-message-list {
   @apply w-full space-y-3;
+}
+
+.chat-jump-bottom {
+  @apply absolute bottom-4 right-4 flex h-10 w-10 items-center justify-center rounded-full bg-sky-500 text-white shadow-lg transition hover:bg-sky-600;
+}
+
+.chat-jump-badge {
+  @apply absolute -right-1 -top-1 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold leading-none text-white;
 }
 
 .chat-empty {

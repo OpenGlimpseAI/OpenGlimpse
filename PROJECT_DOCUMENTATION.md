@@ -103,6 +103,7 @@ P1 = must-have MVP; P2 = high value, build after P1; P3 = nice-to-have.
 - QR code scanner: separate tab with camera-based QR decoding (backup mode)
 - Offline queue: browser localStorage for queuing facial scans and embeddings when disconnected
 - UI: simple, high-contrast, glanceable — unidentified/absent delegates surfaced at top of list
+- Chat auto-scroll: chat snaps to the latest message on first entry and when already at the bottom on new messages; a floating jump-to-bottom button (with unread count) appears when scrolled up
 
 ### 4.2 Backend
 - Node.js REST API (Express.js) for programmes, routes, attendance, user management, and chat
