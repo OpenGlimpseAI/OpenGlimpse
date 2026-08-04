@@ -1,10 +1,11 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { io } from 'socket.io-client';
 import ChatBubble from "./ChatBubble.jsx";
 import ChatInput from './ChatInput.jsx';
 import WifiRounded from '@mui/icons-material/WifiRounded'
 import WifiOffRoundedIcon from '@mui/icons-material/WifiOffRounded'
+import KeyboardArrowDownRounded from '@mui/icons-material/KeyboardArrowDownRounded'
 import { useConnectivity } from '../../hooks/useConnectivity';
 import { getProgrammes, getUsers } from '../../services/api';
 const CHAT_SERVER_URL = import.meta.env.VITE_CHAT_SERVER_URL || '';
@@ -33,6 +34,39 @@ export default function Chat() {
     const [isBotTyping, setIsBotTyping] = useState(false);
     const [chatbotConfig, setChatbotConfig] = useState(null);
     const [staffList, setStaffList] = useState([]);
+    const scrollRef = useRef(null);
+    const isAtBottomRef = useRef(true);
+    const initialLoadDoneRef = useRef(false);
+    const forceScrollRef = useRef(false);
+    const [showJumpToBottom, setShowJumpToBottom] = useState(false);
+    const [unreadCount, setUnreadCount] = useState(0);
+
+    const scrollToBottom = useCallback((behavior = 'smooth') => {
+        if (!scrollRef.current) return;
+        requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+                if (scrollRef.current) {
+                    scrollRef.current.scrollTo({ top: scrollRef.current.scrollHeight, behavior });
+                }
+            });
+        });
+    }, []);
+
+    const handleScroll = useCallback(() => {
+        if (!scrollRef.current) return;
+        const { scrollTop, scrollHeight, clientHeight } = scrollRef.current;
+        const atBottom = scrollHeight - scrollTop - clientHeight < 50;
+        isAtBottomRef.current = atBottom;
+        setShowJumpToBottom(!atBottom);
+        setUnreadCount(current => (atBottom ? 0 : current));
+    }, []);
+
+    useEffect(() => {
+        const el = scrollRef.current;
+        if (!el) return;
+        el.addEventListener('scroll', handleScroll, { passive: true });
+        return () => el.removeEventListener('scroll', handleScroll);
+    }, [handleScroll]);
 
     useEffect(() => {
         if (!isOnline && !redirectedRef.current) {
@@ -114,6 +148,31 @@ export default function Chat() {
         };
     }, []);
 
+    useEffect(() => {
+        initialLoadDoneRef.current = false;
+        isAtBottomRef.current = true;
+        setUnreadCount(0);
+        setShowJumpToBottom(false);
+    }, [programmeId]);
+
+    useEffect(() => {
+        const totalMessages = messages.length;
+        if (totalMessages === 0) return;
+
+        if (!initialLoadDoneRef.current) {
+            initialLoadDoneRef.current = true;
+            scrollToBottom('auto');
+        } else if (forceScrollRef.current) {
+            forceScrollRef.current = false;
+            setUnreadCount(0);
+            scrollToBottom('auto');
+        } else if (isAtBottomRef.current) {
+            scrollToBottom('auto');
+        } else {
+            setUnreadCount(c => c + 1);
+        }
+    }, [messages, scrollToBottom]);
+
     const sendmessage = async () => {
         const text = messageInput.trim();
 
@@ -126,9 +185,11 @@ export default function Chat() {
         }
 
         try {
+            forceScrollRef.current = true;
             socketRef.current.emit('message', { text });
             setMessageInput('');
         } catch (error) {
+            forceScrollRef.current = false;
             console.error(error.message);
         }
     };
@@ -168,7 +229,7 @@ export default function Chat() {
             </header>
 
             <section className="chat-layout">
-                <div className="chat-scroll">
+                <div className="chat-scroll" ref={scrollRef}>
                     <div className="chat-content">
                         {messages.length === 0 ? (
                             <div className="chat-empty">
@@ -187,6 +248,23 @@ export default function Chat() {
                             </div>
                         )}
                     </div>
+                    {showJumpToBottom && (
+                        <button
+                            type="button"
+                            className="chat-jump-bottom"
+                            onClick={() => {
+                                isAtBottomRef.current = true;
+                                setUnreadCount(0);
+                                setShowJumpToBottom(false);
+                                scrollToBottom('auto');
+                            }}
+                        >
+                            <KeyboardArrowDownRounded fontSize="small" />
+                            {unreadCount > 0 && (
+                                <span className="chat-jump-badge">{unreadCount > 99 ? '99+' : unreadCount}</span>
+                            )}
+                        </button>
+                    )}
                 </div>
 
                 <div className="chat-composer-shell">
