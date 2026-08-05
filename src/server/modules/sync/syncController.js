@@ -68,10 +68,9 @@ const HANDLERS = [
   },
   //delete auth endpoint
   { pattern: 'DELETE /api/auth', exec: async (p, body, token) => {
-    const caller = await validateToken(token);
+    const caller = await validateToken(token, true);
     const { targetId } = body || {};
-    const isStaff = caller.role === 'staff';
-    const deleteId = targetId && isStaff ? targetId : caller.id;
+    const deleteId = targetId || caller.id;
     const target = await user.findByPk(deleteId);
     if (!target) throw new Error('Account not found');
     await faceEmbeddings.destroy({ where: { userId: deleteId } });
