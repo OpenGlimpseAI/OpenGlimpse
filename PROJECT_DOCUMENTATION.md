@@ -213,7 +213,18 @@ P1 = must-have MVP; P2 = high value, build after P1; P3 = nice-to-have.
 
 ---
 
-## 9. Pages (UI)
+## 9. Individual Documentation
+
+Per-team-member deep-dive docs (use cases, API reference, database schema) live under `docs/<student-name>/`, with the overall system architecture in `docs/architecture.md`:
+
+- `docs/architecture.md` — system architecture overview
+- `docs/ryan/use-cases.md` — use cases for all roles (facial recognition, QR backup, unidentified alerts, chatbot)
+- `docs/ryan/api-documentation.md` — every HTTP endpoint + WebSocket/chat events + internal FaceNet API
+- `docs/ryan/database-schema.md` — ER diagram + full table definitions for the PostgreSQL schema
+
+---
+
+## 10. Pages (UI)
 
 - **Dashboard / Overview** — instant snapshot of delegate status; real-time counter (present/overall)
 - **Scanner** — QR/NFC and facial scanning
