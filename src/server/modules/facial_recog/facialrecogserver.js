@@ -27,28 +27,33 @@ router.post('/api/user/:id/face', async (req, res) => {
 });
 
 router.patch('/api/user/:id/face/default', async (req, res) => {
-    const { id } = req.params;
-    const { image } = req.body;
+    try {
+        const { id } = req.params;
+        const { image } = req.body;
 
-    if (!image || typeof image !== 'string') {
-        return res.status(400).json({ error: 'Missing or invalid image base64 in request body' });
+        if (!image || typeof image !== 'string') {
+            return res.status(400).json({ error: 'Missing or invalid image base64 in request body' });
+        }
+
+        const user = await User.read(id);
+        if (!user) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+
+        await FaceEmbeddings.deleteByUserIdAndType(id, 'primary');
+
+        const imageData = Buffer.from(image, 'base64');
+        const records = await FaceEmbeddings.createFromImage(id, imageData, 'primary');
+
+        res.status(200).json(records.map(r => ({
+            imageHash: r.imageHash,
+            embeddings: r.embeddings,
+            model: r.model,
+        })));
+    } catch (err) {
+        console.error('[Face Default] Error:', err);
+        res.status(500).json({ error: 'Failed to set default face', detail: err.message });
     }
-
-    const user = await User.read(id);
-    if (!user) {
-        return res.status(404).json({ error: 'User not found' });
-    }
-
-    await FaceEmbeddings.deleteByUserIdAndType(id, 'primary');
-
-    const imageData = Buffer.from(image, 'base64');
-    const records = await FaceEmbeddings.createFromImage(id, imageData, 'primary');
-
-    res.status(200).json(records.map(r => ({
-        imageHash: r.imageHash,
-        embeddings: r.embeddings,
-        model: r.model,
-    })));
 });
 
 router.get('/api/user/:id/face/default', async (req, res) => {
