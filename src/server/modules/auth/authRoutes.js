@@ -162,11 +162,10 @@ router.patch('/', authMiddleware, async (req, res) => {
     }
 });
 
-router.delete('/', authMiddleware, async (req, res) => {
+router.delete('/', authMiddleware, ensureStaff, async (req, res) => {
     try {
         const { targetId } = req.body;
-        const isStaff = req.user.role === 'staff';
-        const deleteId = targetId && isStaff ? targetId : req.user.id;
+        const deleteId = targetId || req.user.id;
 
         const target = await user.findByPk(deleteId);
         if (!target) {
