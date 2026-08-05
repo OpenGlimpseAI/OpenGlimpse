@@ -141,9 +141,4 @@ All user roles of OpenGlimpse: **Admin / Trip Manager (Staff)**, **Secretariat S
 - **Main flow:** Backend emits `attendance:updated` to the `programme:<id>` Socket.io room; all subscribed dashboards refresh.
 - **Edge flows:** offline devices queue writes in Dexie `pendingChanges` and replay via `POST /sync` on reconnect (idempotent by `scan_id`/unique constraints).
 
-### 5.3 UC-SUP-03: Ready-to-Depart Confirmation
 
-- **Actor:** Admin / Trip Manager
-- **Trigger:** All delegates of a route accounted for; manager toggles readiness.
-- **Main flow:** `PUT /programmes/:id/routes/:routeId/ready-to-depart` with `{ ready: true }`; status visible to all staff on the route card.
-- **Edge flows:** toggle is not restricted to admins server-side (client controls UI); route may be archived/unarchived without losing readiness.

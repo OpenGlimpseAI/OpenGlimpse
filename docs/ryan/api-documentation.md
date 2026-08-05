@@ -220,19 +220,7 @@ Base URL: `http://<host>:3001` (dev default port 3001; frontend proxies `/` and 
 
 ---
 
-## 7. Ready-to-Depart — `/programmes/:id/routes/:routeId/ready-to-depart`
-
-### GET `/programmes/:id/routes/:routeId/ready-to-depart`
-- **Success (200):** `{ "routeId", "ready": false, "toggledBy": null, "toggledAt": null }`
-
-### PUT `/programmes/:id/routes/:routeId/ready-to-depart`
-- **Body:** `{ "ready": true }`
-- **Success (200):** `{ "routeId", "ready", "toggledBy", "toggledAt" }`
-- **Errors:** 400 (ready not boolean), 500
-
----
-
-## 8. Face Recognition
+## 7. Face Recognition
 
 ### POST `/programmes/:id/recognize` — Match faces in a live capture
 - **Body:**
@@ -264,7 +252,7 @@ Base URL: `http://<host>:3001` (dev default port 3001; frontend proxies `/` and 
 
 ---
 
-## 9. QR Badge Lookup
+## 8. QR Badge Lookup
 
 ### POST `/programmes/:id/scan-qr` — Resolve badge(s) to delegates
 - **Body:** `{ "badge": "A001" }` **or** `{ "badges": ["A001", "A002"] }`

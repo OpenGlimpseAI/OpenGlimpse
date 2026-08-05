@@ -10,6 +10,7 @@
     "start": "node index.js",
     "seed": "node ../../tests/seed.js",
     "test:python": "node ../../tests/test-endpoints.js",
+    "test:ryan": "node ../../tests/ryan/test-ryan-endpoints.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
