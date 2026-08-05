@@ -88,6 +88,7 @@ P1 = must-have MVP; P2 = high value, build after P1; P3 = nice-to-have.
 | P2 | Attendance summary & data aggregation — totals, pass rates, missing delegates report | XY |
 | P2 | Ready-to-depart indicator — admin confirms all delegates accounted for before departure | XY |
 | P2 | In-app chat & announcements — team members can communicate; announce updates with reactions | Rayhan |
+| P2 | AI chatbot assistant — context-aware chatbot that answers programme questions via Groq API; triggered by @assistant prefix in chat | Backend |
 | P2 | Navbar navigation — easy routing between Programme, Attendance, Profile, Chat sections | Rayhan |
 | P3 | User profile management — staff can update personal info including new facial photo | Matt |
 
@@ -102,10 +103,12 @@ P1 = must-have MVP; P2 = high value, build after P1; P3 = nice-to-have.
 - QR code scanner: separate tab with camera-based QR decoding (backup mode)
 - Offline queue: browser localStorage for queuing facial scans and embeddings when disconnected
 - UI: simple, high-contrast, glanceable — unidentified/absent delegates surfaced at top of list
+- Chat auto-scroll: chat snaps to the latest message on first entry and when already at the bottom on new messages; a floating jump-to-bottom button (with unread count) appears when scrolled up
 
 ### 4.2 Backend
 - Node.js REST API (Express.js) for programmes, routes, attendance, user management, and chat
 - Real-time sync: WebSockets (Socket.io) for instant multi-device attendance updates and in-app chat
+- AI chatbot: Groq API (llama-3.3-70b-versatile) with full programme context; chatbot user seeded in DB; triggered by configurable prefix (e.g. `@assistant`) in chat
 - Database: PostgreSQL — stores programmes, participants, facial embeddings (vectors), scan events, chat messages, user accounts
 - Offline queue processing: backend receives offline scans, validates embeddings, and merges with live data without duplication
 - Auth: staff login via JWT; delegate identity verified by facial embedding similarity
