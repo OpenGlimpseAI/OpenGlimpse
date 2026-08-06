@@ -2,6 +2,7 @@ import { useEffect, useState, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getAllUsers, createUserAccount, updateUserProfile, deleteUserAccount, uploadUserFace } from '../../services/api.js';
 import { useConnectivity } from '../../hooks/useConnectivity';
+import ConfirmModal from '../../components/shared/ConfirmModal';
 
 function getAuthUser() {
   const raw = localStorage.getItem('authUser');
@@ -34,6 +35,7 @@ export default function ParticipantManagement() {
   const [facePreview, setFacePreview] = useState(null);
   const [cameraActive, setCameraActive] = useState(false);
   const [uploadingFace, setUploadingFace] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState(null);
 
   if (!currentUser) {
     navigate('/login');
@@ -225,10 +227,9 @@ export default function ParticipantManagement() {
   };
 
   const handleDelete = async (accountId) => {
-    const confirmed = window.confirm('Delete this account?');
-    if (!confirmed) return;
     setError('');
     setStatus('');
+    setDeleteTarget(null);
 
     try {
       await deleteUserAccount({ targetId: accountId }, currentUser.token);
@@ -265,6 +266,16 @@ export default function ParticipantManagement() {
       {error && <p className="auth-error-text">{error}</p>}
       {status && <p className="auth-success-text">{status}</p>}
 
+      {deleteTarget && (
+        <ConfirmModal
+          title="Delete Account"
+          message={`Delete "${deleteTarget.name}"? This cannot be undone.`}
+          confirmLabel="Delete"
+          onConfirm={() => handleDelete(deleteTarget.id)}
+          onCancel={() => setDeleteTarget(null)}
+        />
+      )}
+
       <div className="staff-mgmt-grid">
         <section className="staff-mgmt-panel staff-mgmt-panel-main">
           <h2>Accounts</h2>
@@ -290,7 +301,7 @@ export default function ParticipantManagement() {
                       <button className="auth-button auth-button-secondary" type="button" onClick={() => handleSelect(account)}>
                         Edit
                       </button>
-                      <button className="auth-button auth-button-danger" type="button" onClick={() => handleDelete(account.id)}>
+                      <button className="auth-button auth-button-danger" type="button" onClick={() => setDeleteTarget(account)}>
                         Delete
                       </button>
                     </td>

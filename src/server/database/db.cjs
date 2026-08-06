@@ -27,7 +27,7 @@ const user = sequelize.define("users", {
 }, { timestamps: true, createdAt: "created_at", updatedAt: false });
 
 const messages = sequelize.define("messages", {
-  content: { type: DataTypes.STRING, allowNull: false },
+  content: { type: DataTypes.TEXT, allowNull: false },
   timestamp: { type: DataTypes.DATE, allowNull: false },
   senderId: { type: DataTypes.UUID, allowNull: false, references: { model: user, key: "id" } },
 });

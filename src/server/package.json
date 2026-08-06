@@ -10,6 +10,7 @@
     "start": "node index.js",
     "seed": "node ../../tests/seed.js",
     "test:python": "node ../../tests/test-endpoints.js",
+    "test:ryan": "node ../../tests/ryan/test-ryan-endpoints.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
@@ -26,6 +27,7 @@
     "concurrently": "^9.2.3",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
+    "groq-sdk": "^1.5.0",
     "node": "^22.22.3",
     "pg": "^8.22.0",
     "pg-hstore": "^2.3.4",

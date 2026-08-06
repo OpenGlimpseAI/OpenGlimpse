@@ -60,11 +60,19 @@ body {
 }
 
 .chat-scroll {
-  @apply flex-1 overflow-y-auto px-3 py-5 sm:px-5 lg:px-6;
+  @apply relative flex-1 overflow-y-auto px-3 py-5 sm:px-5 lg:px-6;
 }
 
 .chat-message-list {
   @apply w-full space-y-3;
+}
+
+.chat-jump-bottom {
+  @apply absolute bottom-4 right-4 flex h-10 w-10 items-center justify-center rounded-full bg-sky-500 text-white shadow-lg transition hover:bg-sky-600;
+}
+
+.chat-jump-badge {
+  @apply absolute -right-1 -top-1 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold leading-none text-white;
 }
 
 .chat-empty {
@@ -106,6 +114,31 @@ body {
 
 .chat-send-button.Mui-disabled {
   @apply !bg-slate-200 !text-slate-400;
+}
+
+/* Mention autocomplete */
+.chat-input-box-relative {
+  @apply relative;
+}
+
+.chat-mention-dropdown {
+  @apply absolute bottom-full left-0 right-0 mb-1 max-h-48 overflow-y-auto rounded-lg border border-slate-200 bg-white shadow-lg z-50;
+}
+
+.chat-mention-item {
+  @apply flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-slate-50 cursor-pointer;
+}
+
+.chat-mention-item-selected {
+  @apply bg-sky-50;
+}
+
+.chat-mention-trigger {
+  @apply font-medium text-sky-600;
+}
+
+.chat-mention-desc {
+  @apply text-slate-500 text-xs;
 }
 
 /* Chat bubble */
@@ -200,6 +233,44 @@ body {
 
 .chat-avatar {
   @apply flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-sky-100 text-sky-700 text-sm font-semibold;
+}
+
+.chat-bubble-bot {
+  @apply rounded-bl-md border border-emerald-200 bg-emerald-50 text-slate-800;
+}
+
+.chat-bubble-bot h1 { @apply text-lg font-bold mt-2 mb-1; }
+.chat-bubble-bot h2 { @apply text-base font-bold mt-2 mb-1; }
+.chat-bubble-bot h3 { @apply text-sm font-bold mt-2 mb-1; }
+.chat-bubble-bot p { @apply mb-1 last:mb-0; }
+.chat-bubble-bot ul { @apply list-disc pl-4 mb-1; }
+.chat-bubble-bot ol { @apply list-decimal pl-4 mb-1; }
+.chat-bubble-bot li { @apply mb-0.5; }
+.chat-bubble-bot strong { @apply font-semibold; }
+.chat-bubble-bot em { @apply italic; }
+.chat-bubble-bot code {
+  @apply bg-emerald-100 text-emerald-800 px-1 py-0.5 rounded text-xs font-mono;
+}
+.chat-bubble-bot pre {
+  @apply bg-slate-800 text-slate-100 rounded-lg p-2 my-1 overflow-x-auto text-xs;
+}
+.chat-bubble-bot pre code {
+  @apply bg-transparent text-slate-100 px-0 py-0;
+}
+.chat-bubble-bot blockquote {
+  @apply border-l-2 border-emerald-300 pl-2 italic text-slate-600 my-1;
+}
+.chat-bubble-bot table {
+  @apply w-full text-xs border-collapse my-1;
+}
+.chat-bubble-bot th {
+  @apply bg-emerald-100 text-left px-2 py-1 font-semibold border border-emerald-200;
+}
+.chat-bubble-bot td {
+  @apply px-2 py-1 border border-emerald-200;
+}
+.chat-bubble-bot a {
+  @apply text-emerald-600 underline;
 }
 
 /* Dashboard */

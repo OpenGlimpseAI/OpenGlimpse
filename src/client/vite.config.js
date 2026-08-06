@@ -18,7 +18,14 @@ export default defineConfig({
     proxy: {
       '/api': 'http://localhost:3001',
       '/sync': 'http://localhost:3001',
-      '/programmes': 'http://localhost:3001',
+      '/programmes': {
+        target: 'http://localhost:3001',
+        bypass: (req) => {
+          if (req.headers.accept && req.headers.accept.includes('text/html')) {
+            return '/index.html';
+          }
+        },
+      },
       '/delegates': 'http://localhost:3001',
       '/users': 'http://localhost:3001',
       '/socket.io': {

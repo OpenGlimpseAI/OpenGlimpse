@@ -5,7 +5,7 @@ import SearchIcon from "@mui/icons-material/Search";
 import CloseIcon from "@mui/icons-material/Close";
 import KeyboardArrowDown from "@mui/icons-material/KeyboardArrowDown";
 import GroupsIcon from "@mui/icons-material/Groups";
-import SettingsIcon from "@mui/icons-material/Settings";
+import AddIcon from "@mui/icons-material/Add";
 import BarChartIcon from "@mui/icons-material/BarChart";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import PeopleAltIcon from "@mui/icons-material/PeopleAlt";
@@ -357,17 +357,17 @@ export function AdminDashboard() {
                             </button>
                             <button
                                 className="text-slate-400 hover:text-sky-600 transition-colors w-11 h-11 flex items-center justify-center rounded-xl active:bg-slate-100"
-                                onClick={() => navigate(`/summary/${programmeId}`)}
+                                onClick={() => navigate(`/programmes/${programmeId}/summary`)}
                                 aria-label="View report"
                             >
                                 <BarChartIcon sx={{ fontSize: 20 }} />
                             </button>
                             <button
                                 className="text-slate-400 hover:text-slate-600 transition-colors w-11 h-11 flex items-center justify-center rounded-xl active:bg-slate-100"
-                                onClick={() => navigate("/programmes")}
-                                aria-label="Manage programmes"
+                                onClick={() => navigate(`/programmes/${programmeId}/routes`)}
+                                aria-label="Manage routes"
                             >
-                                <SettingsIcon sx={{ fontSize: 20 }} />
+                                <AddIcon sx={{ fontSize: 24 }} />
                             </button>
                         </div>
                     </div>
@@ -394,7 +394,7 @@ export function AdminDashboard() {
                 )}
             </header>
 
-            <div className="px-4 sm:px-6 space-y-3 pb-3">
+            <div className="px-4 sm:px-6 space-y-3 pb-3 pt-2">
                 {selectedRoute && (
                     <div className="flex items-center justify-between bg-white rounded-2xl border border-slate-100 px-4 py-3 shadow-sm w-full">
                         <div className="flex items-center gap-2">
