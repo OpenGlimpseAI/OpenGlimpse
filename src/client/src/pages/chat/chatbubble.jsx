@@ -1,5 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import ReactionBar from './ReactionBar.jsx';
+import { marked } from 'marked';
+
+marked.setOptions({ breaks: true, gfm: true });
 
 const LONG_PRESS_DELAY = 400;
 const MOVE_TOLERANCE = 10;
@@ -12,7 +15,28 @@ function Avatar({ name }) {
     );
 }
 
-export default function ChatBubble({ message, isOwn, isAdmin, onReact, currentUserId }) {
+export default function ChatBubble({ message, isOwn, isAdmin, onReact, currentUserId, isBot }) {
+    if (isBot) {
+        const html = marked.parse(message.text || '');
+        return (
+            <div className="chat-bubble-row chat-bubble-row-other">
+                <div className="chat-bubble chat-bubble-bot">
+                    <div className="flex items-center gap-1.5 mb-1">
+                        <span className="text-xs font-semibold text-emerald-700">AI Assistant</span>
+                        <span className="text-[10px] bg-emerald-100 text-emerald-600 px-1.5 py-0.5 rounded-full font-medium">BOT</span>
+                    </div>
+                    <div className="chat-bubble-text" dangerouslySetInnerHTML={{ __html: html }} />
+                    <p className="chat-bubble-time chat-bubble-time-other">
+                        {new Date(message.timestamp).toLocaleTimeString([], {
+                            hour: '2-digit',
+                            minute: '2-digit',
+                        })}
+                    </p>
+                </div>
+            </div>
+        );
+    }
+
     const [showBar, setShowBar] = useState(false);
     const longPressRef = useRef(null);
     const startPointRef = useRef(null);

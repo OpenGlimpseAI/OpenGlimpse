@@ -13,6 +13,9 @@ require("dotenv").config({
 const { attachFaceServer } = require('./modules/facial_recog/facialrecogserver.js');
 const registerSyncRoutes = require('./modules/sync/syncRoutes');
 
+let CHATBOT_USER_ID = null;
+const getChatbotUserId = () => CHATBOT_USER_ID;
+
 const app = express();
 const server = http.createServer(app);
 const allowedOrigin = process.env.CLIENT_URL || /^https?:\/\/localhost:\d+$/;
@@ -57,7 +60,7 @@ app.use((req, res, next) => {
     next();
 });
 
-attachChatServer(io);
+attachChatServer(io, getChatbotUserId);
 attachFaceServer(app);
 
 io.on('connection', (socket) => {
@@ -131,6 +134,21 @@ async function start() {
                 role: 'staff',
             });
             console.log('Seeded default staff account: admin@openglimpse.com');
+        }
+
+        const existingBot = await user.findOne({ where: { email: 'ai-assistant@openglimpse.com' } });
+        if (!existingBot) {
+            const botPasswordHash = crypto.createHash('sha256').update('bot-no-login').digest('hex');
+            const bot = await user.create({
+                enName: 'AI Assistant',
+                email: 'ai-assistant@openglimpse.com',
+                passwordHash: botPasswordHash,
+                role: 'staff',
+            });
+            CHATBOT_USER_ID = bot.id;
+            console.log('Seeded chatbot user: ai-assistant@openglimpse.com');
+        } else {
+            CHATBOT_USER_ID = existingBot.id;
         }
     } catch (err) {
         console.error('Database sync failed:', err);

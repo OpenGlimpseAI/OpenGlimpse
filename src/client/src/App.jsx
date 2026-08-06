@@ -8,7 +8,8 @@ import { useEffect, useState } from 'react';
 import { AdminDashboard } from "./pages/dashboard/dashboard.jsx";
 
 import ProgrammePage from "./pages/programmes/ProgrammePage.jsx";
-import SummaryPage from "./pages/programmes/SummaryPage.jsx";
+import ProgrammeDetailPage from "./pages/programmes/ProgrammeDetailPage";
+// OLD: SummaryPage removed — route moved to /programmes/:id/*
 import Onboarding from "./pages/auth/Onboarding.jsx";
 import Login from "./pages/auth/Login.jsx";
 import ProfilePage from "./pages/auth/ProfilePage.jsx";
@@ -58,7 +59,7 @@ export default function App() {
         <Route path="/dashboard/routes/:routeId" element={<AdminDashboard />} />
         <Route path="/directory" element={<Directory />} />
         <Route path="/programmes" element={<ProgrammePage />} />
-        <Route path="/summary/:id" element={<SummaryPage />} />
+        <Route path="/programmes/:id/*" element={<ProgrammeDetailPage />} />
         <Route path="/badge" element={<BadgePage />} />
       </Routes>
       </>

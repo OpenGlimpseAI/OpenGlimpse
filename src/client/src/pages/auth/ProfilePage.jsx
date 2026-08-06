@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { updateUserProfile, deleteUserAccount, getAllUsers, createUserAccount, uploadUserFace } from '../../services/api.js';
 import { useConnectivity } from '../../hooks/useConnectivity';
+import ConfirmModal from '../../components/shared/ConfirmModal';
 
 function getAuthUser() {
   const raw = localStorage.getItem('authUser');
@@ -64,6 +65,7 @@ function ProfileSection({ currentUser, navigate }) {
   const [password, setPassword] = useState('');
   const [status, setStatus] = useState('');
   const [error, setError] = useState('');
+  const [deleteTarget, setDeleteTarget] = useState(false);
 
   const handleLogout = () => {
     localStorage.removeItem('authUser');
@@ -89,8 +91,9 @@ function ProfileSection({ currentUser, navigate }) {
   };
 
   const handleDelete = async () => {
-    const confirmed = window.confirm('Delete your account? This cannot be undone.');
-    if (!confirmed) return;
+    setDeleteTarget(false);
+    setError('');
+    setStatus('');
 
     try {
       await deleteUserAccount({}, currentUser.token);
@@ -135,8 +138,19 @@ function ProfileSection({ currentUser, navigate }) {
 
       <div className="flex gap-2">
         <button className="flex-1 rounded-full bg-slate-100 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-200 transition-colors" onClick={handleLogout}>Logout</button>
-        <button className="flex-1 rounded-full bg-red-50 px-4 py-2 text-sm font-semibold text-red-600 hover:bg-red-100 transition-colors" onClick={handleDelete}>Delete Account</button>
+        {currentUser.role === 'staff' && (
+          <button className="flex-1 rounded-full bg-red-50 px-4 py-2 text-sm font-semibold text-red-600 hover:bg-red-100 transition-colors" onClick={() => setDeleteTarget(true)}>Delete Account</button>
+        )}
       </div>
+      {deleteTarget && (
+        <ConfirmModal
+          title="Delete Account"
+          message="Delete your account? This cannot be undone."
+          confirmLabel="Delete"
+          onConfirm={handleDelete}
+          onCancel={() => setDeleteTarget(false)}
+        />
+      )}
     </div>
   );
 }
@@ -158,6 +172,7 @@ function ParticipantSection({ currentUser }) {
   const [facePreview, setFacePreview] = useState(null);
   const [cameraActive, setCameraActive] = useState(false);
   const [uploadingFace, setUploadingFace] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState(null);
 
   useEffect(() => {
     fetchAccounts();
@@ -339,10 +354,9 @@ function ParticipantSection({ currentUser }) {
   };
 
   const handleDelete = async (accountId) => {
-    const confirmed = window.confirm('Delete this account?');
-    if (!confirmed) return;
     setError('');
     setStatus('');
+    setDeleteTarget(null);
 
     try {
       await deleteUserAccount({ targetId: accountId }, currentUser.token);
@@ -393,7 +407,7 @@ function ParticipantSection({ currentUser }) {
                   </div>
                   <div className="flex items-center gap-1 shrink-0">
                     <button className="text-xs text-slate-400 hover:text-sky-600 transition-colors font-semibold px-2 py-1" type="button" onClick={() => handleSelect(account)}>Edit</button>
-                    <button className="text-xs text-slate-400 hover:text-red-600 transition-colors font-semibold px-2 py-1" type="button" onClick={() => handleDelete(account.id)}>Delete</button>
+                    <button className="text-xs text-slate-400 hover:text-red-600 transition-colors font-semibold px-2 py-1" type="button" onClick={() => setDeleteTarget(account)}>Delete</button>
                   </div>
                 </div>
               ))}
@@ -401,6 +415,16 @@ function ParticipantSection({ currentUser }) {
           )}
         </div>
       </div>
+
+      {deleteTarget && (
+        <ConfirmModal
+          title="Delete Account"
+          message={`Delete "${deleteTarget.name}"? This cannot be undone.`}
+          confirmLabel="Delete"
+          onConfirm={() => handleDelete(deleteTarget.id)}
+          onCancel={() => setDeleteTarget(null)}
+        />
+      )}
 
       <div className="rounded-2xl bg-white shadow-sm border border-slate-100 p-5">
         <h2 className="text-sm font-semibold text-slate-700 mb-3">{selected ? 'Edit Account' : 'Create Account'}</h2>

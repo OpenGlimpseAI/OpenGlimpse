@@ -1,6 +1,9 @@
 const { Messages, Reactions } = require('../../database/dbcrudmethods');
 const { parseToken } = require('../auth/authRoutes');
 const { user } = require('../../database/db.cjs');
+const { buildProgrammeContext, getChatbotResponse } = require('../chatbot/chatbot');
+
+const CHATBOT_TRIGGER = process.env.VITE_CHATBOT_TRIGGER || '@assistant';
 
 function formatpayload(row, senderRole, reactions = [], senderName = null) {
     return {
@@ -33,7 +36,7 @@ async function reactionsForMessages(messageIds) {
     return out;
 }
 
-function attachChatServer(io) {
+function attachChatServer(io, getChatbotUserId) {
     const chat = io.of('/chat');
 
     chat.use(async (socket, next) => {
@@ -64,6 +67,17 @@ function attachChatServer(io) {
 
     chat.on('connection', (socket) => {
         console.log(`Chat user connected: ${socket.userId}`);
+
+        socket.programmeId = null;
+
+        const chatbotUserId = getChatbotUserId();
+        if (chatbotUserId) {
+            socket.emit('chatbot:config', { userId: chatbotUserId, trigger: CHATBOT_TRIGGER });
+        }
+
+        socket.on('chat:join', (programmeId) => {
+            socket.programmeId = programmeId;
+        });
 
         (async () => {
             const history = await Messages.read();
@@ -97,6 +111,41 @@ function attachChatServer(io) {
                 chat.emit('message', {
                     message: formatpayload(savedMessage.toJSON(), socket.userRole, [], socket.userName),
                 });
+
+                if (text.startsWith(CHATBOT_TRIGGER) && socket.programmeId) {
+                    const chatbotUserId = getChatbotUserId();
+                    if (!chatbotUserId) return;
+
+                    const userQuery = text.slice(CHATBOT_TRIGGER.length).trim();
+                    if (!userQuery) return;
+
+                    chat.emit('chatbot:typing', { senderId: chatbotUserId });
+
+                    try {
+                        const context = await buildProgrammeContext(socket.programmeId);
+                        if (!context) {
+                            chat.emit('chatbot:stop', { senderId: chatbotUserId });
+                            return;
+                        }
+
+                        const reply = await getChatbotResponse(userQuery, context, chatbotUserId, socket.userId);
+
+                        const botMessage = await Messages.create({
+                            content: reply,
+                            timestamp: new Date(),
+                            senderId: chatbotUserId,
+                        });
+
+                        chat.emit('chatbot:stop', { senderId: chatbotUserId });
+                        chat.emit('message', {
+                            message: formatpayload(botMessage.toJSON()),
+                        });
+                    } catch (err) {
+                        console.error('Chatbot error:', err);
+                        chat.emit('chatbot:stop', { senderId: chatbotUserId });
+                        chat.emit('error', { text: 'Chatbot could not respond. Please try again.' });
+                    }
+                }
             } catch (error) {
                 console.error('Failed to save chat message', error);
                 socket.emit('error', { text: 'invalid message format' });
