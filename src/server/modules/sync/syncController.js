@@ -76,6 +76,13 @@ const HANDLERS = [
     await faceEmbeddings.destroy({ where: { userId: deleteId } });
     await target.destroy();
   }},
+  //face default upload endpoint
+  { pattern: 'PATCH /api/user/:id/face/default', exec: async (p, body) => {
+    const { FaceEmbeddings } = require('../../database/dbcrudmethods');
+    if (!body?.image) throw new Error('Missing face image');
+    await FaceEmbeddings.deleteByUserIdAndType(p.id, 'primary');
+    await FaceEmbeddings.createFromImage(p.id, Buffer.from(body.image, 'base64'), 'primary');
+  }},
 ];
 
 //need this method as the route it handles does not map directly to a single sequelize method
@@ -130,8 +137,9 @@ async function applyOp(method, path, body, token) {
   if (method === 'POST' && path.endsWith('/attendance')) {
     const records = body?.records;
     if (Array.isArray(records)) {
+      const id = path.split('/')[2];
       for (const rec of records) {
-        await AttendanceRecord.markAttendance(body.programmeId || null, rec.delegateId, rec, null);
+        await AttendanceRecord.markAttendance(id, rec.delegateId, rec, null);
       }
     }
     return;
@@ -149,7 +157,7 @@ exports.handleSync = async (req, res) => {
     if (Array.isArray(ops)) {
       for (const op of ops) {
         try {
-          const isAuthOp = op.path.startsWith('/api/auth');
+          const isAuthOp = op.path.startsWith('/api/auth') || op.path.startsWith('/api/user');
           if (!isAuthOp && caller.role !== 'staff') {
             console.error(`Sync op denied (not staff): ${op.method} ${op.path}`);
             continue;

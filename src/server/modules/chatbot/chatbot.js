@@ -60,7 +60,7 @@ async function getChatbotResponse(userMessage, programmeContext, chatbotUserId, 
         content: m.content,
     }));
 
-    const systemPrompt = `You are an AI assistant for OpenGlimpse, you should be friendly and helpful. 
+    const systemPrompt = `You are an AI assistant for OpenGlimpse, you should be friendly and helpful.
     You have access to the following programme data:
 
 ${programmeContext}

@@ -20,10 +20,17 @@ export function useConnectivity() {
     const goOffline = () => {
       setIsOnline(false);
     };
+
+    const syncStart = () => setIsSyncing(true);
+    const syncDone = () => {
+      setIsSyncing(false);
+      updatePending();
+    };
 //event listeners for connection and sync status
     window.addEventListener('online', goOnline);
     window.addEventListener('offline', goOffline);
-    window.addEventListener('sync:done', updatePending);
+    window.addEventListener('sync:start', syncStart);
+    window.addEventListener('sync:done', syncDone);
 
     updatePending();
     const interval = setInterval(updatePending, 3000);
@@ -31,7 +38,8 @@ export function useConnectivity() {
     return () => {
       window.removeEventListener('online', goOnline);
       window.removeEventListener('offline', goOffline);
-      window.removeEventListener('sync:done', updatePending);
+      window.removeEventListener('sync:start', syncStart);
+      window.removeEventListener('sync:done', syncDone);
       clearInterval(interval);
     };
   }, []);
