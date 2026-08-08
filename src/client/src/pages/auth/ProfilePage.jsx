@@ -2,6 +2,8 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { updateUserProfile, deleteUserAccount, getAllUsers, createUserAccount, uploadUserFace } from '../../services/api.js';
 import { useConnectivity } from '../../hooks/useConnectivity';
+import { useTheme } from '../../hooks/useTheme';
+import { Sun, Moon } from 'lucide-react';
 import ConfirmModal from '../../components/shared/ConfirmModal';
 
 function getAuthUser() {
@@ -35,7 +37,7 @@ export default function ProfilePage() {
           <div className="flex bg-slate-100 rounded-full p-0.5 max-w-[260px] mx-auto">
             <button
               className={`flex-1 rounded-full px-4 py-1.5 text-xs font-semibold transition-colors ${
-                mode === 'profile' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'
+                mode === 'profile' ? 'bg-sky-gradient text-white shadow-sm' : 'text-slate-500 hover:text-slate-700'
               }`}
               onClick={() => setMode('profile')}
             >
@@ -43,7 +45,7 @@ export default function ProfilePage() {
             </button>
             <button
               className={`flex-1 rounded-full px-4 py-1.5 text-xs font-semibold transition-colors ${
-                mode === 'participants' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'
+                mode === 'participants' ? 'bg-sky-gradient text-white shadow-sm' : 'text-slate-500 hover:text-slate-700'
               }`}
               onClick={() => setMode('participants')}
             >
@@ -132,9 +134,11 @@ function ProfileSection({ currentUser, navigate }) {
           </label>
           {error && <p className="text-xs font-medium text-red-600">{error}</p>}
           {status && <p className="text-xs font-medium text-emerald-600">{status}</p>}
-          <button type="submit" className="w-full rounded-full bg-sky-600 px-4 py-2 text-sm font-semibold text-white hover:bg-sky-700 transition-colors">Save Profile</button>
+          <button type="submit" className="w-full rounded-full bg-sky-gradient px-4 py-2 text-sm font-semibold text-white">Save Profile</button>
         </form>
       </div>
+
+      <AppearanceSection />
 
       <div className="flex gap-2">
         <button className="flex-1 rounded-full bg-slate-100 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-200 transition-colors" onClick={handleLogout}>Logout</button>
@@ -151,6 +155,38 @@ function ProfileSection({ currentUser, navigate }) {
           onCancel={() => setDeleteTarget(false)}
         />
       )}
+    </div>
+  );
+}
+
+function AppearanceSection() {
+  const { theme, toggleTheme } = useTheme();
+  const isDark = theme === 'dark';
+
+  return (
+    <div className="rounded-2xl bg-white shadow-sm border border-slate-100 p-5">
+      <h2 className="text-sm font-semibold text-slate-700 mb-3">Appearance</h2>
+      <div className="flex bg-slate-100 rounded-full p-0.5 max-w-[280px]">
+        <button
+          type="button"
+          className={`flex flex-1 items-center justify-center gap-1.5 rounded-full px-4 py-2 text-xs font-semibold transition-colors ${
+            !isDark ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'
+          }`}
+          onClick={() => !isDark || toggleTheme()}
+        >
+          <Sun size={14} /> Light
+        </button>
+        <button
+          type="button"
+          className={`flex flex-1 items-center justify-center gap-1.5 rounded-full px-4 py-2 text-xs font-semibold transition-colors ${
+            isDark ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'
+          }`}
+          onClick={() => isDark || toggleTheme()}
+        >
+          <Moon size={14} /> Dark
+        </button>
+      </div>
+      <p className="mt-2 text-xs text-slate-500">Choose between light and dark appearance.</p>
     </div>
   );
 }
@@ -491,7 +527,7 @@ function ParticipantSection({ currentUser }) {
                   <video ref={videoRef} className="w-full max-w-xs rounded-lg bg-black" playsInline muted />
                   <canvas ref={canvasRef} style={{ display: 'none' }} />
                   {cameraActive && (
-                    <button type="button" className="rounded-full bg-sky-600 px-4 py-2 text-sm font-semibold text-white hover:bg-sky-700 transition-colors" onClick={captureFromCamera}>Capture</button>
+                    <button type="button" className="rounded-full bg-sky-gradient px-4 py-2 text-sm font-semibold text-white" onClick={captureFromCamera}>Capture</button>
                   )}
                 </div>
               )}
@@ -505,7 +541,7 @@ function ParticipantSection({ currentUser }) {
             </fieldset>
           )}
 
-          <button className="w-full rounded-full bg-sky-600 px-4 py-2 text-sm font-semibold text-white hover:bg-sky-700 transition-colors disabled:bg-slate-200 disabled:text-slate-400" type="submit" disabled={uploadingFace || (!selected && !faceImageBase64)}>
+          <button className="w-full rounded-full bg-sky-gradient px-4 py-2 text-sm font-semibold text-white disabled:bg-slate-200 disabled:text-slate-400" type="submit" disabled={uploadingFace || (!selected && !faceImageBase64)}>
             {uploadingFace ? 'Uploading face...' : selected ? 'Update Account' : 'Create Account'}
           </button>
           {selected && (

@@ -72,7 +72,7 @@ Answer questions accurately based on this data. Be concise. Address the user by 
     const groqMessages = [
         { role: 'system', content: systemPrompt },
         ...chatHistory,
-        { role: 'user', content: userMessage },
+        { role: 'user',  content: userMessage },
     ];
 
     const completion = await groq.chat.completions.create({

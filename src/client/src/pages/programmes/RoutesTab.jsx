@@ -88,7 +88,7 @@ export default function RoutesTab({ programmeId }) {
         />
         <button
           type="submit"
-          className="bg-sky-600 text-white rounded-xl px-4 py-2 text-xs font-semibold hover:bg-sky-700 shrink-0"
+          className="bg-sky-gradient text-white rounded-xl px-4 py-2 text-xs font-semibold shrink-0"
         >
           Add
         </button>
@@ -133,7 +133,7 @@ export default function RoutesTab({ programmeId }) {
                   </div>
                   <div className="flex items-center gap-1 shrink-0">
                     <button
-                      className="text-xs bg-sky-600 text-white rounded-lg px-3 py-1.5 font-semibold hover:bg-sky-700"
+                      className="text-xs bg-sky-gradient text-white rounded-lg px-3 py-1.5 font-semibold"
                       onClick={() => setManageRoute(r)}
                     >
                       Assign
