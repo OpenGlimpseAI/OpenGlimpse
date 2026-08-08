@@ -3,16 +3,22 @@ const path = require("path");
 require("dotenv").config({
   path: path.resolve(__dirname, "../../../.env"),
 });
-const sequelize = new Sequelize(
-  process.env.DB_NAME || "openglimpse",
-  process.env.DB_USER || "postgres",
-  process.env.DB_PASSWORD || "postgres",
-  {
-    host: process.env.DB_HOST || "localhost",
-    port: parseInt(process.env.DB_PORT || "5432", 10),
-    dialect: "postgres",
-  }
-);
+const connectionString = process.env.DATABASE_URL;
+const sequelize = connectionString
+  ? new Sequelize(connectionString, {
+      dialect: "postgres",
+      dialectOptions: { ssl: { require: true, rejectUnauthorized: false } },
+    })
+  : new Sequelize(
+      process.env.DB_NAME || "openglimpse",
+      process.env.DB_USER || "postgres",
+      process.env.DB_PASSWORD || "postgres",
+      {
+        host: process.env.DB_HOST || "localhost",
+        port: parseInt(process.env.DB_PORT || "5432", 10),
+        dialect: "postgres",
+      }
+    );
 
 // ── Core models ────────────────────────────────────────────
 
