@@ -3,7 +3,7 @@ import Directory from './pages/directory/directory.jsx';
 import BottomNav from './components/navbar/bottomnav.jsx'
 import CameraPage from './pages/facial_recognition/CameraPage.jsx';
 import BadgePage from './pages/badge/BadgePage.jsx';
-import { Routes, Route, useLocation } from "react-router-dom";
+import { Routes, Route, useLocation, Navigate } from "react-router-dom";
 import { useEffect, useState } from 'react';
 import { AdminDashboard } from "./pages/dashboard/dashboard.jsx";
 
@@ -30,8 +30,12 @@ function isSignedIn() {
 
 function LandingPage() {
   const user = getAuthUser();
-  if (!user) return <Onboarding />;
+  if (!user) return <Navigate to="/login" replace />;
   return user.role === 'staff' ? <StaffLandingPage /> : <BadgePage />;
+}
+
+function RequireAuth({ children }) {
+  return isSignedIn() ? children : <Navigate to="/login" replace />;
 }
 
 export default function App() {
@@ -52,15 +56,15 @@ export default function App() {
         <Route path="/" element={<LandingPage />} />
         <Route path="/onboarding" element={<Onboarding />} />
         <Route path="/login" element={<Login />} />
-        <Route path="/profile" element={<ProfilePage />} />
-        <Route path="/chat" element={<Chat/>} />
-        <Route path="/camera" element={<CameraPage />} />
-        <Route path="/dashboard" element={<AdminDashboard />} />
-        <Route path="/dashboard/routes/:routeId" element={<AdminDashboard />} />
-        <Route path="/directory" element={<Directory />} />
-        <Route path="/programmes" element={<ProgrammePage />} />
-        <Route path="/programmes/:id/*" element={<ProgrammeDetailPage />} />
-        <Route path="/badge" element={<BadgePage />} />
+        <Route path="/profile" element={<RequireAuth><ProfilePage /></RequireAuth>} />
+        <Route path="/chat" element={<RequireAuth><Chat/></RequireAuth>} />
+        <Route path="/camera" element={<RequireAuth><CameraPage /></RequireAuth>} />
+        <Route path="/dashboard" element={<RequireAuth><AdminDashboard /></RequireAuth>} />
+        <Route path="/dashboard/routes/:routeId" element={<RequireAuth><AdminDashboard /></RequireAuth>} />
+        <Route path="/directory" element={<RequireAuth><Directory /></RequireAuth>} />
+        <Route path="/programmes" element={<RequireAuth><ProgrammePage /></RequireAuth>} />
+        <Route path="/programmes/:id/*" element={<RequireAuth><ProgrammeDetailPage /></RequireAuth>} />
+        <Route path="/badge" element={<RequireAuth><BadgePage /></RequireAuth>} />
       </Routes>
       </>
   )

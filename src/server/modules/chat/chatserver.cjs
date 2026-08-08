@@ -112,11 +112,11 @@ function attachChatServer(io, getChatbotUserId) {
                     message: formatpayload(savedMessage.toJSON(), socket.userRole, [], socket.userName),
                 });
 
-                if (text.startsWith(CHATBOT_TRIGGER) && socket.programmeId) {
+                if (text.includes(CHATBOT_TRIGGER) && socket.programmeId) {
                     const chatbotUserId = getChatbotUserId();
                     if (!chatbotUserId) return;
 
-                    const userQuery = text.slice(CHATBOT_TRIGGER.length).trim();
+                    const userQuery = text.split(CHATBOT_TRIGGER).join('').trim();
                     if (!userQuery) return;
 
                     chat.emit('chatbot:typing', { senderId: chatbotUserId });
