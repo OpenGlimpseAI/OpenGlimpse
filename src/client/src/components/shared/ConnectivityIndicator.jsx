@@ -5,7 +5,7 @@ export default function ConnectivityIndicator() {
 
   if (isSyncing) {
     return (
-      <div className="fixed top-0 left-0 right-0 z-50 flex items-center justify-center gap-2 bg-sky-600/90 backdrop-blur-sm text-white text-xs font-medium py-1.5">
+      <div className="fixed top-0 left-0 right-0 z-50 flex items-center justify-center gap-2 bg-sky-gradient backdrop-blur-sm text-white text-xs font-medium py-1.5">
         <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
         Syncing...
       </div>

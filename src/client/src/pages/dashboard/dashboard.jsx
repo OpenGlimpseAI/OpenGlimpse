@@ -301,7 +301,7 @@ export function AdminDashboard() {
                 <div className="px-4 pt-16 text-center">
                     <p className="text-sm text-slate-500 mb-4">No programmes yet</p>
                     <button
-                        className="bg-sky-600 text-white px-6 py-2 rounded-xl text-sm font-semibold"
+                        className="bg-sky-gradient text-white px-6 py-2 rounded-xl text-sm font-semibold"
                         onClick={() => navigate("/programmes")}
                     >
                         Create Programme

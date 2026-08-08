@@ -53,7 +53,7 @@ export default function UserPicker({ users, alreadyAdded, onAdd, onCancel, route
                 </select>
             )}
             <div className="flex gap-2 pt-1">
-                <button className="flex-1 bg-sky-600 text-white rounded-lg py-1.5 text-xs font-semibold hover:bg-sky-700 transition-colors disabled:opacity-50" onClick={handleSubmit} disabled={!selectedIds.length || adding}>
+                <button className="flex-1 bg-sky-gradient text-white rounded-lg py-1.5 text-xs font-semibold disabled:opacity-50" onClick={handleSubmit} disabled={!selectedIds.length || adding}>
                     {adding ? "Adding..." : `Add (${selectedIds.length})`}
                 </button>
                 <button className="flex-1 bg-white text-slate-500 rounded-lg py-1.5 text-xs font-semibold border border-slate-200 hover:bg-slate-50 transition-colors" onClick={onCancel}>Cancel</button>

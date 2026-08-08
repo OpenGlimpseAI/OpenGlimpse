@@ -447,7 +447,7 @@ export default function CameraPage() {
                             <button
                                 className={`rounded-xl px-6 py-2.5 text-sm font-semibold transition-colors ${
                                     programmeId && isOnline
-                                        ? 'bg-sky-600 text-white hover:bg-sky-700'
+                                        ? 'bg-sky-gradient text-white'
                                         : 'bg-slate-200 text-slate-400 cursor-not-allowed'
                                 }`}
                                 disabled={!programmeId || !isOnline}
@@ -479,7 +479,7 @@ export default function CameraPage() {
                             <p className="text-base font-semibold text-slate-800">Attendance marked</p>
                             <p className="text-sm text-slate-500">{selected.size} delegate(s) checked in</p>
                             <button
-                                className="bg-sky-600 text-white rounded-xl px-6 py-2.5 text-sm font-semibold hover:bg-sky-700 transition-colors"
+                                className="bg-sky-gradient text-white rounded-xl px-6 py-2.5 text-sm font-semibold"
                                 onClick={handleRetake}
                             >
                                 Scan Again
@@ -495,7 +495,7 @@ export default function CameraPage() {
                                 <div className="flex flex-col items-center gap-3 pt-6">
                                     <p className="text-sm text-slate-500">No matching delegates found</p>
                                     <button
-                                        className="bg-sky-600 text-white rounded-xl px-6 py-2.5 text-sm font-semibold hover:bg-sky-700 transition-colors"
+                                        className="bg-sky-gradient text-white rounded-xl px-6 py-2.5 text-sm font-semibold"
                                         onClick={handleRetake}
                                     >
                                         Try Again
@@ -522,7 +522,7 @@ export default function CameraPage() {
                                                         />
                                                     ) : (
                                                         <div className={`flex h-8 w-8 items-center justify-center rounded-full text-sm font-semibold ${
-                                                            isSelected ? 'bg-sky-600 text-white' : 'bg-slate-100 text-slate-500'
+                                                            isSelected ? 'bg-sky-gradient text-white' : 'bg-slate-100 text-slate-500'
                                                         }`}>
                                                             {m.name.charAt(0)}
                                                         </div>
@@ -537,7 +537,7 @@ export default function CameraPage() {
                                                     </div>
                                                 </div>
                                                 <div className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${
-                                                    isSelected ? 'bg-sky-600 border-sky-600' : 'border-slate-300'
+                                                    isSelected ? 'bg-sky-gradient border-sky-600' : 'border-slate-300'
                                                 }`}>
                                                     {isSelected && <CheckIcon sx={{ fontSize: 14, color: '#fff' }} />}
                                                 </div>
@@ -553,7 +553,7 @@ export default function CameraPage() {
                                         className={`flex-1 rounded-xl py-2.5 text-sm font-semibold transition-colors ${
                                             selected.size === 0 || !isOnline
                                                 ? 'bg-slate-200 text-slate-400 cursor-not-allowed'
-                                                : 'bg-sky-600 text-white hover:bg-sky-700'
+                                                : 'bg-sky-gradient text-white'
                               }`}
                             //isonline used to render button based on connectivity
                                         disabled={selected.size === 0 || confirming || !isOnline}
