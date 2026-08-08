@@ -122,6 +122,14 @@ export default function Chat() {
             setMessages((current) => [...current, payload.message]);
         });
 
+        socket.on('reaction:update', (payload) => {
+            setMessages((current) =>
+                current.map((m) =>
+                    m.id === payload.messageId ? { ...m, reactions: payload.reactions } : m
+                )
+            );
+        });
+
         socket.on('error', (payload) => {
             console.error(payload.text);
         });
@@ -194,6 +202,10 @@ export default function Chat() {
         }
     };
 
+    const reactToMessage = (messageId, emoji) => {
+        if (!socketRef.current?.connected) return;
+        socketRef.current.emit('react', { messageId, emoji });
+    };
     const currentProgramme = programmes.find(p => p.id === programmeId);
 
     return (
@@ -242,6 +254,9 @@ export default function Chat() {
                                         key={`${message.timestamp}-${i}`}
                                         message={message}
                                         isOwn={message.senderId === clientIdRef.current}
+                                        isAdmin={message.senderRole === 'staff'}
+                                        onReact={reactToMessage}
+                                        currentUserId={clientIdRef.current}
                                         isBot={chatbotConfig && message.senderId === chatbotConfig.userId}
                                     />
                                 ))}

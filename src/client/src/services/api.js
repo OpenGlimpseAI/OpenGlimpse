@@ -5,11 +5,15 @@ import { db } from '../db/localDB';
 const SYNC_PREFIXES = ['/programmes', '/delegates', '/api/auth', '/api/user', '/users'];
 //prevents auth login from being queued for sync
 const NEVER_QUEUE = ['/api/auth/login'];
+//camera lookups can't be replayed offline, fail loudly instead
+const NO_SYNC_PATTERNS = [/^\/programmes\/[^/]+\/recognize$/, /^\/programmes\/[^/]+\/scan-qr$/];
 
 function isSynced(path) {
+  const clean = path.split('?')[0];
   //check if path is in NEVER_QUEUE
-  if (NEVER_QUEUE.some(p => path.startsWith(p))) return false;
-  return SYNC_PREFIXES.some(p => path.startsWith(p));
+  if (NEVER_QUEUE.some(p => clean.startsWith(p))) return false;
+  if (NO_SYNC_PATTERNS.some(p => p.test(clean))) return false;
+  return SYNC_PREFIXES.some(p => clean.startsWith(p));
 }
 
 //handle requests from client

@@ -144,7 +144,7 @@ export default function RouteManageModal({ route, allDelegates, programmeId, onC
                 </div>
 
                 <div className="border-t border-slate-100 px-4 py-3 flex gap-2 shrink-0">
-                    <button className="flex-1 bg-sky-600 text-white rounded-xl py-2.5 text-sm font-semibold hover:bg-sky-700 transition-colors disabled:opacity-50 active:bg-sky-800" onClick={handleSave} disabled={saving}>
+                    <button className="flex-1 bg-sky-gradient text-white rounded-xl py-2.5 text-sm font-semibold disabled:opacity-50" onClick={handleSave} disabled={saving}>
                         {saving ? "Saving..." : `Save (${selectedIds.length})`}
                     </button>
                     <button className="px-6 bg-slate-100 text-slate-600 rounded-xl py-2.5 text-sm font-semibold hover:bg-slate-200 transition-colors active:bg-slate-300" onClick={onClose}>Cancel</button>

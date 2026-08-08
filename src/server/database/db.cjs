@@ -157,6 +157,16 @@ const ChatMessage = sequelize.define("ChatMessage", {
   sentAt: { type: DataTypes.DATE, defaultValue: DataTypes.NOW, field: "sent_at" },
 }, { tableName: "chat_messages", timestamps: false });
 
+const MessageReaction = sequelize.define("MessageReaction", {
+  id: { type: DataTypes.UUID, defaultValue: DataTypes.UUIDV4, primaryKey: true },
+  messageId: { type: DataTypes.UUID, allowNull: false, field: "message_id", references: { model: messages, key: "id" } },
+  userId: { type: DataTypes.UUID, allowNull: false, field: "user_id", references: { model: user, key: "id" } },
+  emoji: { type: DataTypes.STRING, allowNull: false },
+}, {
+  tableName: "message_reactions", timestamps: false,
+  indexes: [{ unique: true, fields: ["message_id", "user_id"] }],
+});
+
 const OfflineQueue = sequelize.define("OfflineQueue", {
   id: { type: DataTypes.UUID, defaultValue: DataTypes.UUIDV4, primaryKey: true },
   scanId: { type: DataTypes.TEXT, allowNull: false, unique: true, field: "scan_id" },
@@ -171,6 +181,10 @@ const OfflineQueue = sequelize.define("OfflineQueue", {
 
 messages.belongsTo(user, { foreignKey: "senderId" });
 user.hasMany(messages, { foreignKey: "senderId" });
+
+messages.hasMany(MessageReaction, { foreignKey: "message_id", as: "reactions", onDelete: "CASCADE" });
+MessageReaction.belongsTo(messages, { foreignKey: "message_id", as: "message" });
+MessageReaction.belongsTo(user, { foreignKey: "user_id", as: "user" });
 
 Programme.hasMany(Route, { foreignKey: "programme_id", as: "routes", onDelete: "CASCADE" });
 Route.belongsTo(Programme, { foreignKey: "programme_id", as: "programme" });
@@ -564,4 +578,4 @@ ReadyToDepart.setStatus = async function (routeId, programmeId, ready) {
   return { routeId: record.routeId, ready: record.ready, toggledBy: record.toggledBy, toggledAt: record.toggledAt };
 };
 
-module.exports = { sequelize, user, messages, attendee, admin, faceEmbeddings, Programme, Route, Delegate, AttendanceRecord, ReadyToDepart, ProgrammeDelegate, Staff, ScanEvent, ChatMessage, OfflineQueue, RouteMember };
+module.exports = { sequelize, user, messages, attendee, admin, faceEmbeddings, Programme, Route, Delegate, AttendanceRecord, ReadyToDepart, ProgrammeDelegate, Staff, ScanEvent, ChatMessage, MessageReaction, OfflineQueue, RouteMember };

@@ -60,7 +60,7 @@ async function getChatbotResponse(userMessage, programmeContext, chatbotUserId, 
         content: m.content,
     }));
 
-    const systemPrompt = `You are an AI assistant for OpenGlimpse, you should be friendly and helpful. 
+    const systemPrompt = `You are an AI assistant for OpenGlimpse, you should be friendly and helpful.
     You have access to the following programme data:
 
 ${programmeContext}
@@ -72,7 +72,7 @@ Answer questions accurately based on this data. Be concise. Address the user by 
     const groqMessages = [
         { role: 'system', content: systemPrompt },
         ...chatHistory,
-        { role: 'user', content: userMessage },
+        { role: 'user',  content: userMessage },
     ];
 
     const completion = await groq.chat.completions.create({
