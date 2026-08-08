@@ -180,7 +180,7 @@ An in-app, programme-scoped chat with message persistence, emoji reactions, admi
 - `chat.jsx` — main page: connects `io(`${VITE_CHAT_SERVER_URL}/chat`, { auth: { token }, transports: ['websocket'] })`, joins the selected programme, renders the message list, fetches programmes + staff for mentions, tracks scroll position with a jump-to-bottom button + unread count, and shows online/offline pills. Redirects to `/profile` when the device goes offline (`e0a85c8`), and disables the composer with a "Chat unavailable while offline" placeholder.
 - `chatbubble.jsx` — message bubble; own/other alignment via `chat-bubble-own`/`chat-bubble-other`, admin bubbles highlighted with `chat-bubble-admin` (`9908dc8`), bot bubbles render Markdown via `marked` with a "BOT" badge, sender avatars (`e335d56`), and per-bubble emoji reactions triggered by hover or long-press (`chatbubble.jsx` + `ReactionBar.jsx`).
 - `ChatInput.jsx` — textarea composer with `@` mention suggestions (staff names + `@assistant`), keyboard navigation (arrows/enter/tab/escape), and a gradient send button.
-- `ReactionBar.jsx` — quick-emoji palette (👍 ❤️ 😂 😮 😢 🙏) shown above a bubble.
+- `ReactionBar.jsx` — quick-emoji palette shown above a bubble.
 
 #### Chat UI styling (`index.css`)
 `.chat-*` classes: layout (`chat-page`, `chat-header`, `chat-layout`, `chat-scroll`, `chat-content`, `chat-composer-shell`), bubbles (`chat-bubble-own`/`-other`/`-bot`/`-admin`, `chat-bubble-time-*`), reactions (`chat-reactions`, `chat-reaction`, `chat-reaction-mine`, `chat-reaction-bar`), mention dropdown, and the gradient `chat-send-button` / `chat-jump-bottom` (sky gradient via the combined selector).
