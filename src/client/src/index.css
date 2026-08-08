@@ -17,27 +17,62 @@ body {
 }
 
 /* Navbar */
-.bottom-nav {
-  @apply fixed right-0 bottom-0 left-0 z-20;
+.floatnav {
+  @apply fixed inset-x-0 bottom-0 z-30 flex justify-center;
+  padding-bottom: max(1rem, env(safe-area-inset-bottom));
+  pointer-events: none;
 }
 
-.bottom-nav-content {
-  @apply border-t border-slate-200 bg-white;
+.floatnav-pill {
+  @apply flex items-center gap-1 rounded-full border border-slate-200/60 bg-white/90 p-1.5 shadow-lg shadow-slate-900/10 backdrop-blur-xl;
+  pointer-events: auto;
 }
 
-.bottom-nav-action {
-  @apply transition-colors duration-150;
+.floatnav-item {
+  @apply flex flex-col items-center gap-0.5 rounded-full px-4 py-1.5 text-slate-500 transition-colors duration-150 min-w-[3.5rem];
+}
+
+.floatnav-icon {
+  @apply relative flex items-center justify-center;
+}
+
+.floatnav-label {
+  @apply text-[10px] font-medium leading-none;
+}
+
+.floatnav-dot {
+  @apply absolute top-0 right-[-2px] h-2 w-2 rounded-full bg-red-500 ring-2 ring-white;
+}
+
+.floatnav-item-active {
+  @apply bg-sky-600 text-white shadow-md shadow-sky-600/30;
+}
+
+.floatnav-item-active .floatnav-label {
+  @apply text-sky-100;
 }
 
 @media (hover: hover) and (pointer: fine) {
-  .bottom-nav-action:hover {
-    @apply bg-slate-100 text-sky-700;
+  .floatnav-item:hover {
+    @apply bg-slate-200/70 text-slate-700;
+  }
+  .floatnav-item-active:hover {
+    @apply bg-sky-600 text-white;
+  }
+}
+
+@media (min-width: 640px) {
+  .floatnav-item {
+    @apply flex-row gap-2 px-5 py-2;
+  }
+  .floatnav-label {
+    @apply text-xs;
   }
 }
 
 /* Chat */
 .chat-page {
-  @apply flex min-h-screen flex-col bg-slate-50 pb-14;
+  @apply flex min-h-screen flex-col bg-slate-50 pb-32;
 }
 
 .chat-header {
@@ -84,7 +119,7 @@ body {
 }
 
 .chat-composer-shell {
-  @apply sticky bottom-14 border-t border-slate-200 bg-white;
+  @apply sticky bottom-20 border-t border-slate-200 bg-white;
 }
 
 .chat-content {
@@ -143,7 +178,7 @@ body {
 
 /* Chat bubble */
 .chat-bubble-row {
-  @apply flex w-full;
+  @apply flex w-full items-start gap-2;
 }
 
 .chat-bubble-row-own {
@@ -155,7 +190,7 @@ body {
 }
 
 .chat-bubble {
-  @apply max-w-[78%] rounded-2xl px-4 py-2 text-sm leading-6 shadow-sm;
+  @apply rounded-2xl px-4 py-2 text-sm leading-6 shadow-sm;
 }
 
 .chat-bubble-own {
@@ -164,6 +199,10 @@ body {
 
 .chat-bubble-other {
   @apply rounded-bl-md border border-slate-200 bg-white text-slate-800;
+}
+
+.chat-bubble-admin {
+  @apply border-amber-300 bg-amber-50 text-slate-900 ring-1 ring-amber-300;
 }
 
 .chat-bubble-text {
@@ -180,6 +219,55 @@ body {
 
 .chat-bubble-time-other {
   @apply text-slate-400;
+}
+
+.chat-bubble-time-admin {
+  @apply text-amber-700;
+}
+
+/* Chat reactions */
+.chat-bubble-container {
+  @apply relative flex w-fit max-w-[78%] flex-col;
+}
+
+.chat-reaction-bar {
+  @apply absolute -top-9 z-10 flex items-center gap-0.5 rounded-full border border-slate-200 bg-white px-1.5 py-1 shadow-lg;
+}
+
+.chat-bubble-row-own .chat-reaction-bar {
+  @apply right-0;
+}
+
+.chat-bubble-row-other .chat-reaction-bar {
+  @apply left-0;
+}
+
+.chat-reaction-option {
+  @apply h-8 w-8 cursor-pointer rounded-full text-xl leading-none transition-transform duration-150 hover:scale-125;
+}
+
+.chat-reaction-option:hover {
+  @apply bg-slate-100;
+}
+
+.chat-reactions {
+  @apply mt-1 flex flex-wrap gap-1;
+}
+
+.chat-bubble-row-own .chat-reactions {
+  @apply justify-end;
+}
+
+.chat-reaction {
+  @apply flex cursor-pointer items-center gap-1 rounded-full border border-slate-200 bg-white px-2 py-0.5 text-xs font-medium text-slate-600 shadow-sm transition-colors;
+}
+
+.chat-reaction-mine {
+  @apply border-sky-400 bg-sky-50 text-sky-700;
+}
+
+.chat-avatar {
+  @apply flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-sky-100 text-sky-700 text-sm font-semibold;
 }
 
 .chat-bubble-bot {
@@ -352,7 +440,7 @@ body {
 
 /* Ready toggle */
 .dashboard-ready-shell {
-  @apply fixed bottom-16 left-0 right-0 px-4 sm:px-6 z-30;
+  @apply fixed bottom-24 left-0 right-0 px-4 sm:px-6 z-30;
 }
 .dashboard-ready-btn {
   @apply flex w-full items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-slate-200 bg-white/90 py-4 text-sm font-semibold text-slate-500 shadow-sm backdrop-blur transition-all;
@@ -749,4 +837,158 @@ body {
 
 .face-preview-img {
   @apply h-14 w-14 rounded-full border-2 border-sky-200 object-cover;
+}
+
+/* ===== Gradient blue buttons ===== */
+/* Replaces solid `bg-sky-600` fills with a gradient blue accent. */
+.bg-sky-gradient,
+.floatnav-item-active,
+.floatnav-item-active:hover,
+.chat-send-button,
+.chat-jump-bottom,
+.chat-bubble-own,
+.auth-button,
+.profile-action-present {
+  background-image: linear-gradient(135deg, #38bdf8 0%, #0ea5e9 45%, #0284c7 100%);
+}
+.bg-sky-gradient:hover,
+.floatnav-item-active:hover,
+.chat-send-button:hover,
+.chat-jump-bottom:hover,
+.auth-button:hover,
+.profile-action-present:hover {
+  background-image: linear-gradient(135deg, #3bb8f8 0%, #0a9ae4 45%, #026ab1 100%);
+}
+.bg-sky-gradient:active,
+.chat-send-button:active,
+.auth-button:active {
+  background-image: linear-gradient(135deg, #38bdf8 0%, #0284c7 45%, #075985 100%);
+}
+.dark .bg-sky-gradient,
+.dark .floatnav-item-active,
+.dark .chat-send-button,
+.dark .chat-jump-bottom,
+.dark .chat-bubble-own,
+.dark .auth-button,
+.dark .profile-action-present {
+  background-image: linear-gradient(135deg, #0ea5e9 0%, #0284c7 45%, #0369a1 100%);
+}
+.dark .bg-sky-gradient:hover,
+.dark .chat-send-button:hover,
+.dark .auth-button:hover {
+  background-image: linear-gradient(135deg, #38bdf8 0%, #0ea5e9 45%, #0369a1 100%);
+}
+
+/* ===== Dark theme ===== */
+/* Tailwind v4 utilities reference these CSS variables, so remapping them
+   in `.dark` re-themes every surface, border, and text color at once. */
+.dark {
+  color-scheme: dark;
+
+  --color-white: #171f2b;
+
+  --color-slate-50: #0d131d;
+  --color-slate-100: #151c27;
+  --color-slate-200: #1c2531;
+  --color-slate-300: #253040;
+  --color-slate-400: #90a1b8;
+  --color-slate-500: #a6b4c7;
+  --color-slate-600: #bdc9da;
+  --color-slate-700: #d1dae6;
+  --color-slate-800: #e2e8f0;
+  --color-slate-900: #eef3f8;
+  --color-slate-950: #f8fafc;
+
+  --color-sky-50: #0c1b2e;
+  --color-sky-100: #123047;
+  --color-sky-200: #1a4567;
+  --color-sky-500: #38bdf8;
+  --color-sky-600: #0ea5e9;
+  --color-sky-700: #38bdf8;
+
+  --color-emerald-50: #06382b;
+  --color-emerald-100: #0a5340;
+  --color-emerald-200: #10634c;
+  --color-emerald-400: #34d399;
+  --color-emerald-600: #34d399;
+  --color-emerald-700: #6ee7b7;
+  --color-emerald-800: #a9f1cd;
+
+  --color-amber-50: #3a2d0d;
+  --color-amber-100: #45360a;
+  --color-amber-300: #fcd34d;
+  --color-amber-500: #fbbf24;
+  --color-amber-600: #fbbf24;
+  --color-amber-700: #fcd34d;
+
+  --color-red-50: #3a1616;
+  --color-red-100: #4a2020;
+  --color-red-500: #fb7185;
+  --color-red-600: #f87171;
+  --color-red-700: #fca5a5;
+}
+
+.dark body {
+  background: #0d1220;
+}
+
+/* White text must stay readable on the (unchanged) coloured buttons. */
+.dark .text-white {
+  color: #ffffff;
+}
+
+.dark .chat-send-button,
+.dark .chat-bubble-own,
+.dark .chat-jump-bottom,
+.dark .chat-jump-badge,
+.dark .auth-button,
+.dark .profile-action-present,
+.dark .floatnav-item-active {
+  color: #ffffff;
+}
+
+.dark .ring-white {
+  --tw-ring-color: #ffffff;
+}
+
+/* Keep genuinely-dark surfaces dark (chat code blocks, toast fallbacks). */
+.dark .bg-slate-700,
+.dark .bg-slate-800,
+.dark .bg-slate-900,
+.dark .bg-slate-950 {
+  background-color: #101722;
+}
+.dark .chat-bubble-bot pre {
+  background-color: #0b101a;
+  color: #dce4ee;
+}
+.dark .chat-bubble-bot pre code {
+  color: #dce4ee;
+}
+
+/* MUI Tabs inherit the default dark text in light theme; re-colour for dark. */
+.dark .MuiTab-root {
+  color: #bdc9da;
+}
+.dark .MuiTab-root.Mui-selected {
+  color: #7dd3fc;
+}
+
+/* The floating navbar uses explicit light/active colours. */
+.dark .floatnav-pill {
+  border-color: color-mix(in oklab, var(--color-slate-200) 60%, transparent);
+  background-color: rgba(21, 29, 41, 0.9);
+}
+.dark .floatnav-item {
+  color: var(--color-slate-500);
+}
+.dark .floatnav-item-active {
+  background-color: var(--color-sky-600);
+  color: #ffffff;
+}
+.dark .floatnav-item-active .floatnav-label {
+  color: #e0f2fe;
+}
+.dark .chat-bubble-time-own {
+  color: #e0f2fe;
 }

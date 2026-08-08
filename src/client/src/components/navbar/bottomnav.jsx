@@ -1,16 +1,13 @@
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 
-import Box from '@mui/material/Box';
-import CssBaseline from '@mui/material/CssBaseline';
-import BottomNavigation from '@mui/material/BottomNavigation';
-import BottomNavigationAction from '@mui/material/BottomNavigationAction';
-import Badge from '@mui/material/Badge';
-import ChatIcon from '@mui/icons-material/Chat';
-import DashboardIcon from '@mui/icons-material/Dashboard';
-import CameraAlt from '@mui/icons-material/CameraAlt';
-import AccountCircle from '@mui/icons-material/AccountCircle';
-import QrCode from '@mui/icons-material/QrCode';
-import Paper from '@mui/material/Paper';
+import {
+    MessagesSquare,
+    LayoutDashboard,
+    ScanFace,
+    QrCode,
+    CircleUserRound,
+} from 'lucide-react';
+
 import { useConnectivity } from '../../hooks/useConnectivity';
 
 function getAuthUser() {
@@ -23,69 +20,81 @@ function getAuthUser() {
     }
 }
 
-export default function FixedBottomNavigation() {
+function isActive(pathname, to) {
+    if (to === '/chat') return pathname.startsWith('/chat');
+    if (to === '/dashboard') return pathname.startsWith('/dashboard');
+    if (to === '/profile') return pathname.startsWith('/profile');
+    return pathname === to;
+}
+
+export default function FloatingNavbar() {
     const currentUser = getAuthUser();
     const isStaff = currentUser?.role === 'staff';
     const { isOnline } = useConnectivity();
+    const { pathname } = useLocation();
 
-    return(
-        <Box>
-            <CssBaseline />
-            <Paper className="bottom-nav" elevation={3}>
-                <BottomNavigation className="bottom-nav-content">
-                    <BottomNavigationAction
-                        className="bottom-nav-action"
-                        label={isOnline ? "Chat" : "Chat (offline)"}
-                        value="chat"
-                        icon={
-                            <Badge color="error" variant="dot" invisible={isOnline}>
-                                <ChatIcon sx={{ opacity: isOnline ? 1 : 0.4 }} />
-                            </Badge>
-                        }
-                        component={Link}
-                        to="/chat"
-                    />
-                    {isStaff && (
-                        <BottomNavigationAction
-                            className="bottom-nav-action"
-                            label="Dashboard"
-                            value="dashboard"
-                            icon={<DashboardIcon />}
-                            component={Link}
-                            to="/dashboard"
-                        />
-                    )}
-                    {isStaff && (
-                        <BottomNavigationAction
-                            className="bottom-nav-action"
-                            label="Camera"
-                            value="camera"
-                            icon={<CameraAlt/>}
-                            component={Link}
-                            to="/camera"
-                        />
-                    )}
-                    {!isStaff && (
-                        <BottomNavigationAction
-                            className="bottom-nav-action"
-                            label="Badge"
-                            value="badge"
-                            icon={
-                                <QrCode />}
-                            component={Link}
-                            to="/badge"
-                        />
-                    )}
-                    <BottomNavigationAction
-                        className="bottom-nav-action"
-                        label="Profile"
-                        value="profile"
-                        icon={<AccountCircle />}
-                        component={Link}
-                        to="/profile"
-                    />
-                </BottomNavigation>
-            </Paper>
-        </Box>
+    const iconProps = { size: 22, strokeWidth: 2 };
+
+    return (
+        <nav className="floatnav">
+            <div className="floatnav-pill">
+                <Link
+                    className={isActive(pathname, '/chat') ? 'floatnav-item floatnav-item-active' : 'floatnav-item'}
+                    to="/chat"
+                >
+                    <span className="floatnav-icon">
+                        <MessagesSquare {...iconProps} />
+                        {!isOnline && <span className="floatnav-dot" />}
+                    </span>
+
+                </Link>
+
+                {isStaff && (
+                    <Link
+                        className={isActive(pathname, '/dashboard') ? 'floatnav-item floatnav-item-active' : 'floatnav-item'}
+                        to="/dashboard"
+                    >
+                        <span className="floatnav-icon">
+                            <LayoutDashboard {...iconProps} />
+                        </span>
+
+                    </Link>
+                )}
+
+                {isStaff && (
+                    <Link
+                        className={isActive(pathname, '/camera') ? 'floatnav-item floatnav-item-active' : 'floatnav-item'}
+                        to="/camera"
+                    >
+                        <span className="floatnav-icon">
+                            <ScanFace {...iconProps} />
+                        </span>
+
+                    </Link>
+                )}
+
+                {!isStaff && (
+                    <Link
+                        className={isActive(pathname, '/badge') ? 'floatnav-item floatnav-item-active' : 'floatnav-item'}
+                        to="/badge"
+                    >
+                        <span className="floatnav-icon">
+                            <QrCode {...iconProps} />
+                        </span>
+
+                    </Link>
+                )}
+
+                <Link
+                    className={isActive(pathname, '/profile') ? 'floatnav-item floatnav-item-active' : 'floatnav-item'}
+                    to="/profile"
+                >
+                    <span className="floatnav-icon">
+                        <CircleUserRound {...iconProps} />
+                    </span>
+
+                </Link>
+            </div>
+        </nav>
     );
 }

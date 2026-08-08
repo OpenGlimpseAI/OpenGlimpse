@@ -104,10 +104,12 @@ P1 = must-have MVP; P2 = high value, build after P1; P3 = nice-to-have.
 - Offline queue: browser localStorage for queuing facial scans and embeddings when disconnected
 - UI: simple, high-contrast, glanceable — unidentified/absent delegates surfaced at top of list
 - Chat auto-scroll: chat snaps to the latest message on first entry and when already at the bottom on new messages; a floating jump-to-bottom button (with unread count) appears when scrolled up
+- Navbar: floating, pill-shaped bottom nav (`components/navbar/bottomnav.jsx`) using lucide-react icons; active route highlighted via `useLocation`; offline dot badge on Chat; collapses labels to icons on small screens; content pages reserve bottom padding so the floating pill never overlaps interactive elements
+- Dark mode: default-on dark theme toggled in the Profile page ("Appearance" section, sun/moon) via `hooks/useTheme.js`, which now exposes a `ThemeProvider` (wraps the app in `main.jsx`) plus a `useTheme()` hook so the toggle reflects instantly everywhere; persisted in `localStorage` (`openglimpse-theme`) and applied by toggling the `.dark` class on `<html>`. Tailwind v4 emits `var(--color-*)` in every utility, so `index.css` remaps those variables in a `.dark` scope to re-theme surfaces, borders, and text across the whole app from a single block, with targeted overrides for white text on coloured buttons, chat code blocks, the floating nav, and MUI tabs; a pre-React inline script in `index.html` sets the class before first paint to avoid a flash. Primary buttons use a `bg-sky-gradient` linear-gradient instead of solid `bg-sky-600` (defined in `index.css`, with hover/active and dark-mode variants), applied via the `.bg-sky-gradient` utility and via a combined CSS selector for the `@apply`-based components (floatnav active, chat send button/bubbles, auth buttons, etc.). The accent colour is user-selectable (blue/purple/red/green): a row of gradient swatches in the same "Appearance" section sets `accent` (persisted as `openglimpse-accent`, applied via `data-accent` on `<html>`, set pre-paint in `index.html`), and `index.css` maps each accent to the `--grad-*` CSS variables shared by all the layered gradient selectors.
 
 ### 4.2 Backend
 - Node.js REST API (Express.js) for programmes, routes, attendance, user management, and chat
-- Real-time sync: WebSockets (Socket.io) for instant multi-device attendance updates and in-app chat
+- Real-time sync: WebSockets (Socket.io) for instant multi-device attendance updates, in-app chat, and message reactions
 - AI chatbot: Groq API (llama-3.3-70b-versatile) with full programme context; chatbot user seeded in DB; triggered by configurable prefix (e.g. `@assistant`) in chat
 - Database: PostgreSQL — stores programmes, participants, facial embeddings (vectors), scan events, chat messages, user accounts
 - Offline queue processing: backend receives offline scans, validates embeddings, and merges with live data without duplication
@@ -119,19 +121,21 @@ P1 = must-have MVP; P2 = high value, build after P1; P3 = nice-to-have.
 - Facial embeddings: stored in PostgreSQL as numeric vectors (face-api.js output); compared for similarity matching
 - Staff data: account credentials, facial photo for login verification, permission levels
 - Photos pre-registered by admin before the programme; staff updates own photo on first login
-- Chat messages: retained for programme history; can be archived per admin policy
+- Chat messages: persisted in the `messages` table (`content`, `timestamp`, `senderId`) and rendered via the `/chat` socket namespace; retained for programme history; can be archived per admin policy
+- Message reactions: one reaction per user per message (WhatsApp-style emoji); stored in `message_reactions` keyed on `(message_id, user_id)`; synced live over the `/chat` socket namespace via the `react` event and `reaction:update` broadcasts
 
 ### 4.4 Offline Sync Engine
 
 #### Architecture
 - **Client:** Dexie.js (IndexedDB) with `requestCache` and `pendingChanges` tables
 - **Interception layer:** `services/api.js` `request()` caches GET responses; offline reads serve from cache, offline writes queue `{ method, path, body, token }` to `pendingChanges`
-- **Auth endpoints:** `/api/auth` in `SYNC_PREFIXES`; login excluded via `NEVER_QUEUE`; token carried in ops for auth writes
-- **Sync trigger:** `hooks/useSync.js` calls `sync/changeHandler()` on mount, `online` event, and tab `focus`; dispatches `sync:done` custom event after successful sync
+- **Auth endpoints:** `/api/auth` and `/api/user` in `SYNC_PREFIXES`; login excluded via `NEVER_QUEUE`; token carried in ops for auth writes
+- **Sync trigger:** `hooks/useSync.js` calls `sync/changeHandler()` on mount, `online` event, and tab `focus`; dispatches `sync:start` before flushing and `sync:done` after (in `finally`, so it also fires on failure) to drive the syncing indicator and `pendingCount` refresh
 - **Server:** `POST /sync` registered in `index.js` via `registerSyncRoutes(app)`; handled by `modules/sync/syncController.js` which replays ops against Sequelize models; auth ops validated via `parseToken()` + DB lookup
+- **Rate limiting:** an in-memory limiter in `index.js` caps `/sync` at 60 req/min/IP and `/api/auth/login` at 10 req/min/IP (HTTP 429 on overflow) to prevent replay storms when a device flushes its offline queue (added in the v3 iteration)
 - **Vite proxy:** `/sync` added to `vite.config.js` proxy table so `changeHandler` fetch reaches Express (was root cause of silent sync failure)
-- **Synced entity types:** programme, route, delegate, attendance, readyToDepart, auth (prefixed `/programmes`, `/delegates`, or `/api/auth`)
-- **Not synced:** login (`/api/auth/login`), face recognition, QR scanning, chat, users (`/users`)
+- **Synced entity types:** programme, route, delegate, attendance (single + batch), readyToDepart, auth, face upload (`PATCH /api/user/:id/face/default`); batch attendance pulls `programmeId` from the URL path since the client payload only carries `records`
+- **Not synced:** login (`/api/auth/login`); face recognition (`/programmes/:id/recognize`) and QR scanning (`/programmes/:id/scan-qr`) excluded via `NO_SYNC_PATTERNS` so they fail loudly instead of queueing ops that cannot be replayed; chat and users (`/users`)
 
 #### Client-side data flow
 - `request()` in `api.js` checks `navigator.onLine`:
@@ -143,12 +147,52 @@ P1 = must-have MVP; P2 = high value, build after P1; P3 = nice-to-have.
 #### Sync lifecycle
 1. **Queue:** offline writes accumulate in `pendingChanges` (IndexedDB, persists across sessions)
 2. **Trigger:** `useSync.js` fires `changeHandler()` on mount, `online` event, or tab `focus` (with ref guard to prevent concurrent runs)
-3. **Send:** `changeHandler()` does `POST /sync` with `{ ops, timestamp }`; on 200 OK, deletes `pendingChanges` and dispatches `sync:done`
+3. **Send:** `changeHandler()` does `POST /sync` with `{ ops, timestamp }`; on 200 OK, deletes `pendingChanges`; `useSync.js` then dispatches `sync:done`
 4. **Server processing:** `syncController.js` `HANDLERS` map dispatches each op by `method + path` pattern; auth ops include `validateToken()` checks
 5. **UI refresh:** components listen for `sync:done` via `window.addEventListener('sync:done', ...)` and `sync:done` event to re-fetch fresh data: `ParticipantManagement.jsx`, `ProgrammePage.jsx`, `directory.jsx`
 6. **Connectivity indicator:** `useConnectivity.js` polls `pendingChanges` every 3s **and** listens for `sync:done` to instantly update `pendingCount`; camera & chat disabled when offline
 
-### 4.5 Hardware (for Demo & Production)
+#### Automated tests
+- **Client offline layer** (`npm run test:sync` in `src/client`): `tests/sync/client-offline.test.mjs` runs the real `api.js`/`syncEngine.js` in Node via a loader hook (`tests/sync/meta-loader.cjs`) that injects `import.meta.env` and resolves extensionless imports; Dexie backed by `fake-indexeddb`. Covers GET caching, offline cache reads, offline write queueing, never-queued endpoints (login, recognize, scan-qr), optimistic results, auth headers, and the `/sync` flush (success clears, failure retains).
+- **Server replay** (`npm run test:sync` in `src/server`): `tests/server-replay.test.cjs` creates a throwaway `OpenGlimpse_test` database and exercises `handleSync` against the real Sequelize models. Covers every `HANDLERS` pattern (batch/single attendance, ready-to-depart, programme/route/delegate CRUD, auth account create/delete, face upload), staff-vs-participant permission rules, and unknown-path skipping.
+
+### 4.5 Real-Time Chat Feature
+
+#### Overview
+An in-app, programme-scoped chat with message persistence, emoji reactions, admin/highlighted bubbles, sender avatars, and an optional AI assistant. Built by **Rayablepy** (Rayhan) on the `messages-update` / `feature/chat-improvements` branches and merged via PR #7 and the `feature/offline-sync-v3` line. Uses a dedicated Socket.io namespace (`/chat`) served from `src/server/modules/chat/chatserver.cjs` (separate from the attendance socket namespace). The `@assistant`-triggered Groq chatbot (`server/modules/chatbot/chatbot.js`) was authored by RyanStudio and integrated into the chat server by Rayablepy.
+
+#### Server-side architecture
+- **Namespace:** Socket.io `io.of('/chat')` mounted in `index.js` via `attachChatServer(io, getChatbotUserId)`.
+- **Auth middleware:** every socket handshake must supply a JWT (`auth.token` or `query.token`); `parseToken()` + `user.findByPk()` validate it and attach `userId`, `userRole`, `userName` to the socket.
+- **History:** on connection, loads the last 100 `Messages` ordered ascending, joins each message's sender role/name, and resolves reactions via `Reactions.readByMessageIds`; emits `history` with the full formatted payload.
+- **Events (client → server):**
+  - `chat:join <programmeId>` — stores `socket.programmeId` for chatbot context.
+  - `message { text }` — trims/validates (≤1000 chars), persists via `Messages.create`, broadcasts `message` to the whole `/chat` namespace; if the text starts with the chatbot trigger (e.g. `@assistant`) and a programme is joined, builds programme context and streams a Groq response (emitting `chatbot:typing` / `chatbot:stop` around it and persisting the bot reply).
+  - `react { messageId, emoji }` — toggles a per-user reaction on a message (same emoji → delete; different emoji → update; else create), then broadcasts `reaction:update` with the aggregated `{ emoji, userIds[] }` list, sorted by count.
+- **Chatbot config:** on connection the server emits `chatbot:config` (`{ userId, trigger }`) so the client knows how to render bot bubbles; the chatbot user is seeded as `ai-assistant@openglimpse.com` on startup (`index.js`).
+
+#### Database models (`db.cjs` + `dbcrudmethods.js`)
+- `messages` (`content`, `timestamp`, `senderId` → `users`) — chat message persistence, written by Rayable's original chat/db commits (`0ee92b6`) and extended with `senderId` (`7e96bda`).
+- `message_reactions` (`messageId` → `messages`, `userId` → `users`, `emoji`; unique on `(message_id, user_id)`) — one reaction per user per message.
+- CRUD classes: `Messages` (create/read last 100/update/delete) and `Reactions` (create/findOne/update/destroy/readByMessageIds) in `server/database/dbcrudmethods.js`.
+
+#### Client-side components (`src/client/src/pages/chat/`)
+- `chat.jsx` — main page: connects `io(`${VITE_CHAT_SERVER_URL}/chat`, { auth: { token }, transports: ['websocket'] })`, joins the selected programme, renders the message list, fetches programmes + staff for mentions, tracks scroll position with a jump-to-bottom button + unread count, and shows online/offline pills. Redirects to `/profile` when the device goes offline (`e0a85c8`), and disables the composer with a "Chat unavailable while offline" placeholder.
+- `chatbubble.jsx` — message bubble; own/other alignment via `chat-bubble-own`/`chat-bubble-other`, admin bubbles highlighted with `chat-bubble-admin` (`9908dc8`), bot bubbles render Markdown via `marked` with a "BOT" badge, sender avatars (`e335d56`), and per-bubble emoji reactions triggered by hover or long-press (`chatbubble.jsx` + `ReactionBar.jsx`).
+- `ChatInput.jsx` — textarea composer with `@` mention suggestions (staff names + `@assistant`), keyboard navigation (arrows/enter/tab/escape), and a gradient send button.
+- `ReactionBar.jsx` — quick-emoji palette shown above a bubble.
+
+#### Chat UI styling (`index.css`)
+`.chat-*` classes: layout (`chat-page`, `chat-header`, `chat-layout`, `chat-scroll`, `chat-content`, `chat-composer-shell`), bubbles (`chat-bubble-own`/`-other`/`-bot`/`-admin`, `chat-bubble-time-*`), reactions (`chat-reactions`, `chat-reaction`, `chat-reaction-mine`, `chat-reaction-bar`), mention dropdown, and the gradient `chat-send-button` / `chat-jump-bottom` (sky gradient via the combined selector).
+
+#### Chatbot (`server/modules/chatbot/chatbot.js`)
+- Groq API client (authored by RyanStudio); `buildProgrammeContext(programmeId)` assembles a text context from programme, routes, delegates, attendance summary, and staff list; `getChatbotResponse` injects a system prompt + recent 10-message history and calls the model (`GROQ_MODEL`, default `gpt-oss-20b`). Triggered only when the first word matches `VITE_CHATBOT_TRIGGER` (default `@assistant`); the chat-server wiring that emits `chatbot:typing` / `chatbot:stop` and persists the bot reply lives in `chatserver.cjs`.
+
+#### Related env vars
+- `VITE_CHAT_SERVER_URL` — Socket.io chat endpoint (client).
+- `VITE_CHATBOT_TRIGGER` (default `@assistant`) and `GROQ_API_KEY` / `GROQ_MODEL` — chatbot trigger + provider config.
+
+### 4.6 Hardware (for Demo & Production)
 - Development: laptop webcam acceptable with printed QR codes and mock data
 - Final demo: mobile phone (Android/iOS) for live facial recognition, camera-based QR scanning
 - QR badges: printed QR codes embedded in delegate badge lanyard
@@ -221,6 +265,16 @@ Per-team-member deep-dive docs (use cases, API reference, database schema) live 
 - `docs/ryan/use-cases.md` — use cases for all roles (facial recognition, QR backup, unidentified alerts, chatbot)
 - `docs/ryan/api-documentation.md` — every HTTP endpoint + WebSocket/chat events + internal FaceNet API
 - `docs/ryan/database-schema.md` — ER diagram + full table definitions for the PostgreSQL schema
+
+### 9.1 Rayablepy's feature branches
+
+Rayablepy (Muhammad Rayhan) authored the offline sync engine and the real-time chat feature across these branches:
+
+- `feature/offline-sync`, `feature/offline-syncv2` — initial Dexie.js/IndexedDB offline queue, `useConnectivity`/`useSync` hooks, sync engine, conflict handling + queue pruning, wired into the UI; server `POST /sync` handler with last-write-wins logic.
+- `feature/offline-sync-v3` — synced previously unsupported routes, added in-memory rate limiting for `/sync` and `/api/auth/login`, connectivity indicator rework, offline redirection out of chat, offline-aware UI (disabled camera/chat/face-upload), fixed participant rendering and face upload; merged into `main` via PR #15.
+- `feature/admin-dashboard` (early) — admin dashboard UI + user CRUD (later superseded).
+- `feature/chat-improvements` — chat bubbles with admin highlight, emoji reactions (server + client), sender avatars, and the light/dark mode theme work; currently the active branch (`origin/feature/chat-improvements`).
+- `messages-update` — original chat feature work (Socket.io `/chat` namespace, message persistence, auth), merged via PR #7.
 
 ---
 
