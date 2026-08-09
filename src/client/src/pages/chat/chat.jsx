@@ -38,6 +38,8 @@ export default function Chat() {
     const isAtBottomRef = useRef(true);
     const initialLoadDoneRef = useRef(false);
     const forceScrollRef = useRef(false);
+    const programmeIdRef = useRef(null);
+    programmeIdRef.current = programmeId;
     const [showJumpToBottom, setShowJumpToBottom] = useState(false);
     const [unreadCount, setUnreadCount] = useState(0);
 
@@ -94,9 +96,13 @@ export default function Chat() {
     }, []);
 
     useEffect(() => {
-        if (socketRef.current?.connected && programmeId) {
+        if (!socketRef.current?.connected) return;
+        if (programmeId) {
             socketRef.current.emit('chat:join', programmeId);
+        } else {
+            socketRef.current.emit('chat:leave');
         }
+        setMessages([]);
     }, [programmeId, isConnected]);
 
     useEffect(() => {
@@ -115,10 +121,12 @@ export default function Chat() {
         });
 
         socket.on('history', (payload) => {
+            if (payload.programmeId && payload.programmeId !== programmeIdRef.current) return;
             setMessages(payload.messages);
         });
 
         socket.on('message', (payload) => {
+            if (payload.programmeId && payload.programmeId !== programmeIdRef.current) return;
             setMessages((current) => [...current, payload.message]);
         });
 
@@ -161,6 +169,7 @@ export default function Chat() {
         isAtBottomRef.current = true;
         setUnreadCount(0);
         setShowJumpToBottom(false);
+        setMessages([]);
     }, [programmeId]);
 
     useEffect(() => {
@@ -189,6 +198,10 @@ export default function Chat() {
         }
 
         if (!socketRef.current?.connected) {
+            return;
+        }
+
+        if (!programmeId) {
             return;
         }
 
