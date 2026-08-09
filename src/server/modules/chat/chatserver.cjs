@@ -68,34 +68,49 @@ function attachChatServer(io, getChatbotUserId) {
     chat.on('connection', (socket) => {
         console.log(`Chat user connected: ${socket.userId}`);
 
-        socket.programmeId = null;
-
         const chatbotUserId = getChatbotUserId();
         if (chatbotUserId) {
             socket.emit('chatbot:config', { userId: chatbotUserId, trigger: CHATBOT_TRIGGER });
         }
 
-        socket.on('chat:join', (programmeId) => {
-            socket.programmeId = programmeId;
+        socket.on('chat:join', async (programmeId) => {
+            try {
+                if (!programmeId) return;
+                if (socket.programmeId && socket.programmeId !== programmeId) {
+                    socket.leave(`programme:${socket.programmeId}`);
+                }
+                socket.programmeId = programmeId;
+                socket.join(`programme:${programmeId}`);
+
+                const history = await Messages.read(100, programmeId);
+                const senderIds = [...new Set(history.map((m) => m.senderId))];
+                const senders = await user.findAll({ where: { id: senderIds }, attributes: ['id', 'role', 'enName'] });
+                const roleById = Object.fromEntries(senders.map((u) => [u.id, u.role]));
+                const nameById = Object.fromEntries(senders.map((u) => [u.id, u.enName]));
+                const reactions = await reactionsForMessages(history.map((m) => m.id));
+                socket.emit('history', {
+                    programmeId,
+                    messages: history.map((m) => formatpayload(m, roleById[m.senderId], reactions[m.id] || [], nameById[m.senderId] || null)),
+                });
+            } catch (err) {
+                console.error('Chat history could not be loaded', err);
+                socket.emit('error', { text: 'Chat history could not be found' });
+            }
         });
 
-        (async () => {
-            const history = await Messages.read();
-            const senderIds = [...new Set(history.map((m) => m.senderId))];
-            const senders = await user.findAll({ where: { id: senderIds }, attributes: ['id', 'role', 'enName'] });
-            const roleById = Object.fromEntries(senders.map((u) => [u.id, u.role]));
-            const nameById = Object.fromEntries(senders.map((u) => [u.id, u.enName]));
-            const reactions = await reactionsForMessages(history.map((m) => m.id));
-            socket.emit('history', {
-                messages: history.map((m) => formatpayload(m, roleById[m.senderId], reactions[m.id] || [], nameById[m.senderId] || null)),
-            });
-        })().catch((err) => {
-            console.error('Chat history could not be loaded', err);
-            socket.emit('error', { text: 'Chat history could not be found' });
+        socket.on('chat:leave', (programmeId) => {
+            const leaving = programmeId || socket.programmeId;
+            if (leaving) socket.leave(`programme:${leaving}`);
+            socket.programmeId = null;
         });
 
         socket.on('message', async (data) => {
             try {
+                const programmeId = socket.programmeId;
+                if (!programmeId) {
+                    return socket.emit('error', { text: 'Select a programme to join the chat' });
+                }
+
                 const text = typeof data?.text === 'string' ? data.text.trim() : '';
 
                 if (!text || text.length > 1000) {
@@ -106,25 +121,27 @@ function attachChatServer(io, getChatbotUserId) {
                     content: text,
                     timestamp: new Date(),
                     senderId: socket.userId,
+                    programmeId,
                 });
 
-                chat.emit('message', {
+                chat.to(`programme:${programmeId}`).emit('message', {
+                    programmeId,
                     message: formatpayload(savedMessage.toJSON(), socket.userRole, [], socket.userName),
                 });
 
-                if (text.includes(CHATBOT_TRIGGER) && socket.programmeId) {
+                if (text.includes(CHATBOT_TRIGGER) && programmeId) {
                     const chatbotUserId = getChatbotUserId();
                     if (!chatbotUserId) return;
 
                     const userQuery = text.split(CHATBOT_TRIGGER).join('').trim();
                     if (!userQuery) return;
 
-                    chat.emit('chatbot:typing', { senderId: chatbotUserId });
+                    chat.to(`programme:${programmeId}`).emit('chatbot:typing', { senderId: chatbotUserId });
 
                     try {
-                        const context = await buildProgrammeContext(socket.programmeId);
+                        const context = await buildProgrammeContext(programmeId);
                         if (!context) {
-                            chat.emit('chatbot:stop', { senderId: chatbotUserId });
+                            chat.to(`programme:${programmeId}`).emit('chatbot:stop', { senderId: chatbotUserId });
                             return;
                         }
 
@@ -134,16 +151,18 @@ function attachChatServer(io, getChatbotUserId) {
                             content: reply,
                             timestamp: new Date(),
                             senderId: chatbotUserId,
+                            programmeId,
                         });
 
-                        chat.emit('chatbot:stop', { senderId: chatbotUserId });
-                        chat.emit('message', {
+                        chat.to(`programme:${programmeId}`).emit('chatbot:stop', { senderId: chatbotUserId });
+                        chat.to(`programme:${programmeId}`).emit('message', {
+                            programmeId,
                             message: formatpayload(botMessage.toJSON()),
                         });
                     } catch (err) {
                         console.error('Chatbot error:', err);
-                        chat.emit('chatbot:stop', { senderId: chatbotUserId });
-                        chat.emit('error', { text: 'Chatbot could not respond. Please try again.' });
+                        chat.to(`programme:${programmeId}`).emit('chatbot:stop', { senderId: chatbotUserId });
+                        chat.to(`programme:${programmeId}`).emit('error', { text: 'Chatbot could not respond. Please try again.' });
                     }
                 }
             } catch (error) {
@@ -154,6 +173,11 @@ function attachChatServer(io, getChatbotUserId) {
 
         socket.on('react', async (data) => {
             try {
+                const programmeId = socket.programmeId;
+                if (!programmeId) {
+                    return socket.emit('error', { text: 'Select a programme to join the chat' });
+                }
+
                 const messageId = data?.messageId;
                 const emoji = typeof data?.emoji === 'string' ? data.emoji.trim() : '';
 
@@ -178,7 +202,7 @@ function attachChatServer(io, getChatbotUserId) {
                 }
 
                 const updated = await reactionsForMessages([messageId]);
-                chat.emit('reaction:update', { messageId, reactions: updated[messageId] || [] });
+                chat.to(`programme:${programmeId}`).emit('reaction:update', { messageId, reactions: updated[messageId] || [] });
             } catch (error) {
                 console.error('Failed to save reaction', error);
                 socket.emit('error', { text: 'invalid reaction format' });
@@ -193,4 +217,4 @@ function attachChatServer(io, getChatbotUserId) {
     return chat;
 }
 
-module.exports = { attachChatServer };
+module.exports = { attachChatServer, formatpayload };
