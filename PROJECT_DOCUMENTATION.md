@@ -22,7 +22,7 @@ OpenGlimpse is a monorepo running **three runtime processes plus one database**:
 |---------|------|------|----------------|
 | Web client | React 19 + Vite 8 (Tailwind CSS v4, MUI icons, lucide-react) | 5173 (dev) | Mobile-first SPA: camera/QR capture, real-time dashboards, offline queue, chat UI |
 | API server | Node.js + Express 5 + Socket.io | 3001 | REST API, auth, offline-sync replay, WebSocket rooms, chatbot orchestration |
-| Face service | Python FastAPI + DeepFace (FaceNet) | 8000 (loopback) | Face detection + 128-dim embedding generation |
+| Face service | Python FastAPI + ONNX Runtime (SCRFD + ArcFace MobileFaceNet) | 8000 (loopback) | Face detection + 512-dim embedding generation |
 | Database | PostgreSQL via Sequelize ORM | 5432 | All persistence: users, delegates, programmes, routes, embeddings, attendance, chat, reactions |
 
 The client and API server are the only public-facing processes. The Face service runs on loopback and is reachable only from the API server; the Groq API (chatbot) is the sole external third-party call.
@@ -38,11 +38,11 @@ The client and API server are the only public-facing processes. The Face service
 **Backend (`src/server/`)** — an Express application. Responsibilities:
 - REST API for programmes, routes, delegates, attendance, ready-to-depart, face upload, auth, and offline sync.
 - Auth: base64 `id:role` tokens + SHA-256 password hashing; rate limiting on `/api/auth/login` and `/sync`.
-- Face matching: cosine similarity (≥ 0.5) against stored `primary` embeddings, recording `ScanEvent`s.
+- Face matching: cosine similarity (≥ 0.4) against stored `primary` embeddings, recording `ScanEvent`s.
 - Offline sync: `POST /sync` replays queued client ops by matching `method + path` against a handler table.
 - Realtime: Socket.io rooms (`programme:<id>`) broadcast attendance changes; the `/chat` namespace handles messages, reactions, and the Groq-powered chatbot.
 
-**Face service (`src/server/python_server/`)** — a thin FastAPI wrapper over DeepFace/FaceNet (`/embed`, `/detect`, `/embed-all`), spawned and supervised by the Node backend (`facenetClient.js`), auto-installing pip dependencies on first run.
+**Face service (`src/server/python_server/`)** — a thin FastAPI wrapper over ONNX Runtime (SCRFD detector + ArcFace MobileFaceNet, 512-dim) exposing `/embed`, `/detect`, `/embed-all`; spawned and supervised by the Node backend (`facenetClient.js`), auto-installing pip dependencies and downloading the model weights on first run. Runs well under 512 MB RAM — far lighter than the previous TensorFlow/DeepFace stack.
 
 **Database (`src/server/database/db.cjs`)** — 17 Sequelize models; face images and embeddings stored in PostgreSQL (no external file storage).
 
@@ -302,7 +302,7 @@ An in-app, programme-scoped chat with message persistence, emoji reactions, admi
 Deployment URLs are only consumed outside `npm run dev`: the client reads `VITE_*` vars only when `import.meta.env.PROD` (Vite build), and the server only honors `CLIENT_URL` when `NODE_ENV === 'production'` (Render). During dev the client uses the Vite proxy (`localhost:3001`) and the server allows localhost origins.
 - `CLIENT_URL` — frontend URL (Vercel), used by the server for CORS. Render only.
 - `VITE_API_URL` / `VITE_SOCKET_URL` / `VITE_CHAT_SERVER_URL` — backend URL (Render Node service). Vercel build only.
-- `PYTHON_SERVER_URL` — Render Python service URL. When set, `facenetClient.js` skips spawning a local uvicorn and calls the remote service; when unset (dev) it spawns the local Python server on `127.0.0.1:8000`. On `502`/`503`/`504` (e.g. Render free-tier cold start) `callPythonServer` polls `/health` until the service is ready, then retries the request up to 3 times.
+- `PYTHON_SERVER_URL` — Render Python service URL. Only honored when `NODE_ENV === 'production'`: in production it skips spawning a local uvicorn and calls the remote service; in dev (`npm run dev`) it is ignored and the local Python server is always spawned on `127.0.0.1:8000`, so the dev stack never depends on the Render backend. On `502`/`503`/`504` (e.g. Render free-tier cold start) `callPythonServer` polls `/health` until the service is ready, then retries the request up to 3 times.
 
 ### 5.6 Hardware (for Demo & Production)
 - Development: laptop webcam acceptable with printed QR codes and mock data

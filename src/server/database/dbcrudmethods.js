@@ -119,7 +119,7 @@ class FaceEmbeddings extends Model {
                 imageType,
                 face.faceImage,
                 JSON.stringify(face.embedding),
-                'facenet'
+                'arcface'
             );
             results.push(record);
         }

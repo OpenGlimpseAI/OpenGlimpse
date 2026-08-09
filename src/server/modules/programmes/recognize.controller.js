@@ -29,7 +29,7 @@ async function recognize(req, res) {
         });
 
         const matchMap = new Map();
-        const threshold = 0.5;
+        const threshold = 0.4;
 
         for (const captured of capturedFaces) {
             for (const stored of storedEmbeddings) {
