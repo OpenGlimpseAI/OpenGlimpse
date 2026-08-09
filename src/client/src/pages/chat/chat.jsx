@@ -1,14 +1,14 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { io } from 'socket.io-client';
-import ChatBubble from "./ChatBubble.jsx";
+import ChatBubble from './chatbubble.jsx';
 import ChatInput from './ChatInput.jsx';
 import WifiRounded from '@mui/icons-material/WifiRounded'
 import WifiOffRoundedIcon from '@mui/icons-material/WifiOffRounded'
 import KeyboardArrowDownRounded from '@mui/icons-material/KeyboardArrowDownRounded'
 import { useConnectivity } from '../../hooks/useConnectivity';
 import { getProgrammes, getUsers } from '../../services/api';
-const CHAT_SERVER_URL = import.meta.env.VITE_CHAT_SERVER_URL || '';
+const CHAT_SERVER_URL = import.meta.env.PROD ? (import.meta.env.VITE_CHAT_SERVER_URL || '') : '';
 const CHATBOT_TRIGGER = import.meta.env.VITE_CHATBOT_TRIGGER || '@assistant';
 
 function getAuthUser() {

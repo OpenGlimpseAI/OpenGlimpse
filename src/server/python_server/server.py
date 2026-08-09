@@ -12,6 +12,11 @@ DeepFace.build_model("Facenet")
 print("Facenet model loaded successfully!", flush=True)
 
 
+@app.get("/health")
+async def health():
+    return {"status": "ok"}
+
+
 def _get_bbox(region):
     x = int(region.get("x", 0))
     y = int(region.get("y", 0))

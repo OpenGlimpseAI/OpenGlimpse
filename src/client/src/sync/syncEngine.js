@@ -1,6 +1,6 @@
 import { db } from '../db/localDB';
 
-const API_BASE = import.meta.env.VITE_API_URL || '';
+const API_BASE = import.meta.env.PROD ? (import.meta.env.VITE_API_URL || '') : '';
 //send and receive changes to and from /sync endpoint
 export async function changeHandler() {
   const pc = await db.pendingChanges.get('current');

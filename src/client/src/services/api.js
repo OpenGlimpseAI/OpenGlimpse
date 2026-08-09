@@ -1,4 +1,4 @@
-const API_BASE = import.meta.env.VITE_API_URL || '';
+const API_BASE = import.meta.env.PROD ? (import.meta.env.VITE_API_URL || '') : '';
 
 import { db } from '../db/localDB';
 //routes to sync

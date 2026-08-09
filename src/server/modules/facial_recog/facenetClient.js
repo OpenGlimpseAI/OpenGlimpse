@@ -11,7 +11,7 @@ const VENV_DIR = join(__dirname, '..', '..', '..', '..', '.venv');
 const PYTHON_PATH_WIN = join(VENV_DIR, 'Scripts', 'python.exe');
 const PYTHON_PATH_UNIX = join(VENV_DIR, 'bin', 'python3');
 const PYTHON_PATH = process.platform === 'win32' ? PYTHON_PATH_WIN : PYTHON_PATH_UNIX;
-const SERVER_URL = 'http://127.0.0.1:8000';
+const PYTHON_SERVER_URL = process.env.PYTHON_SERVER_URL || 'http://127.0.0.1:8000';
 
 let serverProcess = null;
 let serverReady = false;
@@ -24,6 +24,11 @@ let readyResolve = null;
  */
 export function startPythonServer() {
     if (serverReady) return Promise.resolve();
+    if (process.env.PYTHON_SERVER_URL) {
+        serverReady = true;
+        console.log(`[Python Server] Using remote server at ${PYTHON_SERVER_URL}`);
+        return Promise.resolve();
+    }
     if (readyPromise) return readyPromise;
 
     readyPromise = new Promise((resolve, reject) => {
@@ -119,7 +124,7 @@ async function callPythonServer(endpoint, imageInput) {
     const blob = new Blob([imageBuffer], { type: 'image/jpeg' });
     formData.append('file', blob, fileName);
 
-    const response = await fetch(`${SERVER_URL}${endpoint}`, {
+    const response = await fetch(`${PYTHON_SERVER_URL}${endpoint}`, {
         method: 'POST',
         body: formData,
     });
