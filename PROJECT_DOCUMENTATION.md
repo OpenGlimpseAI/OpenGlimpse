@@ -302,7 +302,7 @@ An in-app, programme-scoped chat with message persistence, emoji reactions, admi
 Deployment URLs are only consumed outside `npm run dev`: the client reads `VITE_*` vars only when `import.meta.env.PROD` (Vite build), and the server only honors `CLIENT_URL` when `NODE_ENV === 'production'` (Render). During dev the client uses the Vite proxy (`localhost:3001`) and the server allows localhost origins.
 - `CLIENT_URL` — frontend URL (Vercel), used by the server for CORS. Render only.
 - `VITE_API_URL` / `VITE_SOCKET_URL` / `VITE_CHAT_SERVER_URL` — backend URL (Render Node service). Vercel build only.
-- `PYTHON_SERVER_URL` — Render Python service URL. When set, `facenetClient.js` skips spawning a local uvicorn and calls the remote service; when unset (dev) it spawns the local Python server on `127.0.0.1:8000`.
+- `PYTHON_SERVER_URL` — Render Python service URL. When set, `facenetClient.js` skips spawning a local uvicorn and calls the remote service; when unset (dev) it spawns the local Python server on `127.0.0.1:8000`. On `502`/`503`/`504` (e.g. Render free-tier cold start) `callPythonServer` polls `/health` until the service is ready, then retries the request up to 3 times.
 
 ### 5.6 Hardware (for Demo & Production)
 - Development: laptop webcam acceptable with printed QR codes and mock data
