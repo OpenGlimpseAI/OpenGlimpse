@@ -7,7 +7,7 @@
     "dev:server": "node src/server/index.js",
     "dev:client": "npm run dev --prefix src/client",
     "test:ryan": "node tests/ryan/test-ryan-endpoints.js",
-    "test:rayablepy": "node --test tests/rayablepy/test-sync-controller.test.js tests/rayablepy/test-chat-payload.test.js",
+    "test:rayablepy": "node --test tests/rayhan/test-sync-controller.test.js tests/rayhan/test-chat-payload.test.js",
     "test:python": "node tests/test-endpoints.js",
     "seed": "node tests/seed.js"
   },
