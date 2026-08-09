@@ -1,7 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
-const { sequelize, Programme, Delegate, ProgrammeDelegate } = require('../src/server/database/db.cjs');
+const { sequelize, user, Programme, Delegate, ProgrammeDelegate } = require('../src/server/database/db.cjs');
 const { User, FaceEmbeddings } = require('../src/server/database/dbcrudmethods');
 
 // Force local face-embedding service instead of the remote PYTHON_SERVER_URL from .env
@@ -51,6 +51,18 @@ async function seed() {
     await sequelize.sync({ force: true });
     console.log('Database synced.\n');
     await delay(1000);
+
+    const existingStaff = await user.findOne({ where: { role: 'staff' } });
+    if (!existingStaff) {
+        const passwordHash = crypto.createHash('sha256').update('admin123').digest('hex');
+        await user.create({
+            enName: 'Admin',
+            email: 'admin@openglimpse.com',
+            passwordHash,
+            role: 'staff',
+        });
+        console.log('Seeded default staff account: admin@openglimpse.com\n');
+    }
 
     const folders = fs.readdirSync(TEST_IMAGES_DIR, { withFileTypes: true })
         .filter(d => d.isDirectory())
