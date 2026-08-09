@@ -3,6 +3,31 @@ import { Html5Qrcode } from 'html5-qrcode';
 
 const DECODER_ID = 'openglimpse-qr-decoder';
 
+function friendlyDecodeError(err) {
+    const msg = typeof err === 'string' ? err : err?.message;
+    if (msg && /no multiformat|not found|parse error/i.test(msg)) {
+        return 'Could not read the QR code. Keep the code fully in view, well-lit, and in focus, then capture again.';
+    }
+    return msg || 'Failed to read QR code';
+}
+
+async function decodeQrFromCanvas(canvas) {
+    if ('BarcodeDetector' in window) {
+        try {
+            const detector = new BarcodeDetector({ formats: ['qr_code'] });
+            const detections = await detector.detect(canvas);
+            if (detections.length > 0) return detections[0].rawValue;
+        } catch (err) {
+            // Fall through to the html5-qrcode decoder
+        }
+    }
+    const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/jpeg', 0.9));
+    if (!blob) throw new Error('Failed to capture image');
+    const file = new File([blob], 'qr-capture.jpg', { type: 'image/jpeg' });
+    const qrCode = new Html5Qrcode(DECODER_ID);
+    return qrCode.scanFile(file, false);
+}
+
 export default function QrScanner({ onScan, onError, facingMode = 'environment' }) {
     const videoRef = useRef(null);
     const streamRef = useRef(null);
@@ -24,7 +49,11 @@ export default function QrScanner({ onScan, onError, facingMode = 'environment' 
                     throw new Error('Camera access requires HTTPS. Access this page via HTTPS or localhost.');
                 }
                 const stream = await navigator.mediaDevices.getUserMedia({
-                    video: { facingMode },
+                    video: {
+                        facingMode,
+                        width: { ideal: 1920 },
+                        height: { ideal: 1080 },
+                    },
                 });
                 if (cancelled) return;
                 streamRef.current = stream;
@@ -85,16 +114,11 @@ export default function QrScanner({ onScan, onError, facingMode = 'environment' 
                 ctx.drawImage(video, 0, 0);
             }
 
-            const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/jpeg', 0.9));
-            if (!blob) throw new Error('Failed to capture image');
-            const file = new File([blob], 'qr-capture.jpg', { type: 'image/jpeg' });
-
-            const qrCode = new Html5Qrcode(DECODER_ID);
-            const decodedText = await qrCode.scanFile(file, false);
+            const decodedText = await decodeQrFromCanvas(canvas);
             onScanRef.current(decodedText);
         } catch (err) {
             if (onErrorRef.current) {
-                onErrorRef.current(err?.message || 'Failed to read QR code');
+                onErrorRef.current(friendlyDecodeError(err));
             }
         } finally {
             capturingRef.current = false;
