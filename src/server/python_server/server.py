@@ -3,13 +3,26 @@ from deepface import DeepFace
 import cv2
 import numpy as np
 import base64
+import threading
 import traceback
 
 app = FastAPI()
 
-print("Loading Facenet model...", flush=True)
-DeepFace.build_model("Facenet")
-print("Facenet model loaded successfully!", flush=True)
+_model_lock = threading.Lock()
+_model_loaded = False
+
+
+def ensure_model():
+    global _model_loaded
+    if _model_loaded:
+        return
+    with _model_lock:
+        if _model_loaded:
+            return
+        print("Loading Facenet model...", flush=True)
+        DeepFace.build_model("Facenet")
+        _model_loaded = True
+        print("Facenet model loaded successfully!", flush=True)
 
 
 @app.get("/health")
@@ -42,6 +55,7 @@ async def get_embedding(file: UploadFile = File(...)):
         if img is None:
             return {"success": False, "error": "Failed to decode image"}
 
+        ensure_model()
         result = DeepFace.represent(
             img_path=img,
             model_name="Facenet",
@@ -71,6 +85,7 @@ async def detect_faces(file: UploadFile = File(...)):
         if img is None:
             return {"success": False, "error": "Failed to decode image"}
 
+        ensure_model()
         faces = DeepFace.extract_faces(img_path=img, enforce_detection=False)
 
         bboxes = []
@@ -95,6 +110,7 @@ async def embed_all_faces(file: UploadFile = File(...)):
         if img is None:
             return {"success": False, "error": "Failed to decode image"}
 
+        ensure_model()
         faces = DeepFace.extract_faces(img_path=img, enforce_detection=False)
 
         results = []
@@ -134,5 +150,6 @@ async def embed_all_faces(file: UploadFile = File(...)):
 
 
 if __name__ == "__main__":
+    import os
     import uvicorn
-    uvicorn.run(app, host="127.0.0.1", port=8000)
+    uvicorn.run(app, host="0.0.0.0", port=int(os.environ.get("PORT", "8000")))
