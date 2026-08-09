@@ -1,13 +1,12 @@
 import { useEffect, useRef, useCallback } from 'react';
-import { Html5Qrcode, Html5QrcodeSupportedFormats } from 'html5-qrcode';
+import { Html5Qrcode } from 'html5-qrcode';
 
-const SCANNER_ID = 'openglimpse-qr-scanner';
+const DECODER_ID = 'openglimpse-qr-decoder';
 
 export default function QrScanner({ onScan, onError, facingMode = 'environment' }) {
-    const containerRef = useRef(null);
-    const canvasRef = useRef(null);
-    const qrRef = useRef(null);
-    const canvasSizedRef = useRef(false);
+    const videoRef = useRef(null);
+    const streamRef = useRef(null);
+    const capturingRef = useRef(false);
 
     // Use refs to hold the latest callbacks without breaking the useEffect dependency cycle
     const onScanRef = useRef(onScan);
@@ -16,144 +15,114 @@ export default function QrScanner({ onScan, onError, facingMode = 'environment' 
     useEffect(() => { onScanRef.current = onScan; }, [onScan]);
     useEffect(() => { onErrorRef.current = onError; }, [onError]);
 
-    const updateCanvasSize = useCallback(() => {
-        const canvas = canvasRef.current;
-        const container = containerRef.current?.parentElement;
-        if (!canvas || !container) return;
-        const rect = container.getBoundingClientRect();
-        if (rect.width > 0 && rect.height > 0) {
-            canvas.width = rect.width;
-            canvas.height = rect.height;
-            canvasSizedRef.current = true;
-        }
-    }, []);
-
     useEffect(() => {
-        const container = containerRef.current;
-        if (!container) return;
+        let cancelled = false;
 
-        canvasSizedRef.current = false;
-
-        const qrCode = new Html5Qrcode(SCANNER_ID);
-        qrRef.current = qrCode;
-
-        let stopped = false;
-        let isStarting = false;
-
-        const safelyStop = async () => {
-            if (stopped) return;
-            stopped = true;
+        const startCamera = async () => {
             try {
-                // Only stop if it's actually scanning
-                if (qrCode.isScanning) {
-                    await qrCode.stop();
+                if (!navigator.mediaDevices?.getUserMedia) {
+                    throw new Error('Camera access requires HTTPS. Access this page via HTTPS or localhost.');
                 }
-                qrCode.clear(); // Clears the DOM elements created by the scanner
-            } catch (err) {
-                console.warn("Failed to stop scanner cleanly:", err);
-            }
-        };
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    video: { facingMode },
+                });
+                if (cancelled) return;
+                streamRef.current = stream;
+                const video = videoRef.current;
+                if (!video) return;
+                video.srcObject = stream;
 
-        const startScanner = async () => {
-            if (isStarting) return;
-            isStarting = true;
+                await new Promise((resolve) => {
+                    video.addEventListener('loadedmetadata', resolve, { once: true });
+                });
 
-            try {
-                await qrCode.start(
-                    { facingMode },
-                    {
-                        fps: 15,
-                        qrbox: (w, h) => {
-                            // Prevent returning 0 dimensions which crashes html5-qrcode
-                            const width = Math.max(50, Math.floor(w * 0.8));
-                            const height = Math.max(50, Math.floor(h * 0.8));
-                            return { width, height };
-                        },
-                        aspectRatio: 4 / 3,
-                        formatsToSupport: [Html5QrcodeSupportedFormats.QR_CODE],
-                        experimentalFeatures: { useBarCodeDetectorIfSupported: true },
-                    },
-                    (decodedText, decodedResult) => {
-                        if (!canvasSizedRef.current) updateCanvasSize();
-
-                        const canvas = canvasRef.current;
-                        if (canvas && decodedResult) {
-                            const ctx = canvas.getContext('2d');
-                            ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-                            const pts = decodedResult.cornerPoints;
-                            if (pts && pts.length === 4) {
-                                ctx.strokeStyle = '#00ff00';
-                                ctx.lineWidth = 4;
-                                ctx.beginPath();
-                                ctx.moveTo(pts[0].x, pts[0].y);
-                                for (let i = 1; i < pts.length; i++) {
-                                    ctx.lineTo(pts[i].x, pts[i].y);
-                                }
-                                ctx.closePath();
-                                ctx.stroke();
-
-                                const midX = pts.reduce((s, p) => s + p.x, 0) / 4;
-                                const midY = pts.reduce((s, p) => s + p.y, 0) / 4;
-                                ctx.fillStyle = '#00ff00';
-                                ctx.font = 'bold 14px sans-serif';
-                                ctx.textAlign = 'center';
-                                ctx.fillText('✓ Verified', midX, midY - 10);
-                            } else if (decodedResult.boundingBox) {
-                                const b = decodedResult.boundingBox;
-                                ctx.strokeStyle = '#00ff00';
-                                ctx.lineWidth = 4;
-                                ctx.strokeRect(b.x, b.y, b.width, b.height);
-                            }
-                        }
-
-                        onScanRef.current(decodedText);
-                        safelyStop();
-                    },
-                    () => {} // Verbose error callback (ignored)
-                );
-            } catch (err) {
-                if (onErrorRef.current) {
-                    onErrorRef.current(err?.message || 'Failed to start QR scanner');
+                if (cancelled) return;
+                try {
+                    await video.play();
+                } catch (playErr) {
+                    if (!cancelled && onErrorRef.current) onErrorRef.current(playErr.message);
                 }
-            } finally {
-                isStarting = false;
+            } catch (err) {
+                if (!cancelled && onErrorRef.current) {
+                    onErrorRef.current(err?.message || 'Failed to start camera');
+                }
             }
         };
 
         // Timeout prevents race conditions with React Strict Mode unmounting
-        const timeoutId = setTimeout(startScanner, 100);
-
-        updateCanvasSize();
-
-        const ro = new ResizeObserver(() => updateCanvasSize());
-        ro.observe(container.parentElement);
+        const timeoutId = setTimeout(startCamera, 100);
 
         return () => {
+            cancelled = true;
             clearTimeout(timeoutId);
-            ro.disconnect();
-            safelyStop();
+            if (streamRef.current) {
+                streamRef.current.getTracks().forEach((t) => t.stop());
+                streamRef.current = null;
+            }
         };
-    }, [facingMode, updateCanvasSize]);
+    }, [facingMode]);
+
+    const handleCapture = useCallback(async () => {
+        if (capturingRef.current) return;
+        const video = videoRef.current;
+        if (!video || video.readyState < 2) {
+            if (onErrorRef.current) onErrorRef.current('Camera is not ready yet');
+            return;
+        }
+        capturingRef.current = true;
+        try {
+            const canvas = document.createElement('canvas');
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            const ctx = canvas.getContext('2d');
+            if (facingMode === 'user') {
+                ctx.save();
+                ctx.translate(canvas.width, 0);
+                ctx.scale(-1, 1);
+                ctx.drawImage(video, 0, 0);
+                ctx.restore();
+            } else {
+                ctx.drawImage(video, 0, 0);
+            }
+
+            const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/jpeg', 0.9));
+            if (!blob) throw new Error('Failed to capture image');
+            const file = new File([blob], 'qr-capture.jpg', { type: 'image/jpeg' });
+
+            const qrCode = new Html5Qrcode(DECODER_ID);
+            const decodedText = await qrCode.scanFile(file, false);
+            onScanRef.current(decodedText);
+        } catch (err) {
+            if (onErrorRef.current) {
+                onErrorRef.current(err?.message || 'Failed to read QR code');
+            }
+        } finally {
+            capturingRef.current = false;
+        }
+    }, [facingMode]);
 
     return (
-        <div style={{ position: 'relative', width: '100%', maxWidth: 480, margin: '0 auto' }}>
-            <div
-                id={SCANNER_ID}
-                ref={containerRef}
-                style={{ borderRadius: 12, overflow: 'hidden', background: '#000' }}
-            />
-            <canvas
-                ref={canvasRef}
+        <div style={{ position: 'relative', width: '100%', aspectRatio: '4 / 3', background: '#000' }}>
+            <div id={DECODER_ID} style={{ display: 'none' }} />
+            <video
+                ref={videoRef}
+                autoPlay
+                muted
+                playsInline
                 style={{
-                    position: 'absolute',
-                    top: 0,
-                    left: 0,
                     width: '100%',
                     height: '100%',
-                    pointerEvents: 'none',
+                    objectFit: 'cover',
+                    transform: facingMode === 'user' ? 'scaleX(-1)' : 'none',
                 }}
             />
+            <button
+                type="button"
+                onClick={handleCapture}
+                className="absolute left-1/2 -translate-x-1/2 bottom-4 bg-sky-gradient text-white rounded-xl px-6 py-2.5 text-sm font-semibold shadow-sm"
+            >
+                Capture &amp; Scan
+            </button>
         </div>
     );
 }
