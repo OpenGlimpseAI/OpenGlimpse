@@ -36,6 +36,7 @@ const messages = sequelize.define("messages", {
   content: { type: DataTypes.TEXT, allowNull: false },
   timestamp: { type: DataTypes.DATE, allowNull: false },
   senderId: { type: DataTypes.UUID, allowNull: false, references: { model: user, key: "id" } },
+  programmeId: { type: DataTypes.UUID, allowNull: true, field: "programme_id" },
 });
 
 const attendee = sequelize.define("attendee", {
