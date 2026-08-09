@@ -1,5 +1,5 @@
 import { useEffect, useRef, useCallback } from 'react';
-import { Html5Qrcode } from 'html5-qrcode';
+import { Html5Qrcode, Html5QrcodeSupportedFormats } from 'html5-qrcode';
 
 const SCANNER_ID = 'openglimpse-qr-scanner';
 
@@ -31,8 +31,14 @@ export default function QrScanner({ onScan, onError, facingMode }) {
         qrRef.current = qrCode;
 
         qrCode.start(
-            { facingMode },
-            { fps: 10, qrbox: { width: 250, height: 250 } },
+            { facingMode, width: { ideal: 1280 }, height: { ideal: 720 } },
+            {
+                fps: 15,
+                qrbox: (w, h) => ({ width: Math.floor(w * 0.8), height: Math.floor(h * 0.8) }),
+                aspectRatio: 4 / 3,
+                formatsToSupport: [Html5QrcodeSupportedFormats.QR_CODE],
+                experimentalFeatures: { useBarCodeDetectorIfSupported: true },
+            },
             (decodedText, decodedResult) => {
                 if (!canvasSizedRef.current) updateCanvasSize();
 
