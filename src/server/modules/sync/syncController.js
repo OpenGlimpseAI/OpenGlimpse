@@ -150,6 +150,7 @@ async function applyOp(method, path, body, token) {
   await route.exec(route.params, body, token);
 }
 
+exports.matchRoute = matchRoute;
 exports.handleSync = async (req, res) => {
   try {
     const { ops } = req.body;
