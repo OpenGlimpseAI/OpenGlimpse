@@ -40,11 +40,6 @@ export default function CameraPage() {
     const cancelledRef = useRef(false);
     const frameCountRef = useRef(0);
     const scanKeyRef = useRef(0);
-    const facingModeRef = useRef(facingMode);
-
-    useEffect(() => {
-        facingModeRef.current = facingMode;
-    }, [facingMode]);
 
     const { isOnline } = useConnectivity();
 
@@ -55,6 +50,12 @@ export default function CameraPage() {
     const [error, setError] = useState(null);
     const [status, setStatus] = useState('Loading face detection models...');
     const [facingMode, setFacingMode] = useState('user');
+    const facingModeRef = useRef(facingMode);
+
+    useEffect(() => {
+        facingModeRef.current = facingMode;
+    }, [facingMode]);
+
     const [captured, setCaptured] = useState(false);
     const [capturedImage, setCapturedImage] = useState(null);
     const [recognizing, setRecognizing] = useState(false);

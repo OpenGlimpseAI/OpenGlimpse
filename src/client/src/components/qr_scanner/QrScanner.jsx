@@ -30,6 +30,17 @@ export default function QrScanner({ onScan, onError, facingMode }) {
         const qrCode = new Html5Qrcode(SCANNER_ID);
         qrRef.current = qrCode;
 
+        let stopped = false;
+        const safelyStop = () => {
+            if (stopped) return;
+            stopped = true;
+            try {
+                qrCode.stop().catch(() => {});
+            } catch {
+                // html5-qrcode throws synchronously if scanner is already stopped
+            }
+        };
+
         qrCode.start(
             { facingMode, width: { ideal: 1280 }, height: { ideal: 720 } },
             {
@@ -74,7 +85,7 @@ export default function QrScanner({ onScan, onError, facingMode }) {
                 }
 
                 onScan(decodedText);
-                qrCode.stop().catch(() => {});
+                safelyStop();
             },
             () => {}
         ).catch((err) => {
@@ -88,7 +99,7 @@ export default function QrScanner({ onScan, onError, facingMode }) {
 
         return () => {
             ro.disconnect();
-            qrCode.stop().catch(() => {});
+            safelyStop();
         };
     }, [facingMode]);
 
