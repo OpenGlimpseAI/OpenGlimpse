@@ -129,12 +129,13 @@ class FaceEmbeddings extends Model {
 }
 
 class Messages extends Model {
-    constructor({ id, content, timestamp, senderId } = {}) {
+    constructor({ id, content, timestamp, senderId, programmeId } = {}) {
         super()
         this.id = id
         this.content = content
         this.timestamp = timestamp
         this.senderId = senderId
+        this.programmeId = programmeId
     }
 
     toJSON() {
@@ -143,21 +144,25 @@ class Messages extends Model {
             content: this.content,
             timestamp: this.timestamp,
             senderId: this.senderId,
+            programmeId: this.programmeId,
         }
     }
 
-    static async create({ content, timestamp = new Date(), senderId } = {}) {
+    static async create({ content, timestamp = new Date(), senderId, programmeId } = {}) {
         const savedMessage = await messages.create({
             content,
             timestamp,
             senderId,
+            programmeId: programmeId || null,
         })
 
         return new Messages(savedMessage.toJSON())
     }
 
-    static async read(limit = 100) {
+    static async read(limit = 100, programmeId = null) {
+        const where = programmeId ? { programmeId } : {}
         const results = await messages.findAll({
+            where,
             order: [['timestamp', 'ASC']],
             limit,
         })
