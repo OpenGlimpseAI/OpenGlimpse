@@ -1,0 +1,21 @@
+AI Reflection - Xin Ying (Programme Creation and Attendance)
+
+Where AI genuinely helped me
+
+The biggest help was that AI could read the actual project code and turn it into accurate documents. My part of the project covers programmes, routes, delegates, attendance marking, the ready-to-depart toggle, and the attendance summary. That is spread across a server API, a database schema, and the React client. When I needed to write the three individual deliverables (use cases, API documentation, and database schema), I could have tried to write them from memory, but AI traced the real controllers and the real model methods and the real SQL queries for me. This matters because the documents ended up describing the system as it actually is, down to the exact error messages the API returns and the rule that each delegate can only be on one route. Wrong documentation is worse than no documentation, because it teaches someone something false about the system.
+
+The second big help was working inside a codebase that is already very large. The project has thousands of lines across the client and the server. When I needed to match how my teammates do things, like the way tests are structured in the Matthias and Ryan folders or the folder layout for docs and AI logs, AI found those examples quickly instead of me reading through whole directories. That made my work consistent with the rest of the team, which matters because all of our individual submissions are supposed to fit together into one submission.
+
+Where I chose to reject or change what AI suggested
+
+The most important time was about scope. The assignment image listed both individual and group deliverables, and AI's first instinct was to plan everything. But only the individual part was wanted, so I left out the group architecture document and the diagram. Staying in scope was more important than being complete, because handing in work that belongs to someone else's part would be confusing.
+
+Another time was the test setup. AI first reached for a proper testing framework like jest. But this repository does not use any test framework. My teammates run plain Node scripts that print PASS or FAIL and exit with an error code when something fails. Adding a framework would have looked cleaner but would have been wrong for this project. It would add a dependency, make my submission different from everyone else's, and make it harder to prove that all tests pass. So I matched the existing style instead.
+
+There were also two moments where AI was close but needed fixing rather than adopting. In one, the draft test expected a field in the response that the endpoint genuinely does not return, so the right fix was to change my test, not the endpoint. In another, an early version of the test reused one fixed programme id, which would have made the tests depend on leftover data between runs, so I changed it to create a fresh programme each time. Both are cases of accepting the direction but fixing the details.
+
+The thing I want to remember most
+
+The most valuable moment was when the tests failed in a way that did not point at the test itself. The attendance summary said a route had two people checked in even though only one person was on that route. It would have been easy to blame every failure on my test. Instead I checked the actual data in the database, then looked at the SQL query that counts checked-in people, and found a real bug. The count joined attendance records to route members using only the delegate id, without making sure both rows belonged to the same programme. So if a delegate was present in two programmes, that person was counted twice on any route they appeared on. Fixing the query made the numbers correct.
+
+That moment is why I appreciate this workflow. The tests I wrote, because they were based on real behaviour and ran against a real server and a real database, found a bug that otherwise would have been left in the project. AI speeded up the work, and the verification caught the mistake. Where AI helped the least was in the parts I could already do reliably on my own, like writing simple happy-path tests, where it was basically a fast typist rather than a thinking partner. So I used it for what it is good at and kept my own judgement for the rest.
