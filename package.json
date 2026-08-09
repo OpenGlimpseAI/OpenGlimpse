@@ -1,0 +1,16 @@
+{
+  "name": "openglimpse",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "concurrently -n server,client -c blue,green \"node src/server/index.js\" \"npm run dev --prefix src/client\"",
+    "dev:server": "node src/server/index.js",
+    "dev:client": "npm run dev --prefix src/client",
+    "test:ryan": "node tests/ryan/test-ryan-endpoints.js",
+    "test:python": "node tests/test-endpoints.js",
+    "seed": "node tests/seed.js"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  }
+}
