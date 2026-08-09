@@ -287,7 +287,7 @@ Route.listForProgramme = async function (programmeId, opts = {}) {
     attributes: {
       include: [
         [sequelize.literal(`(SELECT COUNT(*)::int FROM route_members WHERE route_id = "Route".id)`), "delegate_count"],
-        [sequelize.literal(`(SELECT COUNT(*)::int FROM attendance_records ar JOIN route_members rm ON rm.delegate_id = ar.delegate_id WHERE rm.route_id = "Route".id AND ar.status = 'present')`), "checked_in"],
+        [sequelize.literal(`(SELECT COUNT(*)::int FROM attendance_records ar JOIN route_members rm ON rm.delegate_id = ar.delegate_id AND rm.programme_id = ar.programme_id WHERE rm.route_id = "Route".id AND ar.status = 'present')`), "checked_in"],
         [sequelize.literal(`(SELECT COALESCE(bool_or(ready), false) FROM ready_to_depart WHERE route_id = "Route".id)`), "ready"],
       ],
     },
@@ -304,7 +304,7 @@ Route.getById = async function (routeId, programmeId) {
     attributes: {
       include: [
         [sequelize.literal(`(SELECT COUNT(*)::int FROM route_members WHERE route_id = "Route".id)`), "delegate_count"],
-        [sequelize.literal(`(SELECT COUNT(*)::int FROM attendance_records ar JOIN route_members rm ON rm.delegate_id = ar.delegate_id WHERE rm.route_id = "Route".id AND ar.status = 'present')`), "checked_in"],
+        [sequelize.literal(`(SELECT COUNT(*)::int FROM attendance_records ar JOIN route_members rm ON rm.delegate_id = ar.delegate_id AND rm.programme_id = ar.programme_id WHERE rm.route_id = "Route".id AND ar.status = 'present')`), "checked_in"],
         [sequelize.literal(`(SELECT COALESCE(bool_or(ready), false) FROM ready_to_depart WHERE route_id = "Route".id)`), "ready"],
       ],
     },
@@ -338,7 +338,7 @@ Route.updateForProgramme = async function (routeId, programmeId, body) {
     attributes: {
       include: [
         [sequelize.literal(`(SELECT COUNT(*)::int FROM route_members WHERE route_id = "Route".id)`), "delegate_count"],
-        [sequelize.literal(`(SELECT COUNT(*)::int FROM attendance_records ar JOIN route_members rm ON rm.delegate_id = ar.delegate_id WHERE rm.route_id = "Route".id AND ar.status = 'present')`), "checked_in"],
+        [sequelize.literal(`(SELECT COUNT(*)::int FROM attendance_records ar JOIN route_members rm ON rm.delegate_id = ar.delegate_id AND rm.programme_id = ar.programme_id WHERE rm.route_id = "Route".id AND ar.status = 'present')`), "checked_in"],
       ],
     },
   });
@@ -557,7 +557,7 @@ AttendanceRecord.getSummary = async function (programmeId) {
     attributes: {
       include: [
         [sequelize.literal(`(SELECT COUNT(*)::int FROM route_members WHERE route_id = "Route".id)`), "total"],
-        [sequelize.literal(`(SELECT COUNT(*)::int FROM attendance_records ar JOIN route_members rm ON rm.delegate_id = ar.delegate_id WHERE rm.route_id = "Route".id AND ar.status = 'present')`), "checked_in"],
+        [sequelize.literal(`(SELECT COUNT(*)::int FROM attendance_records ar JOIN route_members rm ON rm.delegate_id = ar.delegate_id AND rm.programme_id = ar.programme_id WHERE rm.route_id = "Route".id AND ar.status = 'present')`), "checked_in"],
         [sequelize.literal(`(SELECT COUNT(*)::int FROM scan_events WHERE programme_id = "Route"."programme_id" AND status = 'unverified')`), "unidentified"],
       ],
     },
