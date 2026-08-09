@@ -6,11 +6,13 @@ import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import KeyboardArrowDown from "@mui/icons-material/KeyboardArrowDown";
 import { getProgrammes } from "../../services/api";
 import RoutesTab from "./RoutesTab";
+import DelegatesTab from "./DelegatesTab";
 import SummaryTab from "./SummaryTab";
 import ManageProgrammeTab from "./ManageProgrammeTab";
 
 const TABS = [
   { key: "routes", label: "Routes" },
+  { key: "delegates", label: "Delegates" },
   { key: "summary", label: "Summary" },
   { key: "manage", label: "Manage Programme" },
 ];
@@ -143,8 +145,9 @@ export default function ProgrammeDetailPage() {
 
       <div className="px-4 sm:px-6 pb-6 pt-6">
         {tabIndex === 0 && <RoutesTab programmeId={id} />}
-        {tabIndex === 1 && <SummaryTab programmeId={id} />}
-        {tabIndex === 2 && <ManageProgrammeTab programmeId={id} />}
+        {tabIndex === 1 && <DelegatesTab programmeId={id} />}
+        {tabIndex === 2 && <SummaryTab programmeId={id} />}
+        {tabIndex === 3 && <ManageProgrammeTab programmeId={id} />}
       </div>
     </main>
   );
