@@ -40,6 +40,11 @@ export default function CameraPage() {
     const cancelledRef = useRef(false);
     const frameCountRef = useRef(0);
     const scanKeyRef = useRef(0);
+    const facingModeRef = useRef(facingMode);
+
+    useEffect(() => {
+        facingModeRef.current = facingMode;
+    }, [facingMode]);
 
     const { isOnline } = useConnectivity();
 
@@ -53,6 +58,7 @@ export default function CameraPage() {
     const [captured, setCaptured] = useState(false);
     const [capturedImage, setCapturedImage] = useState(null);
     const [recognizing, setRecognizing] = useState(false);
+    const [warmup, setWarmup] = useState(false);
     const [matches, setMatches] = useState([]);
     const [selected, setSelected] = useState(new Set());
     const [confirming, setConfirming] = useState(false);
@@ -166,7 +172,7 @@ export default function CameraPage() {
                 const displaySize = displaySizeRef.current;
                 const resized = faceapi.resizeResults(detections, displaySize);
 
-                if (facingMode === 'user') {
+                if (facingModeRef.current === 'user') {
                     ctx.save();
                     ctx.translate(canvas.width, 0);
                     ctx.scale(-1, 1);
@@ -179,7 +185,7 @@ export default function CameraPage() {
                     ctx.strokeRect(box.x, box.y, box.width, box.height);
                 });
 
-                if (facingMode === 'user') {
+                if (facingModeRef.current === 'user') {
                     ctx.restore();
                 }
 
@@ -278,6 +284,15 @@ export default function CameraPage() {
     }
 
     const currentProgramme = programmes.find((p) => p.id === programmeId);
+
+    useEffect(() => {
+        if (!recognizing) {
+            setWarmup(false);
+            return;
+        }
+        const timer = setTimeout(() => setWarmup(true), 8000);
+        return () => clearTimeout(timer);
+    }, [recognizing]);
 
     async function handleQrScan(decodedText) {
         if (!programmeId) return;
@@ -469,7 +484,13 @@ export default function CameraPage() {
                     {recognizing ? (
                         <div className="flex flex-col items-center gap-3 pt-8">
                             <div className="w-8 h-8 border-2 border-sky-600 border-t-transparent rounded-full animate-spin" />
-                            <p className="text-sm text-slate-500">{mode === 'facial' ? 'Recognizing faces...' : 'Looking up badge...'}</p>
+                            <p className="text-sm text-slate-500">
+                                {mode === 'facial'
+                                    ? warmup
+                                        ? 'Face recognition service is warming up, this can take a couple of minutes on first use...'
+                                        : 'Recognizing faces...'
+                                    : 'Looking up badge...'}
+                            </p>
                         </div>
                     ) : done ? (
                         <div className="flex flex-col items-center gap-4 pt-8">
