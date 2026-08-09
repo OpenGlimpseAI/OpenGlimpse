@@ -1,7 +1,6 @@
 fastapi
 uvicorn
-deepface
+onnxruntime
 opencv-python==4.13.0.92
-tf-keras
 numpy
 python-multipart
