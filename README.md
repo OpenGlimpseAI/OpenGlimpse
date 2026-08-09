@@ -72,27 +72,30 @@ Provision a managed PostgreSQL instance (e.g. Supabase, RDS, Alibaba Cloud RDS) 
 
 ### Backend (Express + Socket.io + FaceNet)
 
-Deploy to any Node host that can keep a long-running process (VM, Railway, Render, Alibaba Cloud ECS). Requirements:
+Currently deployed on Render at `https://openglimpse-2.onrender.com`. Deploy to any Node host that can keep a long-running process (VM, Railway, Render, Alibaba Cloud ECS). Requirements:
 
 1. Node v22+, and a Python environment with `src/server/python_server/requirements.txt` installed (the backend spawns the FastAPI FaceNet server on boot).
-2. Environment variables (see `.env.example`):
+2. Environment variables (see `.env` / `.env.example`):
    - `DATABASE_URL` (or `DB_NAME` / `DB_USER` / `DB_PASSWORD` / `DB_HOST` / `DB_PORT`)
    - `PORT` (default `3001`)
-   - `CLIENT_URL` — allowed CORS origin, e.g. the deployed frontend URL
-   - `GROQ_API_KEY` / `GROQ_MODEL` — chatbot provider
+   - `CLIENT_URL` — allowed CORS origin, e.g. `https://openglimpse.pages.dev`
+   - `GROQ_API_KEY` / `GROQ_MODEL` — chatbot provider (current model: `openai/gpt-oss-20b`)
+   - `PYTHON_SERVER_URL` — external FaceNet server URL if not spawned locally (currently `https://openglimpse.onrender.com`)
 3. Start with `node src/server/index.js` (the root `start`/`dev` scripts in `package.json`).
 
 ### Frontend (React + Vite)
+
+Currently deployed on Cloudflare Pages at `https://openglimpse.pages.dev`. To redeploy:
 
 1. Build the static bundle:
    ```sh
    npm run build --prefix src/client
    ```
-2. Deploy the `src/client/dist/` output to any static host (Vercel, Netlify, Alibaba Cloud OSS/CDN, or serve it behind the backend).
+2. Deploy the `src/client/dist/` output to any static host (Cloudflare Pages, Vercel, Netlify, Alibaba Cloud OSS/CDN, or serve it behind the backend).
 3. Set the client build-time env vars so the app calls the deployed backend instead of the dev proxy:
-   - `VITE_API_URL` — backend base URL
-   - `VITE_SOCKET_URL` — backend Socket.io URL
-   - `VITE_CHAT_SERVER_URL` — backend `/chat` namespace URL
+   - `VITE_API_URL` — backend base URL (`https://openglimpse-2.onrender.com`)
+   - `VITE_SOCKET_URL` — backend Socket.io URL (`https://openglimpse-2.onrender.com`)
+   - `VITE_CHAT_SERVER_URL` — backend `/chat` namespace URL (`https://openglimpse-2.onrender.com`)
    - `VITE_CHATBOT_TRIGGER` — chatbot trigger prefix (default `@assistant`)
 
 ### Notes
@@ -101,6 +104,8 @@ Deploy to any Node host that can keep a long-running process (VM, Railway, Rende
 - Because the backend spawns the Python FaceNet server as a subprocess, the host must have the Python dependencies installed and the venv path discoverable.
 - The dev-only proxy table in `src/client/vite.config.js` does not apply to production; configure the `VITE_*` vars instead.
 
-## 3. Public URL
+## 3. Public URLs
 
-_Pending deployment — will be filled in once the app is deployed._
+- **Frontend:** https://openglimpse.pages.dev
+- **Backend API / Socket.io:** https://openglimpse-2.onrender.com
+- **FaceNet (Python) server:** https://openglimpse.onrender.com
