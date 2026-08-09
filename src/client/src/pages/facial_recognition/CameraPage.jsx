@@ -49,7 +49,7 @@ export default function CameraPage() {
 
     const [error, setError] = useState(null);
     const [status, setStatus] = useState('Loading face detection models...');
-    const [facingMode, setFacingMode] = useState('user');
+    const [facingMode, setFacingMode] = useState('environment');
     const facingModeRef = useRef(facingMode);
 
     useEffect(() => {
@@ -406,7 +406,7 @@ export default function CameraPage() {
 
                     {mode === 'qr' && (
                         <div className="flex items-center justify-center gap-1 px-4 pb-1">
-                            <span className="text-xs text-slate-400">Point camera at a QR code</span>
+                            <span className="text-xs text-slate-400">Point camera at a QR code and capture</span>
                         </div>
                     )}
 
