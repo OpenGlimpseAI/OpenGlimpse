@@ -73,7 +73,8 @@ App.jsx
     ├── Directory                  (delegate list, search, filter, profile sheet, route assignment)
     ├── Chat                       (real-time messages, AI bot, @mention autocomplete)
     │   ├── ChatBubble             (own/other/bot message rendering, Markdown for bot)
-    │   └── ChatInput              (textarea with @autocomplete, Shift+Enter newlines)
+    │   ├── ChatInput              (textarea with @autocomplete, Shift+Enter newlines)
+    │   └── ReactionBar            (quick-emoji palette for WhatsApp-style reactions)
     ├── ProfilePage                (profile edit + ParticipantSection for staff)
     └── BadgePage                  (QR code display for participants)
 ```
@@ -86,7 +87,9 @@ App.jsx
 
 #### 2.1.3 Styling
 
-Tailwind CSS v4 utility classes used inline throughout JSX, supplemented by a large `index.css` (~752 lines) defining semantic class names via `@apply` for chat, dashboard, directory, auth forms, profile sheets, etc. MUI v9 provides icon components.
+Tailwind CSS v4 utility classes used inline throughout JSX, supplemented by a large `index.css` (~990 lines) defining semantic class names via `@apply` for chat, dashboard, directory, auth forms, profile sheets, etc. MUI v9 provides icon components; `lucide-react` supplies the bottom-nav icons.
+
+**Theming** — dark mode is default-on and user-toggleable from the Profile page ("Appearance" section). A `ThemeProvider` (`hooks/useTheme.js`) wraps the app in `main.jsx`; a pre-paint inline script in `index.html` applies the persisted `openglimpse-theme` value to the `.dark` class on `<html>` before first render to avoid a flash. Because Tailwind v4 emits `var(--color-*)` in every utility, `index.css` remaps those variables inside a `.dark` scope to re-theme surfaces/borders/text from a single block. The accent colour is user-selectable (blue/purple/red/green, persisted as `openglimpse-accent` and applied via `data-accent` on `<html>`); `index.css` maps each accent to `--grad-*` variables shared by the `bg-sky-gradient` button/bubble gradients (primary buttons, chat send button/bubbles, auth buttons, active nav).
 
 ---
 
@@ -229,6 +232,8 @@ Express application, single `index.js` entrypoint. Responsibilities:
 | `chat:join` | Client -> Server | Join programme context |
 | `message` | Client -> Server | Send message (max 1000 chars) |
 | `message` | Server -> All | Broadcast new message |
+| `react` | Client -> Server | Toggle an emoji reaction on a message (same emoji removes it) |
+| `reaction:update` | Server -> All | Aggregated `{ emoji, userIds[] }` list for a message |
 | `chatbot:typing` | Server -> All | Bot started generating |
 | `chatbot:stop` | Server -> All | Bot finished or errored |
 | `error` | Server -> Client | Error notification |
@@ -251,11 +256,14 @@ Not reachable from the client — only the API server talks to it over loopback 
 
 ### 2.4 Database (`src/server/database/db.cjs`)
 
-PostgreSQL accessed exclusively through Sequelize (`sequelize.sync({ alter: true })` at startup). Thirteen active tables:
+PostgreSQL accessed exclusively through Sequelize (`sequelize.sync({ alter: true })` at startup). Seventeen Sequelize models are defined in `db.cjs`; twelve back active features, while `attendee`, `admin`, `Staff`, `ChatMessage`, and `OfflineQueue` are legacy/vestigial (see notes):
 
 | Model | Table | Key Fields | Purpose |
 |-------|-------|------------|---------|
 | `user` | `users` | id (UUID), enName, zhName, email (unique), passwordHash, photoUrl, role (`staff`/`participant`) | Auth accounts |
+| `messages` | `messages` | id, content, timestamp, senderId (FK -> users) | Chat messages (used by chat server) |
+| `attendee` | `attendees` | id, name | Legacy model (unused) |
+| `admin` | `admins` | id, name, privileges | Legacy model (unused) |
 | `faceEmbeddings` | `face_embeddings` | imageHash (PK), userId, imageType (`primary`/`cache`), imageData (BLOB), embeddings (JSON), model | Face vector storage |
 | `Programme` | `programmes` | id (UUID), name, startDate, endDate, status (`draft`/`active`/`completed`) | Event programmes |
 | `Route` | `routes` | id, programmeId, name, archived | Transport routes per programme |
@@ -264,11 +272,11 @@ PostgreSQL accessed exclusively through Sequelize (`sequelize.sync({ alter: true
 | `ReadyToDepart` | `ready_to_depart` | id, programmeId, routeId, ready, toggledBy, toggledAt | Per-route departure readiness |
 | `ProgrammeDelegate` | `programme_delegates` | id, programmeId, delegateId (unique compound), notes | Many-to-many: delegates in programmes |
 | `RouteMember` | `route_members` | id, routeId, delegateId, programmeId (unique on programme+delegate) | Many-to-many: delegates on routes |
-| `ScanEvent` | `scan_events` | id, programmeId, delegateId, confidence, status (`verified`/`unverified`), unverifiedReason, scannedAt | Face recognition audit log |
-| `ChatMessage` | `chat_messages` | id, programmeId, senderId, text, sentAt | Programme-scoped chat (not actively used by chat server) |
-| `Messages` | `messages` | content, timestamp, senderId (FK -> user) | Legacy chat messages (used by chat server) |
-| `OfflineQueue` | `offline_queue` | id, scanId (unique), deviceId, programmeId, payload (JSONB), syncedAt, processed | Offline scan queue |
 | `Staff` | `staff` | id, name, email, passwordHash, photoUrl, role (`admin`/`staff`) | Separate staff model (unused — auth uses `user`) |
+| `ScanEvent` | `scan_events` | id, programmeId, delegateId, confidence, status (`verified`/`unverified`), unverifiedReason, boundingBoxId, scannedAt | Face recognition audit log |
+| `ChatMessage` | `chat_messages` | id, programmeId, senderId, text, sentAt | Programme-scoped chat (not used by chat server) |
+| `MessageReaction` | `message_reactions` | id, messageId (FK -> messages), userId (FK -> users), emoji; unique on (message_id, user_id) | Per-user emoji reactions on chat messages |
+| `OfflineQueue` | `offline_queue` | id, scanId (unique), deviceId, programmeId, payload (JSONB), syncedAt, processed | Defined but unused — offline sync replays ops via `POST /sync` instead |
 
 **Key associations:**
 - Programme 1:N Route, AttendanceRecord, ProgrammeDelegate, ScanEvent, ChatMessage, OfflineQueue
@@ -276,6 +284,7 @@ PostgreSQL accessed exclusively through Sequelize (`sequelize.sync({ alter: true
 - Delegate 1:N AttendanceRecord, ProgrammeDelegate; N:1 user
 - ProgrammeDelegate belongsTo Programme + Delegate
 - RouteMember belongsTo Route + Delegate + Programme
+- user 1:N Messages (senderId); Messages 1:N MessageReaction (messageId); user 1:N MessageReaction (userId)
 
 Face images and embeddings are stored **in PostgreSQL** (`faceEmbeddings.imageData` BLOB + `embeddings` JSON text) — there is no external file storage.
 
@@ -411,6 +420,9 @@ Admin sets default face:
 | Chatbot | Groq API (`gpt-oss-20b`) | Fast inference; full programme context in system prompt |
 | Hosting | Alibaba Cloud (SG/HK), China-accessible | Must not be blocked by the Great Firewall (P1 requirement) |
 | QR | html5-qrcode (client-side decode) | No hardware readers needed; badges are printed codes |
+| QR badge display | qrcode.react | Renders the participant's personal QR code on BadgePage |
+| Bot markdown | marked | Renders chatbot responses as Markdown in chat bubbles |
+| Nav icons | lucide-react | Floating bottom-nav + theme toggle icons (alongside MUI icons) |
 | Offline DB | Dexie.js with `requestCache` + `pendingChanges` tables | Typed IndexedDB wrapper; persists across sessions |
 
 ---
@@ -422,21 +434,26 @@ OpenGlimpse/
 ├── PROJECT_DOCUMENTATION.md      # main project doc (use cases, requirements, tech stack)
 ├── docs/                         # detailed documentation
 │   ├── architecture.md           # THIS FILE — system overview
-│   └── ryan/                     # per-member deep dives
-│       ├── use-cases.md          # all-role use cases (FR, QR, alerts, chatbot)
-│       ├── api-documentation.md  # every endpoint, payloads, error codes
-│       └── database-schema.md    # ER diagram + table definitions
+│   ├── ryan/                     # per-member deep dives
+│   │   ├── use-cases.md          # all-role use cases (FR, QR, alerts, chatbot)
+│   │   ├── api-documentation.md  # every endpoint, payloads, error codes
+│   │   └── database-schema.md    # ER diagram + table definitions
+│   └── Matthias/                 # per-member deep dives
+│       ├── use-cases.md
+│       ├── api-documentation.md
+│       └── database-schema.md
 └── src/
     ├── client/                   # FRONTEND (React SPA)
     │   ├── src/
+    │   │   ├── main.jsx          # Root: BrowserRouter + ThemeProvider
     │   │   ├── App.jsx           # Root: useSync(), routes, BottomNav, ConnectivityIndicator
     │   │   ├── pages/
-    │   │   │   ├── auth/         # Onboarding, Login, ProfilePage (with ParticipantSection)
-    │   │   │   ├── chat/         # Chat (Socket.IO /chat), ChatBubble, ChatInput
+    │   │   │   ├── auth/         # Onboarding, Login, ProfilePage, ParticipantManagement
+    │   │   │   ├── chat/         # Chat (Socket.IO /chat), ChatBubble, ChatInput, ReactionBar
     │   │   │   ├── dashboard/    # AdminDashboard (programme picker, route cards, delegate list)
     │   │   │   ├── directory/    # Directory (delegate list, search, filter, profile sheet)
     │   │   │   ├── facial_recognition/  # CameraPage (FR + QR dual mode)
-    │   │   │   ├── programmes/   # ProgrammePage, ProgrammeDetailPage, RoutesTab, SummaryTab, ManageProgrammeTab, RouteManageModal, UserPicker
+    │   │   │   ├── programmes/   # ProgrammePage, ProgrammeDetailPage, RoutesTab, SummaryTab, ManageProgrammeTab, DelegatesTab, RouteManageModal, UserPicker
     │   │   │   ├── staff/        # StaffLandingPage (summary stats, quick actions)
     │   │   │   └── badge/        # BadgePage (QR code display for participants)
     │   │   ├── components/
@@ -444,7 +461,7 @@ OpenGlimpse/
     │   │   │   ├── qr_scanner/   # QrScanner (html5-qrcode wrapper)
     │   │   │   └── shared/       # Toast, ConfirmModal, ConnectivityIndicator
     │   │   ├── services/         # api.js (offline-aware requests), socket.js (main server), utils.js
-    │   │   ├── hooks/            # useSync.js (sync trigger), useConnectivity.js (online/sync state)
+    │   │   ├── hooks/            # useSync.js (sync trigger), useConnectivity.js (online/sync state), useTheme.js (dark mode + accent)
     │   │   ├── db/localDB.js     # Dexie schema (requestCache, pendingChanges)
     │   │   └── sync/syncEngine.js # changeHandler + sync:done dispatch
     │   ├── public/               # icons.svg, favicon.svg
@@ -452,8 +469,8 @@ OpenGlimpse/
     └── server/                   # BACKEND (Node.js Express)
         ├── index.js              # App bootstrap, rate limiter, CORS, socket wiring, seeding
         ├── database/
-        │   ├── db.cjs            # All 13 models, associations, business logic methods
-        │   └── dbcrudmethods.js  # OOP CRUD wrappers (User, FaceEmbeddings, Messages)
+        │   ├── db.cjs            # All 17 models, associations, business logic methods
+        │   └── dbcrudmethods.js  # OOP CRUD wrappers (User, FaceEmbeddings, Messages, Reactions)
         ├── modules/
         │   ├── auth/             # authRoutes.js — /api/auth/* + token middleware
         │   ├── programmes/       # controllers: programmes, routes, delegates, attendance, ready, qr, recognize
@@ -477,7 +494,7 @@ OpenGlimpse/
 - **Offline sync**: `src/client/src/services/api.js`, `sync/syncEngine.js`, `src/server/modules/sync/syncController.js`.
 - **Realtime**: `src/server/index.js` (rooms), `attendance.controller.js` (emits).
 - **Auth**: `src/server/modules/auth/authRoutes.js` (login, CRUD, token middleware).
-- **Database models**: `src/server/database/db.cjs` (all 13 models + associations + business logic).
+- **Database models**: `src/server/database/db.cjs` (all 17 models + associations + business logic).
 
 ---
 
@@ -487,7 +504,8 @@ OpenGlimpse/
 - **Offline resilience**: Camera capture and chat are disabled when offline; writes queue in IndexedDB; optimistic UI updates keep screens usable; server replays ops on `POST /sync`; `sync:done` events refresh stale UI; `ConnectivityIndicator` polls pending count every 3s.
 - **Privacy**: Delegate photos/embeddings stored only in the project's own PostgreSQL; no third-party face APIs called at runtime; face matching runs on the local Face service.
 - **Startup order**: `index.js` syncs the DB and seeds (default admin, AI Assistant user), then starts the Face service (installs deps on first run) and listens for HTTP.
-- **Known architectural notes**: The `Staff` model in `db.cjs` is unused (auth operates on `user`). The `ChatMessage` model exists but the chat server uses the legacy `Messages` model. Auth token is base64-encoded (not signed JWT). Two independent Socket.IO connections exist (main server + chat server).
+- **Known architectural notes**: The `Staff`, `attendee`, and `admin` models in `db.cjs` are unused (auth operates on `user`). The `ChatMessage` model exists but the chat server uses the `Messages` model; `OfflineQueue` is defined but offline sync replays ops via `POST /sync` instead. Auth token is base64-encoded (not signed JWT). Two independent Socket.IO connections exist (main server + chat server).
+- **Dead code / cleanup candidates**: `DelegatesTab.jsx` (`src/client/src/pages/programmes/`) is never imported; `Placeholder.jsx` and the `@mui/x-chat` dependency are unused; a stray Python venv lives in `src/client/testing/` (untracked). The sync test harness referenced by `npm run test:sync` in both `src/client/package.json` and `src/server/package.json` (`tests/sync/*`, `tests/server-replay.test.cjs`) is not present in the repo — only the endpoint smoke tests under `tests/` exist.
 - **Mixed module systems**: `.cjs` files use CommonJS; `facenetClient.js` uses ESM (dynamically imported in `index.js`).
 
 > This document reflects the deployed system and should be updated whenever the architecture changes (new modules, layers, or technology choices).
