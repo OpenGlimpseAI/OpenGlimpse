@@ -4,6 +4,9 @@ const crypto = require('crypto');
 const { sequelize, Programme, Delegate, ProgrammeDelegate } = require('../src/server/database/db.cjs');
 const { User, FaceEmbeddings } = require('../src/server/database/dbcrudmethods');
 
+// Force local face-embedding service instead of the remote PYTHON_SERVER_URL from .env
+process.env.PYTHON_SERVER_URL = '';
+
 const TEST_IMAGES_DIR = path.join(__dirname, '..', 'src', 'server', 'modules', 'facial_recog', 'test-images');
 const IMAGE_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.bmp', '.webp'];
 
