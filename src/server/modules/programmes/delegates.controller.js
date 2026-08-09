@@ -20,7 +20,7 @@ async function addDelegates(req, res) {
         const added = await ProgrammeDelegate.addDelegates(id, req.body);
         res.status(201).json({ added });
     } catch (err) {
-        if (err.message === 'Provide delegates array, delegateId, or name') {
+        if (err.message === 'Provide delegates array, delegateIds, delegateId, or name') {
             return res.status(400).json({ error: err.message });
         }
         res.status(500).json({ error: err.message });
