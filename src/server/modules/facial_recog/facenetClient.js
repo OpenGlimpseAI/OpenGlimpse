@@ -108,6 +108,58 @@ export function stopPythonServer() {
     }
 }
 
+const RETRYABLE_STATUSES = new Set([502, 503, 504]);
+const COLD_START_POLL_INTERVAL_MS = 3000;
+const COLD_START_TIMEOUT_MS = 180000;
+
+function sleep(ms) {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function waitForPythonReady(timeoutMs = COLD_START_TIMEOUT_MS) {
+    const deadline = Date.now() + timeoutMs;
+    while (Date.now() < deadline) {
+        try {
+            const res = await fetch(`${PYTHON_SERVER_URL}/health`, { signal: AbortSignal.timeout(15000) });
+            if (res.ok) return true;
+        } catch {
+            // service still booting
+        }
+        await sleep(COLD_START_POLL_INTERVAL_MS);
+    }
+    console.warn('[FaceNet] Python server did not become ready in time');
+    return false;
+}
+
+async function postFormData(endpoint, formData) {
+    const response = await fetch(`${PYTHON_SERVER_URL}${endpoint}`, {
+        method: 'POST',
+        body: formData,
+    });
+
+    const text = await response.text();
+
+    let data;
+    try {
+        data = JSON.parse(text);
+    } catch {
+        const err = new Error(
+            `Python server request to ${endpoint} failed (${response.status}): ${text.slice(0, 500)}`
+        );
+        err.status = response.status;
+        throw err;
+    }
+
+    if (!response.ok || !data.success) {
+        const serverError = data.detail || data.error || JSON.stringify(data);
+        const err = new Error(`Python server request to ${endpoint} failed: ${serverError}`);
+        err.status = response.status;
+        throw err;
+    }
+
+    return data;
+}
+
 async function callPythonServer(endpoint, imageInput) {
     if (!serverReady) {
         await startPythonServer();
@@ -127,28 +179,27 @@ async function callPythonServer(endpoint, imageInput) {
     const blob = new Blob([imageBuffer], { type: 'image/jpeg' });
     formData.append('file', blob, fileName);
 
-    const response = await fetch(`${PYTHON_SERVER_URL}${endpoint}`, {
-        method: 'POST',
-        body: formData,
-    });
+    let lastError;
+    for (let attempt = 1; attempt <= 3; attempt++) {
+        try {
+            return await postFormData(endpoint, formData);
+        } catch (err) {
+            lastError = err;
+            const retryable = err.status && RETRYABLE_STATUSES.has(err.status);
+            if (!retryable || attempt === 3) break;
+            console.log(`[FaceNet] Python server not ready yet (attempt ${attempt}), waiting for it to boot...`);
+            if (!(await waitForPythonReady())) break;
+        }
+    }
 
-    const text = await response.text();
-
-    let data;
-    try {
-        data = JSON.parse(text);
-    } catch {
+    if (lastError.status && RETRYABLE_STATUSES.has(lastError.status)) {
         throw new Error(
-            `Python server request to ${endpoint} failed (${response.status}): ${text.slice(0, 500)}`
+            `Face recognition service is unreachable (HTTP ${lastError.status} on ${endpoint}) after retries. ` +
+            `The Python service on Render is down or failing to boot. ` +
+            `Open its Render logs to check for OOM (Killed) or a startup error.`
         );
     }
-
-    if (!response.ok || !data.success) {
-        const serverError = data.detail || data.error || JSON.stringify(data);
-        throw new Error(`Python server request to ${endpoint} failed: ${serverError}`);
-    }
-
-    return data;
+    throw lastError;
 }
 
 export async function getFaceEmbedding(imageInput) {
