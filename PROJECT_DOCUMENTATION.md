@@ -12,9 +12,110 @@ This system digitises and accelerates that process using a React-based mobile-fi
 
 ---
 
-## 2. Use Case Definition
+## 2. System Architecture
 
-### 2.1 Primary Use Case
+### 2.1 Overview
+
+OpenGlimpse is a monorepo running **three runtime processes plus one database**:
+
+| Process | Tech | Port | Responsibility |
+|---------|------|------|----------------|
+| Web client | React 19 + Vite 8 (Tailwind CSS v4, MUI icons, lucide-react) | 5173 (dev) | Mobile-first SPA: camera/QR capture, real-time dashboards, offline queue, chat UI |
+| API server | Node.js + Express 5 + Socket.io | 3001 | REST API, auth, offline-sync replay, WebSocket rooms, chatbot orchestration |
+| Face service | Python FastAPI + DeepFace (FaceNet) | 8000 (loopback) | Face detection + 128-dim embedding generation |
+| Database | PostgreSQL via Sequelize ORM | 5432 | All persistence: users, delegates, programmes, routes, embeddings, attendance, chat, reactions |
+
+The client and API server are the only public-facing processes. The Face service runs on loopback and is reachable only from the API server; the Groq API (chatbot) is the sole external third-party call.
+
+### 2.2 Layer Responsibilities
+
+**Frontend (`src/client/`)** — a React SPA. Responsibilities:
+- Camera capture with live face bounding boxes (`face-api.js`, SsdMobilenetv1 from CDN) and QR decoding (`html5-qrcode`).
+- Offline-first data layer: every API call goes through `services/api.js`, which caches GETs and queues offline writes in Dexie (IndexedDB), then replays them via `POST /sync` when connectivity returns (`sync/syncEngine.js`, `hooks/useSync.js`, `hooks/useConnectivity.js`).
+- Two independent Socket.io connections: the main namespace (`services/socket.js`) for live `attendance:updated` events, and the `/chat` namespace for messaging + AI assistant.
+- Role-conditional routing (staff vs participant) with a floating bottom nav.
+
+**Backend (`src/server/`)** — an Express application. Responsibilities:
+- REST API for programmes, routes, delegates, attendance, ready-to-depart, face upload, auth, and offline sync.
+- Auth: base64 `id:role` tokens + SHA-256 password hashing; rate limiting on `/api/auth/login` and `/sync`.
+- Face matching: cosine similarity (≥ 0.5) against stored `primary` embeddings, recording `ScanEvent`s.
+- Offline sync: `POST /sync` replays queued client ops by matching `method + path` against a handler table.
+- Realtime: Socket.io rooms (`programme:<id>`) broadcast attendance changes; the `/chat` namespace handles messages, reactions, and the Groq-powered chatbot.
+
+**Face service (`src/server/python_server/`)** — a thin FastAPI wrapper over DeepFace/FaceNet (`/embed`, `/detect`, `/embed-all`), spawned and supervised by the Node backend (`facenetClient.js`), auto-installing pip dependencies on first run.
+
+**Database (`src/server/database/db.cjs`)** — 17 Sequelize models; face images and embeddings stored in PostgreSQL (no external file storage).
+
+### 2.3 Component Interaction (Key Data Flows)
+
+1. **Facial recognition attendance** — CameraPage captures a frame → `POST /programmes/:id/recognize` → server embeds via Python `/embed-all` → cosine-match vs stored `primary` embeddings → writes `ScanEvent` → returns matches → staff confirms → `PUT/POST /programmes/:id/attendance` → server broadcasts `attendance:updated` to the `programme:<id>` room → all dashboards refresh.
+2. **QR backup** — QrScanner decodes a badge → `POST /programmes/:id/scan-qr` → delegate resolved → same attendance path with `method: qr`.
+3. **Offline sync** — offline writes queue in IndexedDB; `useSync` flushes `POST /sync` on reconnect; the server replays ops; `sync:done` events trigger client refetch. Camera/chat are disabled offline.
+4. **Chat + AI assistant** — the `/chat` socket validates the token → loads history → `message` events broadcast to all staff; a message containing the trigger prefix (`@assistant`) invokes the chatbot, which builds a live programme context and streams a Groq response.
+
+### 2.4 Technology Choices
+
+| Concern | Choice | Why |
+|---------|--------|-----|
+| UI | React 19 + Vite 8 + Tailwind CSS v4 | Fast mobile-first SPA; React Compiler; team familiarity |
+| Real-time | Socket.io | Per-programme rooms; auto-reconnect; multi-device attendance sync |
+| Offline | Dexie.js (IndexedDB) + server replay | Zero data loss on flaky cellular/hotspot connections |
+| Face detection (client) | face-api.js (SsdMobilenetv1) | In-browser bounding boxes, no server round-trip |
+| Face recognition (server) | DeepFace/FaceNet (local FastAPI) | Free, accurate, GFW-safe, no per-call cost |
+| Matching | Cosine similarity in Node (≥ 0.5) | Transparent; embeddings stored as JSON in Postgres |
+| Database | PostgreSQL + Sequelize | Relational integrity; `alter: true` auto-migration for demos |
+| Auth | Base64 token (`id:role`) + SHA-256 | Simple for demo scope; rate-limited |
+| Chatbot | Groq API (`gpt-oss-20b`) | Fast inference; full programme context in prompt |
+| Hosting | Alibaba Cloud (SG/HK), China-accessible | Must not be blocked by the Great Firewall |
+
+### 2.5 Navigating the Project Structure
+
+```
+OpenGlimpse/
+├── PROJECT_DOCUMENTATION.md     # this file
+├── docs/                        # deep-dive docs (architecture, per-member API/schema/use-cases)
+├── tests/                       # endpoint + seed scripts (ryan/, Matthias/, seed.js)
+├── ai/                          # per-member AI session logs
+└── src/
+    ├── client/                  # FRONTEND (React SPA)
+    │   ├── src/
+    │   │   ├── main.jsx         # root: BrowserRouter + ThemeProvider
+    │   │   ├── App.jsx          # routes, RequireAuth, BottomNav, ConnectivityIndicator
+    │   │   ├── pages/           # auth/, chat/, dashboard/, directory/, facial_recognition/, programmes/, staff/, badge/
+    │   │   ├── components/      # navbar/, qr_scanner/, shared/ (Toast, ConfirmModal, ConnectivityIndicator)
+    │   │   ├── services/        # api.js (offline-aware), socket.js, utils.js
+    │   │   ├── hooks/           # useSync.js, useConnectivity.js, useTheme.js
+    │   │   ├── db/localDB.js    # Dexie schema (requestCache, pendingChanges)
+    │   │   └── sync/syncEngine.js  # changeHandler + /sync flush
+    │   ├── public/
+    │   └── vite.config.js       # dev proxy -> :3001 (incl. /sync, /socket.io ws)
+    └── server/                  # BACKEND (Node.js Express)
+        ├── index.js             # bootstrap, rate limiter, CORS, socket wiring, seeding
+        ├── database/            # db.cjs (models + logic), dbcrudmethods.js (CRUD wrappers)
+        ├── modules/
+        │   ├── auth/            # authRoutes.js
+        │   ├── programmes/      # programmes, routes, delegates, attendance, ready, qr, recognize controllers
+        │   ├── sync/            # syncRoutes.js + syncController.js
+        │   ├── chat/            # chatserver.cjs (/chat namespace)
+        │   ├── chatbot/         # chatbot.js (Groq + context builder)
+        │   └── facial_recog/    # face routes, facenetClient.js (spawn/supervise Python), startFaceNet.js
+        └── python_server/       # server.py (FastAPI/DeepFace), requirements.txt
+```
+
+Where to look for a specific feature:
+- Facial recognition: `src/server/modules/programmes/recognize.controller.js`, `src/server/python_server/server.py`, `src/client/src/pages/facial_recognition/CameraPage.jsx`
+- QR backup: `src/server/modules/programmes/qr.controller.js`, `src/client/src/components/qr_scanner/QrScanner.jsx`
+- Chatbot: `src/server/modules/chat/chatserver.cjs`, `src/server/modules/chatbot/chatbot.js`
+- Offline sync: `src/client/src/services/api.js`, `src/client/src/sync/syncEngine.js`, `src/server/modules/sync/syncController.js`
+- Realtime: `src/server/index.js`, `src/client/src/services/socket.js`
+- Auth: `src/server/modules/auth/authRoutes.js`
+- Database: `src/server/database/db.cjs`
+
+---
+
+## 3. Use Case Definition
+
+### 3.1 Primary Use Case
 **Title:** Real-Time Facial Recognition Attendance with Multi-Staff Sync
 
 **Goal:** Allow SCCCI secretariat staff to take attendance for an overseas delegation in under 1 minute (30 pax) or 2 minutes (100+ pax) using facial recognition, with instant visibility of who is present or absent — across multiple staff devices simultaneously.
@@ -24,14 +125,14 @@ This system digitises and accelerates that process using a React-based mobile-fi
 - Trip Manager / Admin (Primary) — creates programmes, assigns staff, views consolidated real-time attendance, confirms departure readiness
 - Delegate (Secondary) — identified via facial recognition as they enter coaches or venues
 
-### 2.2 Preconditions
+### 3.2 Preconditions
 - A programme has been created with a predetermined participant list
 - Each delegate's facial photograph has been registered in the system (passport-sized photo)
 - At least one staff member has the app open, is logged in, and is assigned to the current programme/route
 - Internet connectivity (cellular data or hotspot) is available at the location for real-time cloud sync
 - For first login by staff, updated facial photo is required to verify identity
 
-### 2.3 Main Flow (Happy Path)
+### 3.3 Main Flow (Happy Path)
 1. Admin creates a new programme with routes, bus assignments, and participant list.
 2. Staff member logs in with their account (verified by facial recognition on first login).
 3. Staff opens the attendance marking screen for their assigned route/coach.
@@ -42,7 +143,7 @@ This system digitises and accelerates that process using a React-based mobile-fi
 8. The dashboard shows: Present list (with photos), Unidentified/Absent list (highlighted at top), and Ready-to-Depart status.
 9. When all delegates are accounted for, the Trip Manager confirms departure readiness.
 
-### 2.4 Alternative & Exception Flows
+### 3.4 Alternative & Exception Flows
 
 **Alt A — Low confidence facial match:**
 - App flags confidence score and shows top candidate matches.
@@ -68,7 +169,7 @@ This system digitises and accelerates that process using a React-based mobile-fi
 
 ---
 
-## 3. System Requirements (Prioritised)
+## 4. System Requirements (Prioritised)
 
 P1 = must-have MVP; P2 = high value, build after P1; P3 = nice-to-have.
 
@@ -94,9 +195,9 @@ P1 = must-have MVP; P2 = high value, build after P1; P3 = nice-to-have.
 
 ---
 
-## 4. Tech Stack Details
+## 5. Tech Stack Details
 
-### 4.1 Frontend
+### 5.1 Frontend
 - React web application with responsive design — optimised for staff smartphones and tablets
 - Facial recognition: face-api.js library for real-time face detection, embedding generation, and similarity matching
 - Camera API: device camera access with live face detection and bounding box visualization
@@ -108,7 +209,7 @@ P1 = must-have MVP; P2 = high value, build after P1; P3 = nice-to-have.
 - Dark mode: default-on dark theme toggled in the Profile page ("Appearance" section, sun/moon) via `hooks/useTheme.js`, which now exposes a `ThemeProvider` (wraps the app in `main.jsx`) plus a `useTheme()` hook so the toggle reflects instantly everywhere; persisted in `localStorage` (`openglimpse-theme`) and applied by toggling the `.dark` class on `<html>`. Tailwind v4 emits `var(--color-*)` in every utility, so `index.css` remaps those variables in a `.dark` scope to re-theme surfaces, borders, and text across the whole app from a single block, with targeted overrides for white text on coloured buttons, chat code blocks, the floating nav, and MUI tabs; a pre-React inline script in `index.html` sets the class before first paint to avoid a flash. Primary buttons use a `bg-sky-gradient` linear-gradient instead of solid `bg-sky-600` (defined in `index.css`, with hover/active and dark-mode variants), applied via the `.bg-sky-gradient` utility and via a combined CSS selector for the `@apply`-based components (floatnav active, chat send button/bubbles, auth buttons, etc.). The accent colour is user-selectable (blue/purple/red/green): a row of gradient swatches in the same "Appearance" section sets `accent` (persisted as `openglimpse-accent`, applied via `data-accent` on `<html>`, set pre-paint in `index.html`), and `index.css` maps each accent to the `--grad-*` CSS variables shared by all the layered gradient selectors.
 - Auth gating: signed-in state is `localStorage['authUser']` (set by Login, cleared on logout). Every private route (`/profile`, `/chat`, `/camera`, `/dashboard*`, `/directory`, `/programmes*`, `/badge`) is wrapped in a `RequireAuth` guard in `App.jsx` that renders `<Navigate to="/login" replace />` when no credentials exist; the `/` root redirects to `/login` the same way. Several pages also keep their own `navigate('/login')` check as defense-in-depth, and `/login` + `/onboarding` remain public.
 
-### 4.2 Backend
+### 5.2 Backend
 - Node.js REST API (Express.js) for programmes, routes, attendance, user management, and chat
 - Real-time sync: WebSockets (Socket.io) for instant multi-device attendance updates, in-app chat, and message reactions
 - AI chatbot: Groq API (llama-3.3-70b-versatile) with full programme context; chatbot user seeded in DB; triggered by configurable prefix (e.g. `@assistant`) in chat
@@ -117,7 +218,7 @@ P1 = must-have MVP; P2 = high value, build after P1; P3 = nice-to-have.
 - Auth: staff login via JWT; delegate identity verified by facial embedding similarity
 - Hosting: must be accessible from China — Alibaba Cloud (Singapore/Hong Kong region) strongly preferred
 
-### 4.3 Data & Privacy
+### 5.3 Data & Privacy
 - Delegate data: name, facial photograph (passport-sized JPEG), optional QR code ID, optional NFC tag ID
 - Facial embeddings: stored in PostgreSQL as numeric vectors (face-api.js output); compared for similarity matching
 - Staff data: account credentials, facial photo for login verification, permission levels
@@ -125,7 +226,7 @@ P1 = must-have MVP; P2 = high value, build after P1; P3 = nice-to-have.
 - Chat messages: persisted in the `messages` table (`content`, `timestamp`, `senderId`) and rendered via the `/chat` socket namespace; retained for programme history; can be archived per admin policy
 - Message reactions: one reaction per user per message (WhatsApp-style emoji); stored in `message_reactions` keyed on `(message_id, user_id)`; synced live over the `/chat` socket namespace via the `react` event and `reaction:update` broadcasts
 
-### 4.4 Offline Sync Engine
+### 5.4 Offline Sync Engine
 
 #### Architecture
 - **Client:** Dexie.js (IndexedDB) with `requestCache` and `pendingChanges` tables
@@ -159,7 +260,7 @@ P1 = must-have MVP; P2 = high value, build after P1; P3 = nice-to-have.
 - **Client offline layer** (`npm run test:sync` in `src/client`): `tests/sync/client-offline.test.mjs` runs the real `api.js`/`syncEngine.js` in Node via a loader hook (`tests/sync/meta-loader.cjs`) that injects `import.meta.env` and resolves extensionless imports; Dexie backed by `fake-indexeddb`. Covers GET caching, offline cache reads, offline write queueing, never-queued endpoints (login, recognize, scan-qr), optimistic results, auth headers, and the `/sync` flush (success clears, failure retains).
 - **Server replay** (`npm run test:sync` in `src/server`): `tests/server-replay.test.cjs` creates a throwaway `OpenGlimpse_test` database and exercises `handleSync` against the real Sequelize models. Covers every `HANDLERS` pattern (batch/single attendance, ready-to-depart, programme/route/delegate CRUD, auth account create/delete, face upload), staff-vs-participant permission rules, and unknown-path skipping.
 
-### 4.5 Real-Time Chat Feature
+### 5.5 Real-Time Chat Feature
 
 #### Overview
 An in-app, programme-scoped chat with message persistence, emoji reactions, admin/highlighted bubbles, sender avatars, and an optional AI assistant. Built by **Rayablepy** (Rayhan) on the `messages-update` / `feature/chat-improvements` branches and merged via PR #7 and the `feature/offline-sync-v3` line. Uses a dedicated Socket.io namespace (`/chat`) served from `src/server/modules/chat/chatserver.cjs` (separate from the attendance socket namespace). The `@assistant`-triggered Groq chatbot (`server/modules/chatbot/chatbot.js`) was authored by RyanStudio and integrated into the chat server by Rayablepy.
@@ -201,7 +302,7 @@ Deployment URLs are only consumed outside `npm run dev`: the client reads `VITE_
 - `VITE_API_URL` / `VITE_SOCKET_URL` / `VITE_CHAT_SERVER_URL` — backend URL (Render Node service). Vercel build only.
 - `PYTHON_SERVER_URL` — Render Python service URL. When set, `facenetClient.js` skips spawning a local uvicorn and calls the remote service; when unset (dev) it spawns the local Python server on `127.0.0.1:8000`.
 
-### 4.6 Hardware (for Demo & Production)
+### 5.6 Hardware (for Demo & Production)
 - Development: laptop webcam acceptable with printed QR codes and mock data
 - Final demo: mobile phone (Android/iOS) for live facial recognition, camera-based QR scanning
 - QR badges: printed QR codes embedded in delegate badge lanyard
@@ -209,7 +310,7 @@ Deployment URLs are only consumed outside `npm run dev`: the client reads `VITE_
 
 ---
 
-## 5. Integration Points
+## 6. Integration Points
 
 - Ryan calls: `POST /programmes/{id}/scans` with facial embedding + confidence
 - XY calls: `PUT /programmes/{id}/attendance/{delegateId}` for manual mark present/absent
@@ -219,7 +320,7 @@ Deployment URLs are only consumed outside `npm run dev`: the client reads `VITE_
 
 ---
 
-## 6. Success Criteria
+## 7. Success Criteria
 
 | Metric | Target |
 |--------|--------|
@@ -233,7 +334,7 @@ Deployment URLs are only consumed outside `npm run dev`: the client reads `VITE_
 
 ---
 
-## 7. Out of Scope
+## 8. Out of Scope
 
 - Real-time location tracking or GPS maps (client uses WhatsApp)
 - Liveness detection / anti-spoofing (client prioritises speed over security compliance)
@@ -244,16 +345,16 @@ Deployment URLs are only consumed outside `npm run dev`: the client reads `VITE_
 
 ---
 
-## 8. Assumptions & Risks
+## 9. Assumptions & Risks
 
-### 8.1 Assumptions
+### 9.1 Assumptions
 - Internet (cellular data or hotspot) is available at all trip locations (China, ASEAN countries)
 - Client will provide sample participant data: names + passport-sized facial photos
 - Staff members have smartphones capable of running React web app (Android/iOS, modern browsers)
 - Face-api.js embeddings are sufficient for matching with ≥99% accuracy among diverse delegate faces
 - PostgreSQL with pgvector extension (or JSONB) is available on hosting provider
 
-### 8.2 Risks & Mitigation
+### 9.2 Risks & Mitigation
 
 | Risk | Mitigation |
 |------|------------|
@@ -266,7 +367,7 @@ Deployment URLs are only consumed outside `npm run dev`: the client reads `VITE_
 
 ---
 
-## 9. Individual Documentation
+## 10. Individual Documentation
 
 Per-team-member deep-dive docs (use cases, API reference, database schema) live under `docs/<student-name>/`, with the overall system architecture in `docs/architecture.md`:
 
@@ -275,7 +376,7 @@ Per-team-member deep-dive docs (use cases, API reference, database schema) live 
 - `docs/ryan/api-documentation.md` — every HTTP endpoint + WebSocket/chat events + internal FaceNet API
 - `docs/ryan/database-schema.md` — ER diagram + full table definitions for the PostgreSQL schema
 
-### 9.1 Rayablepy's feature branches
+### 10.1 Rayablepy's feature branches
 
 Rayablepy (Muhammad Rayhan) authored the offline sync engine and the real-time chat feature across these branches:
 
@@ -287,7 +388,7 @@ Rayablepy (Muhammad Rayhan) authored the offline sync engine and the real-time c
 
 ---
 
-## 10. Pages (UI)
+## 11. Pages (UI)
 
 - **Dashboard / Overview** — instant snapshot of delegate status; real-time counter (present/overall)
 - **Scanner** — QR/NFC and facial scanning
