@@ -5,7 +5,7 @@ const { parseToken } = require('../auth/authRoutes');
 const {
   Programme, Route, Delegate, AttendanceRecord,
   ReadyToDepart, ProgrammeDelegate, RouteMember,
-  faceEmbeddings, user
+  faceEmbeddings, user, SyncOpLog
 } = db;
 //list with pattern and execution functions for each route
 const HANDLERS = [
@@ -162,7 +162,21 @@ exports.handleSync = async (req, res) => {
             console.error(`Sync op denied (not staff): ${op.method} ${op.path}`);
             continue;
           }
-          await applyOp(op.method, op.path, op.body, op.token);
+          if (op.opId) {
+            const [log, created] = await SyncOpLog.findOrCreate({ where: { opId: op.opId }, defaults: { opId: op.opId } });
+            if (!created) {
+              console.log(`Sync op skipped (already applied): ${op.opId} ${op.method} ${op.path}`);
+              continue;
+            }
+            try {
+              await applyOp(op.method, op.path, op.body, op.token);
+            } catch (err) {
+              await SyncOpLog.destroy({ where: { opId: op.opId } });
+              throw err;
+            }
+          } else {
+            await applyOp(op.method, op.path, op.body, op.token);
+          }
         } catch (err) {
           console.error(`Sync op failed: ${op.method} ${op.path}`, err.message);
         }

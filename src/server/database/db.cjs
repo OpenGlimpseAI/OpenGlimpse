@@ -177,6 +177,11 @@ const OfflineQueue = sequelize.define("OfflineQueue", {
   processed: { type: DataTypes.BOOLEAN, defaultValue: false },
 }, { tableName: "offline_queue", timestamps: false });
 
+const SyncOpLog = sequelize.define("SyncOpLog", {
+  opId: { type: DataTypes.TEXT, primaryKey: true, allowNull: false, field: "op_id" },
+  appliedAt: { type: DataTypes.DATE, defaultValue: DataTypes.NOW, field: "applied_at" },
+}, { tableName: "sync_op_log", timestamps: false });
+
 // ── Associations ───────────────────────────────────────────
 
 messages.belongsTo(user, { foreignKey: "senderId" });
@@ -578,4 +583,4 @@ ReadyToDepart.setStatus = async function (routeId, programmeId, ready) {
   return { routeId: record.routeId, ready: record.ready, toggledBy: record.toggledBy, toggledAt: record.toggledAt };
 };
 
-module.exports = { sequelize, user, messages, attendee, admin, faceEmbeddings, Programme, Route, Delegate, AttendanceRecord, ReadyToDepart, ProgrammeDelegate, Staff, ScanEvent, ChatMessage, MessageReaction, OfflineQueue, RouteMember };
+module.exports = { sequelize, user, messages, attendee, admin, faceEmbeddings, Programme, Route, Delegate, AttendanceRecord, ReadyToDepart, ProgrammeDelegate, Staff, ScanEvent, ChatMessage, MessageReaction, OfflineQueue, SyncOpLog, RouteMember };

@@ -85,8 +85,11 @@ async function request(method, path, body, token) {
     ops: [],
     timestamp: 0
   };
+  const opId = (typeof crypto !== 'undefined' && crypto.randomUUID)
+    ? crypto.randomUUID()
+    : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
   //push token if available
-  pc.ops.push({ method, path, body: body || null, token: token || null });
+  pc.ops.push({ opId, method, path, body: body || null, token: token || null });
   pc.timestamp = Date.now();
   await db.pendingChanges.put(pc);
 
