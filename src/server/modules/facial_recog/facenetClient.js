@@ -70,8 +70,11 @@ function launchServer() {
     console.log('[Python Server] Starting uvicorn...');
     const serverPath = join(PYTHON_SERVER_DIR, 'server.py');
 
+    const localPort = new URL(PYTHON_SERVER_URL).port || '8000';
+
     serverProcess = spawn(PYTHON_PATH, [serverPath], {
         cwd: PYTHON_SERVER_DIR,
+        env: { ...process.env, PORT: localPort },
         stdio: ['ignore', 'pipe', 'pipe'],
     });
 
