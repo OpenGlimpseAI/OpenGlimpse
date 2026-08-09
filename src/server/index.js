@@ -125,18 +125,6 @@ async function start() {
             }
         }
 
-        const existingStaff = await user.findOne({ where: { role: 'staff' } });
-        if (!existingStaff) {
-            const passwordHash = crypto.createHash('sha256').update('admin123').digest('hex');
-            await user.create({
-                enName: 'Admin',
-                email: 'admin@openglimpse.com',
-                passwordHash,
-                role: 'staff',
-            });
-            console.log('Seeded default staff account: admin@openglimpse.com');
-        }
-
         const existingBot = await user.findOne({ where: { email: 'ai-assistant@openglimpse.com' } });
         if (!existingBot) {
             const botPasswordHash = crypto.createHash('sha256').update('bot-no-login').digest('hex');
