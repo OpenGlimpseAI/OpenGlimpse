@@ -49,7 +49,7 @@ The client and API server are the only public-facing processes. The Face service
 ### 2.3 Component Interaction (Key Data Flows)
 
 1. **Facial recognition attendance** — CameraPage captures a frame → `POST /programmes/:id/recognize` → server embeds via Python `/embed-all` → cosine-match vs stored `primary` embeddings → writes `ScanEvent` → returns matches → staff confirms → `PUT/POST /programmes/:id/attendance` → server broadcasts `attendance:updated` to the `programme:<id>` room → all dashboards refresh.
-2. **QR backup** — QrScanner decodes a badge → `POST /programmes/:id/scan-qr` → delegate resolved → same attendance path with `method: qr`.
+2. **QR backup** — QrScanner shows a camera preview; staff taps "Capture & Scan" → the captured frame is decoded via `html5-qrcode` `scanFile` → `POST /programmes/:id/scan-qr` → delegate resolved → same attendance path with `method: qr`.
 3. **Offline sync** — offline writes queue in IndexedDB; `useSync` flushes `POST /sync` on reconnect; the server replays ops; `sync:done` events trigger client refetch. Camera/chat are disabled offline.
 4. **Chat + AI assistant** — the `/chat` socket validates the token → loads history → `message` events broadcast to all staff; a message containing the trigger prefix (`@assistant`) invokes the chatbot, which builds a live programme context and streams a Groq response.
 
@@ -201,7 +201,7 @@ P1 = must-have MVP; P2 = high value, build after P1; P3 = nice-to-have.
 - React web application with responsive design — optimised for staff smartphones and tablets
 - Facial recognition: face-api.js library for real-time face detection, embedding generation, and similarity matching
 - Camera API: device camera access with live face detection and bounding box visualization
-- QR code scanner: separate tab with camera-based QR decoding (backup mode)
+- QR code scanner: separate tab with take-picture QR decoding (backup mode)
 - Offline queue: browser localStorage for queuing facial scans and embeddings when disconnected
 - UI: simple, high-contrast, glanceable — unidentified/absent delegates surfaced at top of list
 - Chat auto-scroll: chat snaps to the latest message on first entry and when already at the bottom on new messages; a floating jump-to-bottom button (with unread count) appears when scrolled up
