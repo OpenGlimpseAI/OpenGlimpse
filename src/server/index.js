@@ -156,9 +156,9 @@ async function start() {
         process.exit(1);
     }
 
-    import('./modules/facial_recog/facenetClient.js').then(({ startPythonServer, stopPythonServer }) => {
+    import('./modules/facial_recog/facenetClient.js').then(({ startPythonServer, stopPythonServer, PYTHON_SERVER_URL }) => {
         startPythonServer()
-            .then(() => console.log('[FaceNet] Python server ready (', process.env.PYTHON_SERVER_URL || 'http://127.0.0.1:8000', ')'))
+            .then(() => console.log('[FaceNet] Python server ready (', PYTHON_SERVER_URL, ')'))
             .catch((err) => console.error('[FaceNet] Failed to start Python server:', err.message));
 
         const cleanup = () => {
