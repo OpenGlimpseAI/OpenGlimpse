@@ -132,11 +132,12 @@ async function callPythonServer(endpoint, imageInput) {
         body: formData,
     });
 
+    const text = await response.text();
+
     let data;
     try {
-        data = await response.json();
+        data = JSON.parse(text);
     } catch {
-        const text = await response.text();
         throw new Error(
             `Python server request to ${endpoint} failed (${response.status}): ${text.slice(0, 500)}`
         );
