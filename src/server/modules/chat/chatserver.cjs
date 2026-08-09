@@ -193,4 +193,4 @@ function attachChatServer(io, getChatbotUserId) {
     return chat;
 }
 
-module.exports = { attachChatServer };
+module.exports = { attachChatServer, formatpayload };
