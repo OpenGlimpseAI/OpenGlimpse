@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import CheckIcon from "@mui/icons-material/Check";
+import ErrorOutlineIcon from "@mui/icons-material/Error";
 import SearchIcon from "@mui/icons-material/Search";
 import CloseIcon from "@mui/icons-material/Close";
 import KeyboardArrowDown from "@mui/icons-material/KeyboardArrowDown";
@@ -164,6 +165,10 @@ export function AdminDashboard() {
     };
 
     const handleToggleReady = async (routeId) => {
+        if (unassignedCount > 0) {
+            setError(`assign every delegate to a route — ${unassignedCount} delegate${unassignedCount === 1 ? "" : "s"} unassigned`);
+            return;
+        }
         if (!programmeId) return;
         const route = routes.find((r) => r.id === routeId);
         if (!route) return;
@@ -251,6 +256,11 @@ export function AdminDashboard() {
         allDelegates.forEach((d) => { map[d.id] = d.status === "present"; });
         return map;
     }, [allDelegates]);
+
+    const unassignedCount = useMemo(
+        () => allDelegates.filter((d) => !d.routeIds?.length).length,
+        [allDelegates]
+    );
 
     const routeDelegates = useMemo(() => {
         let list = allDelegates;
@@ -395,6 +405,13 @@ export function AdminDashboard() {
                     </div>
                 )}
             </header>
+
+            {unassignedCount > 0 && (
+                <div className="mx-4 sm:px-6 mb-3 px-4 py-2.5 rounded-xl bg-red-50 text-red-600 text-sm flex items-center gap-2">
+                    <ErrorOutlineIcon sx={{ fontSize: 16 }} />
+                    <span>assign every delegate to a route — {unassignedCount} delegate{unassignedCount === 1 ? "" : "s"} unassigned.</span>
+                </div>
+            )}
 
             <div className="px-4 sm:px-6 space-y-3 pb-3 pt-2">
                 {selectedRoute && (

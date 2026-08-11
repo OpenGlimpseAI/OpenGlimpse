@@ -10,12 +10,15 @@ async function list(req, res) {
 }
 
 async function create(req, res) {
-    const { name, startDate, endDate } = req.body;
+    const { name, startDate, endDate, routes } = req.body;
     if (!name || !startDate || !endDate) {
         return res.status(400).json({ error: 'name, startDate, endDate are required' });
     }
+    if (!Array.isArray(routes) || routes.length === 0) {
+        return res.status(400).json({ error: 'routes (at least one route) is required' });
+    }
     try {
-        const programme = await Programme.createWithDetails({ name, startDate, endDate });
+        const programme = await Programme.createWithDetails({ name, startDate, endDate, routes });
         res.status(201).json(programme);
     } catch (err) {
         res.status(500).json({ error: err.message });

@@ -72,7 +72,10 @@ body {
 
 /* Chat */
 .chat-page {
-  @apply flex min-h-screen flex-col bg-slate-50 pb-32;
+  @apply flex flex-col bg-slate-50;
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
 }
 
 .chat-header {
@@ -91,11 +94,11 @@ body {
 }
 
 .chat-layout {
-  @apply flex flex-1 flex-col;
+  @apply flex min-h-0 flex-1 flex-col;
 }
 
 .chat-scroll {
-  @apply relative flex-1 overflow-y-auto px-3 py-5 sm:px-5 lg:px-6;
+  @apply relative min-h-0 flex-1 overflow-y-auto px-3 py-5 sm:px-5 lg:px-6;
 }
 
 .chat-message-list {
@@ -687,7 +690,7 @@ body {
 
 /* Profile Sheet */
 .profile-backdrop {
-  @apply fixed inset-0 z-30 flex items-end justify-center bg-black/30 backdrop-blur-sm;
+  @apply fixed inset-0 z-50 flex items-end justify-center bg-black/30 backdrop-blur-sm;
   animation: profile-fade-in 0.2s ease-out;
 }
 
