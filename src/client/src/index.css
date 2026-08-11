@@ -687,7 +687,7 @@ body {
 
 /* Profile Sheet */
 .profile-backdrop {
-  @apply fixed inset-0 z-30 flex items-end justify-center bg-black/30 backdrop-blur-sm;
+  @apply fixed inset-0 z-50 flex items-end justify-center bg-black/30 backdrop-blur-sm;
   animation: profile-fade-in 0.2s ease-out;
 }
 
