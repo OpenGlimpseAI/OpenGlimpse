@@ -10,7 +10,7 @@ import KeyboardArrowDown from "@mui/icons-material/KeyboardArrowDown";
 import EditIcon from "@mui/icons-material/Edit";
 import { getProgrammes, getDelegates, getRoutes, getRoute, setDelegateRoutes } from "../../services/api";
 import { joinProgramme, leaveProgramme, onAttendanceUpdated } from "../../services/socket";
-import { timeAgo } from "../../services/utils";
+import { timeAgo, getStoredProgrammeId, setStoredProgrammeId } from "../../services/utils";
 
 const FILTERS = ["All", "Missing", "Present"];
 
@@ -51,7 +51,10 @@ export default function Directory() {
         getProgrammes()
             .then((list) => {
                 setProgrammes(list);
-                if (list.length > 0) setProgrammeId(list[0].id);
+                if (list.length > 0) {
+                    const stored = getStoredProgrammeId();
+                    setProgrammeId(list.some((p) => p.id === stored) ? stored : list[0].id);
+                }
             })
             .catch((e) => setError(e.message));
     }, []);
@@ -198,7 +201,7 @@ export default function Directory() {
                                         className={`block w-full text-left rounded-lg px-3 py-2 text-xs font-medium transition-colors ${
                                             p.id === programmeId ? "bg-sky-50 text-sky-700" : "text-slate-700 hover:bg-slate-50"
                                         }`}
-                                        onClick={() => { setProgrammeId(p.id); setShowPicker(false); }}
+                                        onClick={() => { setProgrammeId(p.id); setStoredProgrammeId(p.id); setShowPicker(false); }}
                                     >
                                         {p.name}
                                     </button>

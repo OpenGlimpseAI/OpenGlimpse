@@ -13,7 +13,7 @@ import PeopleAltIcon from "@mui/icons-material/PeopleAlt";
 import HowToRegIcon from "@mui/icons-material/HowToReg";
 import { getProgrammes, getAttendance, getAttendanceSummary, getRoutes, getRoute, getDelegates, markAttendance, toggleReady } from "../../services/api";
 import { joinProgramme, leaveProgramme, onAttendanceUpdated } from "../../services/socket";
-import { timeAgo } from "../../services/utils";
+import { timeAgo, getStoredProgrammeId, setStoredProgrammeId } from "../../services/utils";
 import { useConnectivity } from "../../hooks/useConnectivity";
 
 function getAuthUser() {
@@ -66,7 +66,10 @@ export function AdminDashboard() {
         getProgrammes()
             .then((list) => {
                 setProgrammes(list);
-                if (list.length > 0) setProgrammeId(list[0].id);
+                if (list.length > 0) {
+                    const stored = getStoredProgrammeId();
+                    setProgrammeId(list.some((p) => p.id === stored) ? stored : list[0].id);
+                }
             })
             .catch((e) => setError(e.message))
             .finally(() => setLoading(false));
@@ -156,6 +159,7 @@ export function AdminDashboard() {
 
     const handleProgrammeChange = (id) => {
         setProgrammeId(id);
+        setStoredProgrammeId(id);
         setSelectedRoute(null);
         setSelected(null);
         setSearch("");
