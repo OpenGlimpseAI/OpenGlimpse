@@ -1,4 +1,4 @@
-import { useEffect, useRef, useCallback } from 'react';
+import { useEffect, useRef, useCallback, useState } from 'react';
 import { Html5Qrcode } from 'html5-qrcode';
 
 const SCANNER_ID = 'openglimpse-qr-scanner-region';
@@ -18,11 +18,18 @@ export default function QrScanner({ onScan, onError, facingMode = 'environment' 
     const barcodeDetectorRef = useRef(null);
     const rafIdRef = useRef(null);
     const videoRef = useRef(null);
+    const [fallbackActive, setFallbackActive] = useState(false);
 
     useEffect(() => { onScanRef.current = onScan; }, [onScan]);
     useEffect(() => { onErrorRef.current = onError; }, [onError]);
 
+    const lastDecodeRef = useRef({ text: null, at: 0 });
+
     const handleDecoded = useCallback((decodedText) => {
+        const now = Date.now();
+        const last = lastDecodeRef.current;
+        if (decodedText === last.text && now - last.at < 800) return;
+        lastDecodeRef.current = { text: decodedText, at: now };
         onScanRef.current(decodedText);
     }, []);
 
@@ -76,14 +83,14 @@ export default function QrScanner({ onScan, onError, facingMode = 'environment' 
                     fps: 20,
                     qrbox: (viewfinderWidth, viewfinderHeight) => {
                         const minEdge = Math.min(viewfinderWidth, viewfinderHeight);
-                        const size = Math.floor(minEdge * 0.7);
+                        const size = Math.max(Math.floor(minEdge * 0.7), 150);
                         return { width: size, height: size };
                     },
                     disableFlip: false,
                 };
 
                 await html5Qr.start(
-                    facingMode,
+                    { facingMode },
                     config,
                     (decodedText) => {
                         if (!cancelled) handleDecoded(decodedText);
@@ -117,6 +124,7 @@ export default function QrScanner({ onScan, onError, facingMode = 'environment' 
                         video.srcObject = stream;
                         await video.play();
                         videoRef.current = video;
+                        setFallbackActive(true);
                         await startBarcodeDetectorFallback(video);
                     }
                 } catch (fallbackErr) {
@@ -150,10 +158,10 @@ export default function QrScanner({ onScan, onError, facingMode = 'environment' 
     }, [facingMode, handleDecoded, startBarcodeDetectorFallback]);
 
     return (
-        <div style={{ position: 'relative', width: '100%', aspectRatio: '1 / 1', background: '#000', overflow: 'hidden' }}>
+        <div style={{ position: 'relative', width: '100%', background: '#000', overflow: 'hidden' }}>
             <div
                 id={SCANNER_ID}
-                style={{ width: '100%', height: '100%' }}
+                style={{ width: '100%', minHeight: 200, display: fallbackActive ? 'none' : 'block' }}
             />
             <video
                 id={`${SCANNER_ID}-video`}
@@ -162,9 +170,8 @@ export default function QrScanner({ onScan, onError, facingMode = 'environment' 
                 playsInline
                 style={{
                     width: '100%',
-                    height: '100%',
-                    objectFit: 'cover',
-                    display: 'none',
+                    height: 'auto',
+                    display: fallbackActive ? 'block' : 'none',
                 }}
             />
         </div>
