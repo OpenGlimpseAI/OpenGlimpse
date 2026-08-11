@@ -14,6 +14,7 @@ import { getProgrammes, getAttendance, getAttendanceSummary, getRoutes, getRoute
 import { joinProgramme, leaveProgramme, onAttendanceUpdated } from "../../services/socket";
 import { timeAgo } from "../../services/utils";
 import { useConnectivity } from "../../hooks/useConnectivity";
+import { resolveProgramme, saveProgrammeId } from "../../hooks/useProgramme";
 
 function getAuthUser() {
     const raw = localStorage.getItem('authUser');
@@ -65,7 +66,7 @@ export function AdminDashboard() {
         getProgrammes()
             .then((list) => {
                 setProgrammes(list);
-                if (list.length > 0) setProgrammeId(list[0].id);
+                setProgrammeId(resolveProgramme(list));
             })
             .catch((e) => setError(e.message))
             .finally(() => setLoading(false));
@@ -154,6 +155,7 @@ export function AdminDashboard() {
     }, []);
 
     const handleProgrammeChange = (id) => {
+        saveProgrammeId(id);
         setProgrammeId(id);
         setSelectedRoute(null);
         setSelected(null);

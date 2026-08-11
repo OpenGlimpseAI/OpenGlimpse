@@ -8,6 +8,7 @@ import WifiOffRoundedIcon from '@mui/icons-material/WifiOffRounded'
 import KeyboardArrowDownRounded from '@mui/icons-material/KeyboardArrowDownRounded'
 import { useConnectivity } from '../../hooks/useConnectivity';
 import { getProgrammes, getUsers } from '../../services/api';
+import { resolveProgramme, saveProgrammeId } from '../../hooks/useProgramme';
 const CHAT_SERVER_URL = import.meta.env.PROD ? (import.meta.env.VITE_CHAT_SERVER_URL || '') : '';
 const CHATBOT_TRIGGER = import.meta.env.VITE_CHATBOT_TRIGGER || '@assistant';
 
@@ -84,7 +85,7 @@ export default function Chat() {
         getProgrammes()
             .then((list) => {
                 setProgrammes(list);
-                if (list.length === 1) setProgrammeId(list[0].id);
+                setProgrammeId(resolveProgramme(list));
             })
             .catch(() => {});
     }, []);
@@ -229,7 +230,7 @@ export default function Chat() {
                     <div className="relative">
                         <select
                             value={programmeId || ''}
-                            onChange={(e) => setProgrammeId(e.target.value || null)}
+                            onChange={(e) => { saveProgrammeId(e.target.value || null); setProgrammeId(e.target.value || null); }}
                             className="text-sm border border-slate-300 rounded-lg px-2 py-1 bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-sky-400"
                         >
                             <option value="">Select programme</option>

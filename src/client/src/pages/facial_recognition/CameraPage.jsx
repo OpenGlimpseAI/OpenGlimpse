@@ -6,6 +6,7 @@ import UndoIcon from '@mui/icons-material/Undo';
 import { getProgrammes, recognizeFaces, markAttendanceBatch, lookupByBadge } from '../../services/api';
 import QrScanner from '../../components/qr_scanner/QrScanner';
 import { useConnectivity } from '../../hooks/useConnectivity';
+import { resolveProgramme, saveProgrammeId } from '../../hooks/useProgramme';
 
 const MODEL_URL = 'https://cdn.jsdelivr.net/gh/justadudewhohacks/face-api.js@0.22.2/weights/';
 const DETECTION_FRAME_SKIP = 8;
@@ -70,7 +71,7 @@ export default function CameraPage() {
         getProgrammes()
             .then((list) => {
                 setProgrammes(list);
-                if (list.length > 0) setProgrammeId(list[0].id);
+                setProgrammeId(resolveProgramme(list));
             })
             .catch((e) => setError(e.message));
     }, []);
@@ -355,7 +356,7 @@ export default function CameraPage() {
                                         className={`block w-full text-left rounded-lg px-3 py-2 text-xs font-medium transition-colors ${
                                             p.id === programmeId ? 'bg-sky-50 text-sky-700' : 'text-slate-700 hover:bg-slate-50'
                                         }`}
-                                        onClick={() => { setProgrammeId(p.id); setShowPicker(false); }}
+                                        onClick={() => { saveProgrammeId(p.id); setProgrammeId(p.id); setShowPicker(false); }}
                                     >
                                         {p.name}
                                     </button>

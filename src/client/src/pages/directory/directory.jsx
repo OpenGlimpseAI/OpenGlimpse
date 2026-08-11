@@ -11,6 +11,7 @@ import EditIcon from "@mui/icons-material/Edit";
 import { getProgrammes, getDelegates, getRoutes, getRoute, setDelegateRoutes } from "../../services/api";
 import { joinProgramme, leaveProgramme, onAttendanceUpdated } from "../../services/socket";
 import { timeAgo } from "../../services/utils";
+import { resolveProgramme, saveProgrammeId } from "../../hooks/useProgramme";
 
 const FILTERS = ["All", "Missing", "Present"];
 
@@ -51,7 +52,7 @@ export default function Directory() {
         getProgrammes()
             .then((list) => {
                 setProgrammes(list);
-                if (list.length > 0) setProgrammeId(list[0].id);
+                setProgrammeId(resolveProgramme(list));
             })
             .catch((e) => setError(e.message));
     }, []);
@@ -198,7 +199,7 @@ export default function Directory() {
                                         className={`block w-full text-left rounded-lg px-3 py-2 text-xs font-medium transition-colors ${
                                             p.id === programmeId ? "bg-sky-50 text-sky-700" : "text-slate-700 hover:bg-slate-50"
                                         }`}
-                                        onClick={() => { setProgrammeId(p.id); setShowPicker(false); }}
+                                        onClick={() => { saveProgrammeId(p.id); setProgrammeId(p.id); setShowPicker(false); }}
                                     >
                                         {p.name}
                                     </button>
