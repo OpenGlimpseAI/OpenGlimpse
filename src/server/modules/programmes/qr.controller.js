@@ -23,17 +23,23 @@ async function lookupBadge(req, res) {
         });
 
         const badgeToPd = {};
+        const userIdToPd = {};
+        const idToPd = {};
         for (const pd of programmeDelegates) {
             if (pd.delegate.badge) {
                 badgeToPd[pd.delegate.badge] = pd;
             }
+            if (pd.delegate.userId) {
+                userIdToPd[pd.delegate.userId] = pd;
+            }
+            idToPd[pd.delegate.id] = pd;
         }
 
         const matches = [];
         const errors = [];
 
         for (const b of badgeList) {
-            const pd = badgeToPd[b];
+            const pd = badgeToPd[b] || userIdToPd[b] || idToPd[b];
             if (pd) {
                 matches.push({
                     delegateId: pd.delegate.id,
