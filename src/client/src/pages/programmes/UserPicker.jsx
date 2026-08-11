@@ -3,15 +3,22 @@ import { useState } from "react";
 export default function UserPicker({ users, alreadyAdded, onAdd, onCancel, routes }) {
     const [selectedIds, setSelectedIds] = useState([]);
     const [adding, setAdding] = useState(false);
-    const [assignRouteId, setAssignRouteId] = useState(routes.length === 1 ? routes[0].id : "");
+    const [assignRouteId, setAssignRouteId] = useState(routes.length > 0 ? routes[0].id : "");
+    const [routeError, setRouteError] = useState("");
 
     const available = users.filter((u) => !alreadyAdded(u.id));
 
     const handleSubmit = async () => {
         if (!selectedIds.length) return;
+        if (!assignRouteId) {
+            if (routes.length === 0) return; // inline "No routes" message already shown
+            setRouteError("Select a route to assign these delegates to.");
+            return;
+        }
+        setRouteError("");
         setAdding(true);
         try {
-            await onAdd(selectedIds, assignRouteId || undefined);
+            await onAdd(selectedIds, assignRouteId);
         } finally {
             setAdding(false);
         }
@@ -44,14 +51,16 @@ export default function UserPicker({ users, alreadyAdded, onAdd, onCancel, route
                     })
                 )}
             </div>
-            {routes.length > 0 && (
-                <select className="w-full rounded-lg border border-sky-200 px-2 py-1.5 text-xs outline-none focus:border-sky-400" value={assignRouteId} onChange={(e) => setAssignRouteId(e.target.value)}>
-                    <option value="">No route assignment</option>
+            {routes.length > 0 ? (
+                <select className="w-full rounded-lg border border-sky-200 px-2 py-1.5 text-xs outline-none focus:border-sky-400" value={assignRouteId} onChange={(e) => { setAssignRouteId(e.target.value); setRouteError(""); }}>
                     {routes.map((r) => (
                         <option key={r.id} value={r.id}>{r.name}</option>
                     ))}
                 </select>
+            ) : (
+                <p className="text-xs text-red-500">No routes in this programme — add a route first.</p>
             )}
+            {routeError && <p className="text-xs text-red-500">{routeError}</p>}
             <div className="flex gap-2 pt-1">
                 <button className="flex-1 bg-sky-gradient text-white rounded-lg py-1.5 text-xs font-semibold disabled:opacity-50" onClick={handleSubmit} disabled={!selectedIds.length || adding}>
                     {adding ? "Adding..." : `Add (${selectedIds.length})`}

@@ -38,17 +38,18 @@ Base URL: `http://<host>:3001` (Express server). All routes below are registered
 ### 1.2 Create programme
 
 - **Method / Path:** `POST /programmes`
-- **Description:** Create a new programme with a name and date range. Initial `status` is `draft`.
+- **Description:** Create a new programme with a name, date range, and **at least one route** (ready-to-depart only operates per route, so a programme must be created with a route). The programme and its routes are created atomically. Initial `status` is `draft`.
 - **Request body:**
 ```json
-{ "name": "SCCCI Shanghai 2026", "startDate": "2026-08-10", "endDate": "2026-08-14" }
+{ "name": "SCCCI Shanghai 2026", "startDate": "2026-08-10", "endDate": "2026-08-14", "routes": [{ "name": "Coach A" }] }
 ```
 - **Success — `201 Created`:**
 ```json
-{ "id": "f47ac10b-58cc-4372-a567-0e02b2c3d479", "name": "SCCCI Shanghai 2026", "startDate": "2026-08-10", "endDate": "2026-08-14", "status": "draft" }
+{ "id": "f47ac10b-58cc-4372-a567-0e02b2c3d479", "name": "SCCCI Shanghai 2026", "startDate": "2026-08-10", "endDate": "2026-08-14", "status": "draft", "routes": [ { "id": "a1b2c3d4-...", "name": "Coach A" } ] }
 ```
 - **Error codes:**
   - `400` — `{ "error": "name, startDate, endDate are required" }`
+  - `400` — `{ "error": "routes (at least one route) is required" }`
   - `500` — `{ "error": "<message>" }`
 
 ### 1.3 Update programme
@@ -190,7 +191,7 @@ Base URL: `http://<host>:3001` (Express server). All routes below are registered
 ### 3.2 Add delegates to a programme
 
 - **Method / Path:** `POST /programmes/:id/delegates`
-- **Description:** Add delegates to the programme. Accepts one of several payload shapes; the client currently sends `{ userIds, routeId }`.
+- **Description:** Add delegates to the programme. Accepts one of several payload shapes; the client currently sends `{ userIds, routeId }`. The `userIds` shape **requires a `routeId`** (a route must be selected for the added delegates); other legacy shapes are unaffected.
 - **Request body (client shape):**
 ```json
 { "userIds": ["u1-...", "u2-..."], "routeId": "a1b2c3d4-..." }
@@ -202,6 +203,8 @@ Base URL: `http://<host>:3001` (Express server). All routes below are registered
 ```
 - **Error codes:**
   - `400` — `{ "error": "Provide delegates array, delegateIds, delegateId, or name" }`
+  - `400` — `{ "error": "routeId is required when adding delegates" }`
+  - `400` — `{ "error": "Invalid routeId: <id>" }`
   - `404` — `{ "error": "Programme not found" }`
   - `500` — `{ "error": "<message>" }`
 
@@ -345,7 +348,7 @@ Base URL: `http://<host>:3001` (Express server). All routes below are registered
 ### 5.2 Toggle ready-to-depart
 
 - **Method / Path:** `PUT /programmes/:id/routes/:routeId/ready-to-depart`
-- **Description:** Set whether a route is ready to depart.
+- **Description:** Set whether a route is ready to depart. Marking ready (`ready: true`) is rejected while any delegate in the programme has no route assigned, so that no one is unaccounted for at departure.
 - **Request body:**
 ```json
 { "ready": true }
@@ -356,6 +359,7 @@ Base URL: `http://<host>:3001` (Express server). All routes below are registered
 ```
 - **Error codes:**
   - `400` — `{ "error": "ready must be a boolean" }`
+  - `400` — `{ "error": "assign every delegate to a route (N delegate(s) unassigned)" }`
   - `500` — `{ "error": "<message>" }`
 
 ---
