@@ -15,8 +15,6 @@ export default function QrScanner({ onScan, onError, facingMode = 'environment' 
     const onScanRef = useRef(onScan);
     const onErrorRef = useRef(onError);
     const html5QrRef = useRef(null);
-    const lastScanRef = useRef('');
-    const scanCooldownRef = useRef(false);
     const barcodeDetectorRef = useRef(null);
     const rafIdRef = useRef(null);
     const videoRef = useRef(null);
@@ -25,12 +23,7 @@ export default function QrScanner({ onScan, onError, facingMode = 'environment' 
     useEffect(() => { onErrorRef.current = onError; }, [onError]);
 
     const handleDecoded = useCallback((decodedText) => {
-        if (scanCooldownRef.current) return;
-        if (decodedText === lastScanRef.current) return;
-        lastScanRef.current = decodedText;
-        scanCooldownRef.current = true;
         onScanRef.current(decodedText);
-        setTimeout(() => { scanCooldownRef.current = false; }, 2000);
     }, []);
 
     const startBarcodeDetectorFallback = useCallback(async (video) => {
@@ -80,14 +73,13 @@ export default function QrScanner({ onScan, onError, facingMode = 'environment' 
                 html5QrRef.current = html5Qr;
 
                 const config = {
-                    fps: 10,
-                    qrbox: { width: 250, height: 250 },
-                    aspectRatio: 1.0,
-                    videoConstraints: {
-                        facingMode,
-                        width: { ideal: 1280 },
-                        height: { ideal: 720 },
+                    fps: 20,
+                    qrbox: (viewfinderWidth, viewfinderHeight) => {
+                        const minEdge = Math.min(viewfinderWidth, viewfinderHeight);
+                        const size = Math.floor(minEdge * 0.7);
+                        return { width: size, height: size };
                     },
+                    disableFlip: false,
                 };
 
                 await html5Qr.start(
@@ -158,7 +150,7 @@ export default function QrScanner({ onScan, onError, facingMode = 'environment' 
     }, [facingMode, handleDecoded, startBarcodeDetectorFallback]);
 
     return (
-        <div style={{ position: 'relative', width: '100%', aspectRatio: '1 / 1', background: '#000' }}>
+        <div style={{ position: 'relative', width: '100%', aspectRatio: '1 / 1', background: '#000', overflow: 'hidden' }}>
             <div
                 id={SCANNER_ID}
                 style={{ width: '100%', height: '100%' }}
