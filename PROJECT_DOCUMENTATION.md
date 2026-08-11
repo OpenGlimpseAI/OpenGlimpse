@@ -37,6 +37,8 @@ The client and API server are the only public-facing processes. The Face service
 
 **Backend (`src/server/`)** — an Express application. Responsibilities:
 - REST API for programmes, routes, delegates, attendance, ready-to-depart, face upload, auth, and offline sync.
+- Programme creation requires **at least one route** (the programme and its routes are created atomically); ready-to-depart is per-route, and `ready_to_depart` is keyed by a unique `route_id`.
+- Delegates added via the app must be assigned to a route; ready-to-depart is **blocked** while any delegate has no route, and the dashboard shows an error banner ("assign every delegate to a route").
 - Auth: base64 `id:role` tokens + SHA-256 password hashing; rate limiting on `/api/auth/login` and `/sync`.
 - Face matching: cosine similarity (≥ 0.4) against stored `primary` embeddings, recording `ScanEvent`s.
 - Offline sync: `POST /sync` replays queued client ops by matching `method + path` against a handler table.

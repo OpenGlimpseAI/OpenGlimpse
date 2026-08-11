@@ -30,6 +30,16 @@ async function testAddDelegateValidation() {
     return success;
 }
 
+async function testAddDelegateRequiresRoute() {
+    console.log('--- POST /programmes/:id/delegates (userIds without routeId) ---');
+    const res = await api('POST', `/programmes/${ctx.programmeId}/delegates`, {
+        userIds: [ctx.participantUserId],
+    });
+    const success = res.status === 400 && /routeId/i.test(res.data?.error || '');
+    console.log('Status:', res.status, success ? 'PASS\n' : 'FAIL\n');
+    return success;
+}
+
 async function testGetRouteMembers() {
     console.log('--- GET /programmes/:id/delegates/:delegateId/routes ---');
     const res = await api('GET', `/programmes/${ctx.programmeId}/delegates/${ctx.delegateId}/routes`);
@@ -90,6 +100,7 @@ module.exports = [
     ['list delegates includes added delegate', testListDelegates],
     ['delegate carries route assignment', testDelegateIsOnRoute],
     ['add delegate rejects empty body (400)', testAddDelegateValidation],
+    ['add delegate rejects missing routeId (400)', testAddDelegateRequiresRoute],
     ['get delegate route memberships', testGetRouteMembers],
     ['set route members rejects multiple routes (single-route rule)', testSetRouteMembersRejectsMultiple],
     ['set route members rejects invalid route id', testSetRouteMembersInvalidRoute],

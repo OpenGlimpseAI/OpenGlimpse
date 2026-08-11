@@ -81,7 +81,7 @@ registerSyncRoutes(app);
 app.get('/users', async (req, res) => {
     try {
         const { user } = require('./database/db.cjs');
-        const users = await user.findAll({ attributes: ['id', 'enName', 'zhName'], order: [['enName', 'ASC']] });
+        const users = await user.findAll({ attributes: ['id', 'enName', 'zhName', 'role'], order: [['enName', 'ASC']] });
         res.json(users);
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -101,6 +101,20 @@ async function start() {
     try {
         await sequelize.sync({ alter: true });
         console.log('Database synced');
+
+        // Ready-to-depart is per-route (keyed by route_id); drop any stale unique index
+        // on ready_to_depart.programme_id that an older schema may have created.
+        try {
+            const [idx] = await sequelize.query(
+                `SELECT indexname FROM pg_indexes WHERE tablename = 'ready_to_depart' AND indexdef ILIKE '%programme_id%' AND indexdef ILIKE '%UNIQUE%'`
+            );
+            if (idx.length > 0) {
+                await sequelize.query(`DROP INDEX IF EXISTS "${idx[0].indexname}"`);
+                console.log('Dropped stale unique index on ready_to_depart.programme_id');
+            }
+        } catch (e) {
+            console.log('No stale ready_to_depart unique index to clean:', e.message);
+        }
 
         // Seed route_members from existing programme_delegates route_id column if present
         const db = require('./database/db.cjs');

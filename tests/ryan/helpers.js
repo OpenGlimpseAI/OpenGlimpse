@@ -81,6 +81,7 @@ async function setup() {
         name: 'Test Programme',
         startDate: '2026-01-01',
         endDate: '2026-12-31',
+        routes: [{ name: 'Coach A' }],
     }, ctx.staffToken);
 
     if (progRes.status === 201) {
