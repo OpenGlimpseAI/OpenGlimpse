@@ -21,6 +21,7 @@ export default function ManageProgrammeTab() {
   const [modalName, setModalName] = useState("");
   const [modalStart, setModalStart] = useState("");
   const [modalEnd, setModalEnd] = useState("");
+  const [modalRouteName, setModalRouteName] = useState("");
   const [saving, setSaving] = useState(false);
 
   const [deleteTarget, setDeleteTarget] = useState(null);
@@ -35,24 +36,25 @@ export default function ManageProgrammeTab() {
   const openCreate = () => {
     setModalMode("create");
     setModalProgramme(null);
-    setModalName(""); setModalStart(""); setModalEnd("");
+    setModalName(""); setModalStart(""); setModalEnd(""); setModalRouteName("");
   };
 
   const openEdit = (p) => {
     setModalMode("edit");
     setModalProgramme(p);
-    setModalName(p.name); setModalStart(p.startDate); setModalEnd(p.endDate);
+    setModalName(p.name); setModalStart(p.startDate); setModalEnd(p.endDate); setModalRouteName("");
   };
 
   const handleModalSave = async () => {
     if (!modalName.trim() || !modalStart || !modalEnd) return;
+    if (modalMode !== "edit" && !modalRouteName.trim()) return;
     setSaving(true);
     try {
       if (modalMode === "edit" && modalProgramme) {
         await updateProgramme(modalProgramme.id, { name: modalName, startDate: modalStart, endDate: modalEnd });
         setToast("Programme updated");
       } else {
-        await createProgramme({ name: modalName, startDate: modalStart, endDate: modalEnd });
+        await createProgramme({ name: modalName, startDate: modalStart, endDate: modalEnd, routes: [{ name: modalRouteName.trim() }] });
         setToast("Programme created");
       }
       setModalMode(null);
@@ -98,12 +100,15 @@ export default function ManageProgrammeTab() {
               </button>
             </div>
             <input className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-sky-400" placeholder="Programme name" value={modalName} onChange={(e) => setModalName(e.target.value)} style={{ fontSize: "16px" }} />
+            {modalMode === "create" && (
+              <input className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-sky-400" placeholder="Route name (e.g. Coach A)" value={modalRouteName} onChange={(e) => setModalRouteName(e.target.value)} style={{ fontSize: "16px" }} />
+            )}
             <div className="flex flex-col sm:flex-row gap-3">
               <input type="date" className="flex-1 rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-sky-400" value={modalStart} onChange={(e) => setModalStart(e.target.value)} style={{ fontSize: "16px" }} />
               <input type="date" className="flex-1 rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-sky-400" value={modalEnd} onChange={(e) => setModalEnd(e.target.value)} style={{ fontSize: "16px" }} />
             </div>
             <div className="flex gap-2 pt-1">
-              <button className="flex-1 rounded-xl bg-sky-gradient text-white py-2.5 text-sm font-semibold disabled:opacity-50" onClick={handleModalSave} disabled={saving}>
+              <button className="flex-1 rounded-xl bg-sky-gradient text-white py-2.5 text-sm font-semibold disabled:opacity-50" onClick={handleModalSave} disabled={saving || (modalMode !== "edit" && !modalRouteName.trim())}>
                 {saving ? "Saving..." : modalMode === "edit" ? "Save" : "Create"}
               </button>
               <button className="flex-1 rounded-xl bg-slate-100 text-slate-600 py-2.5 text-sm font-semibold hover:bg-slate-200 transition-colors" onClick={() => setModalMode(null)}>Cancel</button>

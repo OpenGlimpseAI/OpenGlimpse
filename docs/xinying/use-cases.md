@@ -27,12 +27,12 @@ This document defines the use cases for the **Programme Creation & Attendance** 
 - **Main flow:**
   1. Admin opens **Manage Programmes** (`/programmes`).
   2. Admin clicks **New**.
-  3. Admin enters the programme name, start date, and end date.
-  4. Admin submits. The system creates the programme with status `draft`.
+  3. Admin enters the programme name, start date, end date, and **at least one route name** (ready-to-depart only operates per route, so a programme cannot be created without a route).
+  4. Admin submits. The system creates the programme with status `draft` and its route(s) in one atomic call.
   5. The system shows a "Programme created" toast and reloads the list; the new programme appears at the top.
 - **Alternative flows:**
-  - *4a. Validation failure:* If any of name / start date / end date is missing, the system ignores the submit (the save button is disabled until all fields are filled).
-  - *5a. Offline:* If offline, the programme is optimistically added to the list with a pending id and queued for sync via the offline queue.
+  - *4a. Validation failure:* If any of name / start date / end date / route name is missing, the system ignores the submit (the save button is disabled until all fields are filled).
+  - *5a. Offline:* If offline, the programme is optimistically added to the list with a pending id and queued for sync via the offline queue; the bundled route is replayed with the create.
 - **Postcondition:** A new programme exists and is selectable in the dashboard, directory, and detail page.
 
 ---
@@ -131,10 +131,12 @@ This document defines the use cases for the **Programme Creation & Attendance** 
 - **Main flow:**
   1. Admin opens the **Manage** tab → delegate list.
   2. Admin clicks **Add**.
-  3. The user picker opens with all users not yet in the programme.
-  4. Admin checks one or more users, optionally selects a route, and clicks **Add (n)**.
-  5. The system find-or-creates a `Delegate` for each selected user and links it to the programme.
-- **Postcondition:** The selected users appear in the delegate list for the programme.
+  3. The user picker opens with all participant users not yet in the programme (staff accounts and the AI assistant are excluded).
+  4. Admin checks one or more users, **selects a route** (required — the picker pre-selects the first route and rejects adding without one), and clicks **Add (n)**.
+  5. The system find-or-creates a `Delegate` for each selected user and links it to the programme and route.
+- **Alternative flows:**
+  - *4a. No route selected:* If no route is chosen, the system shows an error ("Select a route to assign these delegates to" / "No routes in this programme — add a route first") and does not add.
+- **Postcondition:** The selected users appear in the delegate list for the programme, each on a route.
 
 ---
 
@@ -191,7 +193,8 @@ This document defines the use cases for the **Programme Creation & Attendance** 
   2. The header shows the selected programme and a **checked in / total** counter.
   3. Each route card shows its name, a progress bar, "n checked in", and (if any) "n missing".
   4. Selecting a route shows the delegate list sorted with missing delegates first, filterable by **All / Missing / Present** and searchable by name.
-  5. The view refreshes automatically on every `attendance:updated` WebSocket event.
+  5. If any delegate has no route assigned, a red error banner shows **"assign every delegate to a route — N delegate(s) unassigned."**
+  6. The view refreshes automatically on every `attendance:updated` WebSocket event.
 - **Postcondition:** The user has an up-to-date picture of attendance for the route.
 
 ---
@@ -207,6 +210,7 @@ This document defines the use cases for the **Programme Creation & Attendance** 
   3. The system sets `ready: true` for the route; the button switches to "All accounted for" and the route card shows a "Ready to depart" badge.
 - **Alternative flows:**
   - *2a. Delegate becomes missing later:* Admin taps again to set `ready: false`.
+  - *2b. Unassigned delegates:* If any delegate in the programme has no route, the toggle is rejected with the error **"assign every delegate to a route"** (dashboard banner also flags it), and `ready` stays `false`.
 - **Postcondition:** The route's ready-to-depart status reflects the confirmation, visible to all staff.
 
 ---
