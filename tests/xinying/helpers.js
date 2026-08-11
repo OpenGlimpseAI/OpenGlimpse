@@ -73,11 +73,13 @@ async function setup() {
     }
 
     // 3. Fresh programme for the run (unique name so repeated runs don't clash)
+    // A programme must be created with at least one route; the server returns the created routes.
     ctx.programmeName = `XY Test ${new Date().toISOString().slice(0, 19).replace(/[-:]/g, '').replace('T', '-')}`;
     const progRes = await api('POST', '/programmes', {
         name: ctx.programmeName,
         startDate: '2026-08-10',
         endDate: '2026-08-14',
+        routes: [{ name: 'Coach A' }],
     });
     if (progRes.status !== 201 || !progRes.data.id) {
         console.error('Failed to create test programme:', progRes);
@@ -86,15 +88,22 @@ async function setup() {
     ctx.programmeId = progRes.data.id;
     console.log('Created programme:', ctx.programmeId, '(', ctx.programmeName, ')');
 
-    // 4. A route inside the programme
-    const routeRes = await api('POST', `/programmes/${ctx.programmeId}/routes`, { name: 'Coach A' });
-    if (routeRes.status !== 201 || !routeRes.data.id) {
-        console.error('Failed to create test route:', routeRes);
-        return false;
+    // 4. A route inside the programme (bundled with creation when the server returns it,
+    //    otherwise added as a separate call for backwards compatibility)
+    if (Array.isArray(progRes.data.routes) && progRes.data.routes.length > 0) {
+        ctx.routeId = progRes.data.routes[0].id;
+        ctx.routeName = progRes.data.routes[0].name;
+        console.log('Created route:', ctx.routeId, '(', ctx.routeName, ')');
+    } else {
+        const routeRes = await api('POST', `/programmes/${ctx.programmeId}/routes`, { name: 'Coach A' });
+        if (routeRes.status !== 201 || !routeRes.data.id) {
+            console.error('Failed to create test route:', routeRes);
+            return false;
+        }
+        ctx.routeId = routeRes.data.id;
+        ctx.routeName = routeRes.data.name;
+        console.log('Created route:', ctx.routeId, '(', ctx.routeName, ')');
     }
-    ctx.routeId = routeRes.data.id;
-    ctx.routeName = routeRes.data.name;
-    console.log('Created route:', ctx.routeId, '(', ctx.routeName, ')');
 
     // 5. Add the participant as a delegate, assigned to the route
     const addRes = await api('POST', `/programmes/${ctx.programmeId}/delegates`, {

@@ -30,6 +30,18 @@ async function testCreateProgrammeValidation() {
     return success;
 }
 
+async function testCreateProgrammeRequiresRoute() {
+    console.log('--- POST /programmes (no routes) ---');
+    const res = await api('POST', '/programmes', {
+        name: 'No Route Programme',
+        startDate: '2026-08-10',
+        endDate: '2026-08-14',
+    });
+    const success = res.status === 400 && res.data.error === 'routes (at least one route) is required';
+    console.log('Status:', res.status, success ? 'PASS\n' : 'FAIL\n');
+    return success;
+}
+
 async function testUpdateProgramme() {
     console.log('--- PUT /programmes/:id ---');
     const res = await api('PUT', `/programmes/${ctx.programmeId}`, { name: `${ctx.programmeName} (edited)` });
@@ -59,6 +71,7 @@ module.exports = [
     ['list programmes includes the created programme', testListProgrammes],
     ['created programme has totalDelegates/checkedIn counts', testGetProgrammeHasCounts],
     ['create programme rejects missing dates (400)', testCreateProgrammeValidation],
+    ['create programme rejects missing routes (400)', testCreateProgrammeRequiresRoute],
     ['update programme name succeeds', testUpdateProgramme],
     ['update unknown programme returns 404', testUpdateProgrammeNotFound],
     ['delete unknown programme returns 404', testDeleteProgrammeNotFound],

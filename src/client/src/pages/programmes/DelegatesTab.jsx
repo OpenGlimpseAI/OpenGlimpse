@@ -54,7 +54,8 @@ export default function DelegatesTab({ programmeId }) {
     setShowAddDelegate(true);
     try {
       const users = await getUsers();
-      setAllUsers(users || []);
+      // Only participants can be delegates — staff accounts and the AI assistant are excluded
+      setAllUsers((users || []).filter((u) => u.role !== 'staff'));
     } catch (e) { setError(e.message); }
     finally { setUsersLoading(false); }
   };

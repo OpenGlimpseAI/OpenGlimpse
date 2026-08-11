@@ -93,8 +93,8 @@ erDiagram
     }
     READY_TO_DEPART {
         uuid id PK
-        uuid programme_id FK UK
-        uuid route_id FK
+        uuid programme_id FK
+        uuid route_id FK UK
         boolean ready
         uuid toggled_by
         timestamp toggled_at
@@ -205,16 +205,18 @@ One row per delegate per programme holding their current attendance state (statu
 
 ### 2.7 `ready_to_depart`
 
-Per-route (or per-programme) departure-readiness toggle.
+Per-route departure-readiness toggle. **One row per route** — enforced by a unique index on `route_id`.
 
 | Column | Type | Constraints | Description |
 |--------|------|-------------|-------------|
 | `id` | `UUID` | `PK`, default `UUIDV4` | Row identifier |
-| `programme_id` | `UUID` | `NOT NULL`, `UNIQUE` → FK `programmes.id` (`CASCADE`) | Programme |
-| `route_id` | `UUID` | `NULL` → FK `routes.id` (`CASCADE`) | Route (programme-level row when null) |
+| `programme_id` | `UUID` | `NOT NULL` → FK `programmes.id` (`CASCADE`) | Programme (denormalised; not unique — many routes share it) |
+| `route_id` | `UUID` | `NULL` → FK `routes.id` (`CASCADE`); **UNIQUE** | Route this readiness flag belongs to |
 | `ready` | `BOOLEAN` | default `false` | Ready-to-depart flag |
 | `toggled_by` | `UUID` | — | Staff id who toggled |
 | `toggled_at` | `TIMESTAMP` | — | Last toggle time |
+
+**Indexes:** `UNIQUE (route_id)` — each route has at most one ready-to-depart row.
 
 ### 2.8 `scan_events` (read-only for this module)
 

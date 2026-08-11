@@ -20,6 +20,9 @@ async function toggleStatus(req, res) {
         const status = await ReadyToDepart.setStatus(routeId, id, ready);
         res.json(status);
     } catch (err) {
+        if (err.message.includes('assign every delegate to a route')) {
+            return res.status(400).json({ error: err.message });
+        }
         res.status(500).json({ error: err.message });
     }
 }

@@ -98,12 +98,15 @@ const AttendanceRecord = sequelize.define("AttendanceRecord", {
 
 const ReadyToDepart = sequelize.define("ReadyToDepart", {
   id: { type: DataTypes.UUID, defaultValue: DataTypes.UUIDV4, primaryKey: true },
-  programmeId: { type: DataTypes.UUID, allowNull: false, unique: true, field: "programme_id" },
+  programmeId: { type: DataTypes.UUID, allowNull: false, field: "programme_id" },
   routeId: { type: DataTypes.UUID, allowNull: true, field: "route_id" },
   ready: { type: DataTypes.BOOLEAN, defaultValue: false },
   toggledBy: { type: DataTypes.UUID, field: "toggled_by" },
   toggledAt: { type: DataTypes.DATE, field: "toggled_at" },
-}, { tableName: "ready_to_depart", timestamps: false });
+}, {
+  tableName: "ready_to_depart", timestamps: false,
+  indexes: [{ unique: true, fields: ["route_id"] }],
+});
 
 const ProgrammeDelegate = sequelize.define("ProgrammeDelegate", {
   id: { type: DataTypes.UUID, defaultValue: DataTypes.UUIDV4, primaryKey: true },
@@ -240,9 +243,22 @@ Programme.listAll = async function () {
     totalDelegates: Number(p.get("total_delegates")), checkedIn: Number(p.get("checked_in")),
   }));
 };
-Programme.createWithDetails = async function ({ name, startDate, endDate }) {
-  const p = await Programme.create({ name, startDate, endDate });
-  return { id: p.id, name: p.name, startDate: p.startDate, endDate: p.endDate, status: p.status };
+Programme.createWithDetails = async function ({ name, startDate, endDate, routes }) {
+  const routeNames = (routes || []).map((r) => r?.name?.trim()).filter(Boolean);
+  if (routeNames.length === 0) {
+    throw new Error("routes (at least one route) is required");
+  }
+  return sequelize.transaction(async (t) => {
+    const p = await Programme.create({ name, startDate, endDate }, { transaction: t });
+    const createdRoutes = await Route.bulkCreate(
+      routeNames.map((routeName) => ({ programmeId: p.id, name: routeName })),
+      { transaction: t }
+    );
+    return {
+      id: p.id, name: p.name, startDate: p.startDate, endDate: p.endDate, status: p.status,
+      routes: createdRoutes.map((r) => ({ id: r.id, name: r.name })),
+    };
+  });
 };
 Programme.updateWithDetails = async function (id, body) {
   const { name, startDate, endDate, addDelegateIds, removeDelegateIds } = body;
@@ -414,6 +430,9 @@ ProgrammeDelegate.addDelegates = async function (programmeId, body) {
   };
   // New: accept userIds — find-or-create delegates by userId
   if (userIds && Array.isArray(userIds)) {
+    if (!routeId) throw new Error('routeId is required when adding delegates');
+    const route = await Route.findOne({ where: { id: routeId, programmeId } });
+    if (!route) throw new Error(`Invalid routeId: ${routeId}`);
     const added = [];
     for (const uid of userIds) {
       let del = await Delegate.findOne({ where: { userId: uid } });
@@ -579,6 +598,21 @@ ReadyToDepart.getStatus = async function (routeId) {
   return { routeId: r.routeId, ready: r.ready, toggledBy: r.toggledBy, toggledAt: r.toggledAt };
 };
 ReadyToDepart.setStatus = async function (routeId, programmeId, ready) {
+  if (ready === true) {
+    const [rows] = await sequelize.query(
+      `SELECT COUNT(*)::int AS n FROM programme_delegates pd
+       WHERE pd.programme_id = $1
+         AND NOT EXISTS (
+           SELECT 1 FROM route_members rm
+           WHERE rm.delegate_id = pd.delegate_id AND rm.programme_id = pd.programme_id
+         )`,
+      { bind: [programmeId] }
+    );
+    const unassigned = rows[0]?.n || 0;
+    if (unassigned > 0) {
+      throw new Error(`assign every delegate to a route (${unassigned} delegate${unassigned === 1 ? "" : "s"} unassigned)`);
+    }
+  }
   const [record] = await ReadyToDepart.findOrCreate({ where: { routeId }, defaults: { routeId, programmeId, ready, toggledAt: new Date() } });
   if (record.ready !== ready) await record.update({ ready, toggledAt: new Date() });
   return { routeId: record.routeId, ready: record.ready, toggledBy: record.toggledBy, toggledAt: record.toggledAt };
