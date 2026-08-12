@@ -240,18 +240,6 @@ export default function Chat() {
                         </select>
                     </div>
                 </div>
-                {!isConnected && (
-                    <div className="chat-offline-pill">
-                        <WifiOffRoundedIcon sx={{ fontSize: 16 }} />
-                        Offline
-                    </div>
-                )}
-                {isConnected && (
-                    <div className="chat-online-pill">
-                        <WifiRounded sx={{fontSize: 16}} />
-                        Online
-                    </div>
-                )}
             </header>
 
             <section className="chat-layout">
