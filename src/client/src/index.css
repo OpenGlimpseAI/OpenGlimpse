@@ -76,6 +76,7 @@ body {
   height: 100vh;
   height: 100dvh;
   overflow: hidden;
+  padding-bottom: max(5rem, calc(5rem + env(safe-area-inset-bottom)));
 }
 
 .chat-header {
@@ -122,7 +123,7 @@ body {
 }
 
 .chat-composer-shell {
-  @apply sticky bottom-20 border-t border-slate-200 bg-white;
+  @apply border-t border-slate-200 bg-white;
 }
 
 .chat-content {
