@@ -29,7 +29,7 @@ const user = sequelize.define("users", {
   email: { type: DataTypes.TEXT, allowNull: false, unique: true },
   passwordHash: { type: DataTypes.TEXT, allowNull: true, field: "password_hash" },
   photoUrl: { type: DataTypes.TEXT, allowNull: true, field: "photo_url" },
-  role: { type: DataTypes.TEXT, allowNull: true, validate: { isIn: [["staff", "participant"]] } },
+  role: { type: DataTypes.TEXT, defaultValue: "participant", allowNull: true, validate: { isIn: [["staff", "participant"]] } },
 }, { timestamps: true, createdAt: "created_at", updatedAt: false });
 
 const messages = sequelize.define("messages", {

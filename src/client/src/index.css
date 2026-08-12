@@ -614,16 +614,32 @@ body {
   @apply w-full max-w-2xl;
 }
 
+.staff-table-wrap {
+  @apply mt-2 mb-6 overflow-x-auto;
+}
+
 .staff-table {
-  @apply w-full border-collapse text-sm mt-2 mb-6;
+  @apply w-full border-collapse text-sm;
 }
 
 .staff-table th,
 .staff-table td {
-  @apply text-left px-2 py-2 border-b border-slate-100;
+  @apply text-left px-2 py-2 border-b border-slate-100 break-words;
 }
 
-.staff-table td .auth-button {
+.staff-table td.staff-table-actions {
+  @apply whitespace-nowrap;
+}
+
+.staff-table td.staff-table-name span {
+  @apply block max-w-[30ch] overflow-hidden text-ellipsis whitespace-nowrap;
+}
+
+.staff-table td.staff-table-email span {
+  @apply block max-w-[40ch] overflow-hidden text-ellipsis whitespace-nowrap;
+}
+
+.staff-table td.staff-table-actions .auth-button {
   @apply px-3 py-1 text-xs mr-2;
 }
 
@@ -648,11 +664,11 @@ body {
 }
 
 .staff-mgmt-panel {
-  @apply rounded-2xl bg-white p-6 shadow-sm;
+  @apply rounded-2xl bg-white p-6 shadow-sm min-w-0;
 }
 
 .staff-mgmt-panel-main {
-  @apply order-1;
+  @apply order-1 min-w-0;
 }
 
 .staff-mgmt-panel-form {

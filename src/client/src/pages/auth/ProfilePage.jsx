@@ -334,6 +334,7 @@ function ParticipantSection({ currentUser }) {
         }
         setUploadingFace(false);
         setStatus('Account created successfully with face registration');
+        setAccounts(prev => [...prev, newUser]);
         fetchAccounts();
       } else {
         setStatus('Account queued. face registration will complete when connection is restored');
@@ -374,15 +375,14 @@ function ParticipantSection({ currentUser }) {
       setSelected(null);
       setForm(emptyForm);
       clearFace();
-      //obtain account list based on connectivity
+      setAccounts(prev => prev.map(a =>
+        a.id === (payload.targetId || selected.id)
+          ? { ...a, name: form.name.trim(), email: form.email.trim().toLowerCase(), role: form.role }
+          : a
+      ));
+      //reconcile with server when online
       if (navigator.onLine) {
         fetchAccounts();
-      } else {
-        setAccounts(prev => prev.map(a =>
-          a.id === (payload.targetId || selected.id)
-            ? { ...a, name: form.name, email: form.email, role: form.role }
-            : a
-        ));
       }
     } catch (err) {
       setError(err.message || 'Update failed');
@@ -401,10 +401,9 @@ function ParticipantSection({ currentUser }) {
         setSelected(null);
         setForm(emptyForm);
       }
+      setAccounts(prev => prev.filter(a => a.id !== accountId));
       if (navigator.onLine) {
         fetchAccounts();
-      } else {
-        setAccounts(prev => prev.filter(a => a.id !== accountId));
       }
     } catch (err) {
       setError(err.message || 'Delete failed');
@@ -434,9 +433,9 @@ function ParticipantSection({ currentUser }) {
             <div className="space-y-1">
               {accounts.map((account) => (
                 <div key={account.id} className="flex items-center justify-between bg-slate-50 rounded-xl px-4 py-3 border border-slate-100">
-                  <div>
-                    <span className="text-sm text-slate-800">{account.name}</span>
-                    <span className="ml-2 text-xs text-slate-400">{account.email}</span>
+                  <div className="min-w-0">
+                    <span className="text-sm text-slate-800 inline-block truncate max-w-[30ch] align-middle">{account.name}</span>
+                    <span className="ml-2 text-xs text-slate-400 inline-block truncate max-w-[40ch] align-middle">{account.email}</span>
                     <span className={`ml-2 text-xs uppercase px-2 py-0.5 rounded-full ${
                       account.role === 'staff' ? 'bg-sky-50 text-sky-600' : 'bg-slate-100 text-slate-500'
                     }`}>{account.role}</span>

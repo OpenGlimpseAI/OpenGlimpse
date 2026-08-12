@@ -168,8 +168,9 @@ export default function ParticipantManagement() {
           setError('Account created but face upload failed: ' + (faceErr.message || ''));
         }
         setUploadingFace(false);
-        //update accounts when offline and after adding
         setStatus('Account created successfully with face registration');
+        //update accounts when online
+        setAccounts(prev => [...prev, newUser]);
         fetchAccounts();
       } else {
         //add pending account when offline
@@ -211,15 +212,14 @@ export default function ParticipantManagement() {
       setSelected(null);
       setForm(emptyForm);
       clearFace();
-      //handle accounts list when offline
+      setAccounts(prev => prev.map(a =>
+        a.id === (payload.targetId || selected.id)
+          ? { ...a, name: form.name.trim(), email: form.email.trim().toLowerCase(), role: form.role }
+          : a
+      ));
+      //reconcile with server when online
       if (navigator.onLine) {
         fetchAccounts();
-      } else {
-        setAccounts(prev => prev.map(a =>
-          a.id === (payload.targetId || selected.id)
-            ? { ...a, name: form.name, email: form.email, role: form.role }
-            : a
-        ));
       }
     } catch (err) {
       setError(err.message || 'Update failed');
@@ -238,10 +238,9 @@ export default function ParticipantManagement() {
         setSelected(null);
         setForm(emptyForm);
       }
+      setAccounts(prev => prev.filter(a => a.id !== accountId));
       if (navigator.onLine) {
         fetchAccounts();
-      } else {
-        setAccounts(prev => prev.filter(a => a.id !== accountId));
       }
     } catch (err) {
       setError(err.message || 'Delete failed');
@@ -282,33 +281,35 @@ export default function ParticipantManagement() {
           {accounts.length === 0 ? (
             <p className="auth-small-note">No accounts yet.</p>
           ) : (
-            <table className="staff-table">
-              <thead>
-                <tr>
-                  <th>Name</th>
-                  <th>Email</th>
-                  <th>Role</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {accounts.map((account) => (
-                  <tr key={account.id}>
-                    <td>{account.name}</td>
-                    <td>{account.email}</td>
-                    <td>{account.role}</td>
-                    <td>
-                      <button className="auth-button auth-button-secondary" type="button" onClick={() => handleSelect(account)}>
-                        Edit
-                      </button>
-                      <button className="auth-button auth-button-danger" type="button" onClick={() => setDeleteTarget(account)}>
-                        Delete
-                      </button>
-                    </td>
+            <div className="staff-table-wrap">
+              <table className="staff-table">
+                <thead>
+                  <tr>
+                    <th>Name</th>
+                    <th>Email</th>
+                    <th>Role</th>
+                    <th>Actions</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {accounts.map((account) => (
+                    <tr key={account.id}>
+                      <td className="staff-table-name"><span>{account.name}</span></td>
+                      <td className="staff-table-email"><span>{account.email}</span></td>
+                      <td>{account.role}</td>
+                      <td className="staff-table-actions">
+                        <button className="auth-button auth-button-secondary" type="button" onClick={() => handleSelect(account)}>
+                          Edit
+                        </button>
+                        <button className="auth-button auth-button-danger" type="button" onClick={() => setDeleteTarget(account)}>
+                          Delete
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
         </section>
 

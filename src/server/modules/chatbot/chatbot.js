@@ -1,7 +1,15 @@
 const Groq = require('groq-sdk');
 const { Programme, Route, Delegate, AttendanceRecord, ProgrammeDelegate, RouteMember, user, messages } = require('../../database/db.cjs');
 
-const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
+let groq = null;
+function getGroq() {
+    if (groq) return groq;
+    if (!process.env.GROQ_API_KEY) {
+        throw new Error('GROQ_API_KEY is not set — configure it in .env to use the AI assistant');
+    }
+    groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
+    return groq;
+}
 
 async function buildProgrammeContext(programmeId) {
     const programme = await Programme.findByPk(programmeId);
@@ -75,7 +83,7 @@ Answer questions accurately based on this data. Be concise. Address the user by 
         { role: 'user',  content: userMessage },
     ];
 
-    const completion = await groq.chat.completions.create({
+    const completion = await getGroq().chat.completions.create({
         messages: groqMessages,
         model: process.env.GROQ_MODEL || 'gpt-oss-20b',
         temperature: 0.5,

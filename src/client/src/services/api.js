@@ -31,8 +31,17 @@ async function request(method, path, body, token) {
   }
 //client action if online
   if (navigator.onLine) {
+    let res;
     try {
-      const res = await fetch(`${API_BASE}${path}`, opts);
+      res = await fetch(`${API_BASE}${path}`, opts);
+    } catch (err) {
+      //network failure — if sync path, fall through to offline handling, otherwise surface the error
+      if (!isSynced(path)) {
+        throw err;
+      }
+      res = null;
+    }
+    if (res) {
       if (res.status === 204) {
         return null;
       }
@@ -59,12 +68,6 @@ async function request(method, path, body, token) {
         });
       }
       return data;
-      //if client is offline
-    } catch (err) {
-      //(unlikely case here) if sync path does not exist(ie does not support offline sync)
-      if (!isSynced(path)) {
-        throw err;
-      }
     }
   }
 //check if cached data exists

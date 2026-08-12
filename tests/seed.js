@@ -101,7 +101,7 @@ async function seed() {
 
         const email = `${folder}@test.com`;
         const passwordHash = crypto.createHash('sha256').update('password').digest('hex');
-        const user = await User.create(folder, null, { email, passwordHash });
+        const user = await User.create(folder, null, { email, passwordHash, role: 'participant' });
         console.log(`  Created user: ${user.id} (${email})`);
 
         const imageData = fs.readFileSync(defaultImage);

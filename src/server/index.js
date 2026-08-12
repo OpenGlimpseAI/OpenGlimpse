@@ -153,6 +153,14 @@ async function start() {
         } else {
             CHATBOT_USER_ID = existingBot.id;
         }
+
+        const nullRoleCount = await user.update(
+            { role: 'participant' },
+            { where: sequelize.where(sequelize.col('role'), null) }
+        );
+        if (nullRoleCount[0] > 0) {
+            console.log(`Normalized ${nullRoleCount[0]} account(s) with missing role to participant`);
+        }
     } catch (err) {
         console.error('Database sync failed:', err);
         process.exit(1);
